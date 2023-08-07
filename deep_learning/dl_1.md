@@ -13,6 +13,7 @@ drawings:
   persist: false
 transition: slide-left
 title: Deep Learning 1
+download: true
 ---
 
 # Deep Learning 1
@@ -77,7 +78,7 @@ $\mathcal{L}$ 與 $\hat{f}$ 必須可微
 
 # Learning Rate
 
-<img class="w-9/10 m-auto" src="/deep_learning/img/learning_rate.png"/>
+<img class="w-9/10 m-auto" src="/img/learning_rate.png"/>
 
 <div class="text-center">cite: <a href="https://cs231n.github.io/neural-networks-3/" target="_blank">Stanford cs231</a></div>
 
@@ -85,7 +86,7 @@ $\mathcal{L}$ 與 $\hat{f}$ 必須可微
 
 # Mini Batch Gradient Descent
 
-<img src="/deep_learning/img/batch.png" />
+<img src="/img/batch.png" />
 
 <div class="absolute text-3xl right-13 bottom-35">
 
@@ -195,7 +196,7 @@ $$\begin{split}
 <div v-click>
 
 - <a href="https://toonnyy8.github.io/PPT/resnet/index.html#/1" target="_blank">Skip Connection</a>
-<img class="w-4/5 m-auto" src="/deep_learning/img/skip-connection.png"/>
+<img class="w-4/5 m-auto" src="/img/skip-connection.png"/>
 <div class="text-center text-base">cite: <a href="https://tikz.net/skip-connection/" target="_blank">Skip Connection</a></div>
 
 </div>
@@ -203,7 +204,7 @@ $$\begin{split}
 <div v-click>
 
 - Gradient Clipping
-<img class="w-4/5 m-auto" src="/deep_learning/img/gradient-clipping.webp"/>
+<img class="w-4/5 m-auto" src="/img/gradient-clipping.webp"/>
 <div class="text-center text-base">cite: <a href="https://neptune.ai/blog/understanding-gradient-clipping-and-how-it-can-fix-exploding-gradients-problem" target="_blank">Understanding Gradient Clipping</a></div>
 
 </div>
@@ -218,7 +219,7 @@ $$\begin{split}
 
 </div>
 
-<img class="w-1/2 m-auto" src="/deep_learning/img/normalization.png"/>
+<img class="w-1/2 m-auto" src="/img/normalization.png"/>
 <div class="text-center text-base">cite: <a href="https://openaccess.thecvf.com/content_ECCV_2018/html/Yuxin_Wu_Group_Normalization_ECCV_2018_paper.html" target="_blank">Group Normalization</a></div>
 
 </div>
@@ -230,12 +231,12 @@ $$\begin{split}
 <div class="grid grid-cols-5">
 
 <div class="col-span-2 pt-10">
-<img class="m-auto" src="/deep_learning/img/overfitting.png" />
+<img class="m-auto" src="/img/overfitting.png" />
 <div class="text-center">cite: <a href="https://www.analyticsvidhya.com/blog/2020/02/underfitting-overfitting-best-fitting-machine-learning/" target="_blank">Overfitting And Underfitting in Machine Learning</a></div>
 </div>
 
 <div v-click class="col-span-3">
-<img class="m-auto pl-10" src="/deep_learning/img/overfitting.svg" />
+<img class="m-auto pl-10" src="/img/overfitting.svg" />
 <div class="text-center">cite: <a href="https://www.mathworks.com/discovery/overfitting.html" target="_blank">What Is Overfitting?</a></div>
 </div>
 
@@ -289,7 +290,7 @@ $$\begin{split}
 
 ## Dropout
 <br/>
-<img class="w-9/10" src="/deep_learning/img/dropout.png" />
+<img class="w-9/10" src="/img/dropout.png" />
 <div class="text-center text-base">cite: <a href="https://github.com/PetarV-/TikZ/tree/master/Dropout" target="_blank">Tikz/Dropout</a></div>
 
 - 不會過度依賴某些特徵
@@ -391,7 +392,7 @@ $$
 
 <div class="grid grid-cols-2">
 <div>
-<img src="/deep_learning/img/cnn.png.gif"/>
+<img src="/img/cnn.png.gif"/>
 <div class="text-center">cite: <a href="https://user.phil.hhu.de/~petersen/SoSe17_Teamprojekt/AR/neuronalenetze.html" target="_blank">Convolutional Neural Networks am Beispiel eines selbstfahrenden Roboters 0.1 Dokumentation
 </a></div>
 </div>
@@ -427,7 +428,7 @@ $$
 </div>
 
 <div>
-<img src="/deep_learning/img/rnn-text.gif"/>
+<img src="/img/rnn-text.gif"/>
 <div class="">cite: <a href="https://research.aimultiple.com/rnn/" target="_blank">In-Depth Guide to Recurrent Neural Networks (RNNs) in 2023</a></div>
 </div>
 
@@ -441,7 +442,7 @@ $$
 <div class="grid grid-cols-2">
 
 <div>
-<img class="w-4/5" src="/deep_learning/img/transformer.gif"/>
+<img class="w-4/5" src="/img/transformer.gif"/>
 <div>cite: <a href="https://ai.googleblog.com/2017/08/transformer-novel-neural-network.html" target="_blank">Transformer: A Novel Neural Network Architecture for Language Understanding</a></div>
 </div>
 
@@ -469,7 +470,7 @@ $$
 
 $Data \overset{Encoder}{\underset{Decoder}{\rightleftharpoons}} Feature$
 
-<img v-click class="w-19/20 m-auto" src="/deep_learning/img/diffusion.png"/>
+<img v-click class="w-19/20 m-auto" src="/img/diffusion.png"/>
 <div v-after class="text-base text-center">cite: <a href="https://www.assemblyai.com/blog/how-dall-e-2-actually-works/" target="_blank">How DALL-E 2 Actually Works</a></div>
 
 
@@ -480,7 +481,7 @@ $Data \overset{Encoder}{\underset{Decoder}{\rightleftharpoons}} Feature$
 ## Causal $p(y_t|x_{\le t})$, Autoregressive $p(y_t|y_{< t})$
 <br/>
 
-<img class="w-19/20 m-auto" v-click src="/deep_learning/img/wavenet.gif"/>
+<img class="w-19/20 m-auto" v-click src="/img/wavenet.gif"/>
 <div v-after class="text-base text-center">cite: <a href="https://www.deepmind.com/blog/wavenet-a-generative-model-for-raw-audio" target="_blank">WaveNet: A generative model for raw audio</a></div>
 
 </div>
@@ -496,7 +497,7 @@ $Data \overset{Encoder}{\underset{Decoder}{\rightleftharpoons}} Feature$
 
 <div>
 
-<img class="w-3/4 m-auto" src="/deep_learning/img/GIGO.png"/>
+<img class="w-3/4 m-auto" src="/img/GIGO.png"/>
 
 <div class="text-center">cite: <a href="https://medium.com/marketingdatascience/%E7%9B%A1%E4%BF%A1%E8%B3%87%E6%96%99-%E4%B8%8D%E5%A6%82%E7%84%A1%E8%B3%87%E6%96%99-6f7551b0164b" target="_blank">盡信資料，不如無資料</a></div>
 
