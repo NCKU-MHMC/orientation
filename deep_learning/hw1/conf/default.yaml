@@ -1,0 +1,18 @@
+mode: train
+total_iters: 100000
+resume_iter: null
+print_every: 100
+save_every: 5000
+valid_every: 5000
+ckpt_dir: ./expr
+test_ckpt: last
+
+data:
+  train_paths: ["<data_path>/Imagenet/Imagenet32/train/train_data_batch_1",
+                "<data_path>/Imagenet/Imagenet32/train/train_data_batch_2"]
+  valid_paths: ["<data_path>/Imagenet/Imagenet32/train/train_data_batch_3",]
+  test_paths: ["<data_path>/Imagenet/Imagenet32/valid/val_data"]
+
+  train_batch_size: 64
+  valid_batch_size: 64
+  test_batch_size: 64

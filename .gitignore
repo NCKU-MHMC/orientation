@@ -130,3 +130,10 @@ dist
 .pnp.*
 
 *~
+
+*.ckpt
+__pycache__
+/deep_learning/hw1/outputs/
+/deep_learning/hw1/runs/
+
+events.out.tfevents.*
