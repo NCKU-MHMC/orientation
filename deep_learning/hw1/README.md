@@ -27,7 +27,9 @@ poetry install # 安裝依賴套件
 ```
 
 ### 執行訓練
-在 `conf` 資料夾中已經預設 default.yaml 與 l2_regul.yaml 兩組訓練配置，可依據需求自行添加新的設置檔。
+在 `conf` 資料夾中已經預設 default.yaml 與 l2_regul.yaml 兩組訓練配置，開始執行前請將 `train_paths`, `valid_paths`, `test_paths` 更改為資料集路徑。
+
+可依據需求自行添加新的設置檔。
 
 ```sh
 cd <範例程式目錄>
