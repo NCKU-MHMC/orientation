@@ -1,4 +1,10 @@
 import torch
+from torch import optim
+from torch.nn import Parameter
+
+from hw1.config import OptimConfig
+
+from typing import Iterator, Optional, TypeVar, TypeGuard
 
 class Score:
     def __init__(self) -> None:
@@ -23,10 +29,27 @@ def cycle(dl):
         for data in dl:
             yield data
 
-def save_ckpt(model, opt, batch_idx, ckpt_dir, expr_name):
+T = TypeVar("T")
+
+def exist(x: Optional[T]) -> TypeGuard[T]:
+    return x is not None
+
+def load_ckpt(model, opt, resume_ckpt, ckpt_dir, expr_name):
+    if exist(resume_ckpt):
+        if isinstance(resume_ckpt, int):
+            ckpt = torch.load(f"{ckpt_dir}/{expr_name}/step={resume_ckpt:06}.ckpt")
+        else:
+            ckpt = torch.load(f"{ckpt_dir}/{expr_name}/{resume_ckpt}.ckpt")
+        model.load_state_dict(ckpt["model"])
+        opt.load_state_dict(ckpt["opt"])
+
+def save_ckpt(model, opt, step, ckpt_dir, expr_name):
     torch.save({"model": model.state_dict(),
                 "opt": opt.state_dict()},
-                f"{ckpt_dir}/{expr_name}/step={batch_idx:06}.ckpt")
+                f"{ckpt_dir}/{expr_name}/step={step:06}.ckpt")
     torch.save({"model": model.state_dict(),
                 "opt": opt.state_dict()},
                 f"{ckpt_dir}/{expr_name}/last.ckpt")
+    
+def create_optim(params: Iterator[Parameter], opt_cfg: OptimConfig):
+    return getattr(optim, opt_cfg.optim_type)(params, **opt_cfg.optim_args)

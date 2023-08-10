@@ -25,4 +25,4 @@ optim:
   optim_args:
     lr: 1e-3
   regul_lambda: 0.001
-  regul_ord: null
+  regul_ord: 2

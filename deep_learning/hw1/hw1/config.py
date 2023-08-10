@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional, Union
 from pathlib import Path
 
 from dataclasses import dataclass
@@ -6,12 +6,14 @@ from dataclasses import dataclass
 
 @dataclass
 class DataConfig:
-    train_paths: List[str|Path]
-    valid_paths: List[str|Path]
-    test_paths: List[str|Path]
+    train_paths: List[Union[str, Path]]
+    valid_paths: List[Union[str, Path]]
+    test_paths: List[Union[str, Path]]
     train_batch_size: int
     valid_batch_size: int
     test_batch_size: int
+
+    num_workers: int
 
 
 @dataclass
@@ -19,20 +21,29 @@ class ModelConfig:
     nblock: int
 
 @dataclass
+class OptimArgs:
+    lr: float
+
+@dataclass
 class OptimConfig:
     optim_type: str
+    optim_args: OptimArgs
+    regul_lambda: float
+    regul_ord: Optional[int]
+
 
 @dataclass
 class HW1Config:
     mode: str
-    total_iters: int
-    resume_iter: int | None
+    total_steps: int
+    resume_ckpt: Optional[Union[int, str]]
     print_every: int
     save_every: int
     valid_every: int
-    ckpt_dir: Path | str
-    test_ckpt: str | int
+    ckpt_dir: Union[Path, str]
+    test_ckpt: Union[str, int]
+    device_id: int
 
     data: DataConfig
     # model: ModelConfig
-    # optim: OptimConfig
+    optim: OptimConfig
