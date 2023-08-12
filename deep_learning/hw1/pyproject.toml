@@ -14,6 +14,7 @@ einops = "^0.6.1"
 tqdm = "^4.65.2"
 tensorboard = "^2.14.0"
 jaxtyping = "^0.2.20"
+torchvision = "0.15.1"
 
 
 [tool.poetry.group.dev.dependencies]

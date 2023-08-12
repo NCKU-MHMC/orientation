@@ -4,7 +4,7 @@ from torch.nn import Parameter
 
 from hw1.config import OptimConfig
 
-from typing import Iterator, Optional, TypeVar, TypeGuard
+from typing import Iterator, Optional, TypeVar, TypeGuard, Callable
 
 class Score:
     def __init__(self) -> None:
@@ -33,6 +33,18 @@ T = TypeVar("T")
 
 def exist(x: Optional[T]) -> TypeGuard[T]:
     return x is not None
+
+def default(x: Optional[T], val: T) -> T:
+    if exist(x):
+        return x
+    else:
+        return val
+
+def default_lazy(x: Optional[T], val: Callable[[], T]) -> T:
+    if exist(x):
+        return x
+    else:
+        return val()
 
 def load_ckpt(model, opt, resume_ckpt, ckpt_dir, expr_name):
     if exist(resume_ckpt):

@@ -14,7 +14,6 @@ from hw1.model import Model
 
 import hydra
 from hydra.core.config_store import ConfigStore
-from hydra.core.hydra_config import HydraConfig
 
 from pathlib import Path
 
@@ -43,10 +42,10 @@ def eval(model: nn.Module,
 
 @hydra.main(version_base=None, config_path="conf", config_name="default")
 def main(cfg: HW1Config) -> None:
-    expr_name = HydraConfig.get().job.config_name
-    Path(f"{cfg.ckpt_dir}/{expr_name}").mkdir(parents=True, exist_ok=True)
 
-    writer = SummaryWriter(f"{cfg.ckpt_dir}/{expr_name}")
+    Path(f"{cfg.ckpt_dir}/{cfg.expr_name}").mkdir(parents=True, exist_ok=True)
+
+    writer = SummaryWriter(f"{cfg.ckpt_dir}/{cfg.expr_name}")
 
     device = torch.device(f"cuda:{cfg.device_id}" if torch.cuda.is_available() else "cpu")
 
@@ -55,14 +54,15 @@ def main(cfg: HW1Config) -> None:
     criterion = nn.CrossEntropyLoss()
 
     # load checkpoint
-    load_ckpt(model, opt, cfg.resume_ckpt, cfg.ckpt_dir, expr_name)
+    load_ckpt(model, opt, cfg.resume_ckpt, cfg.ckpt_dir, cfg.expr_name)
 
     # training
     if cfg.mode == "train":
         train_dl = get_data_loader(cfg.data.train_paths,
                                    cfg.data.train_batch_size,
                                    cfg.data.num_workers,
-                                   shuffle=True, drop_last=True)
+                                   cfg.data.augment,
+                                   shuffle=True, drop_last=True,)
         valid_dl = get_data_loader(cfg.data.valid_paths,
                                    cfg.data.valid_batch_size,
                                    cfg.data.num_workers,)
@@ -74,11 +74,11 @@ def main(cfg: HW1Config) -> None:
         
         with trange(cfg.total_steps) as t:
             train_loss, train_acc = Score(), Score()
-            t.set_description(expr_name)
+            t.set_description(cfg.expr_name)
             for batch, step in zip(cycle(train_dl), t):
 
                 if step % cfg.save_every == 0:
-                    save_ckpt(model, opt, step, cfg.ckpt_dir, expr_name)
+                    save_ckpt(model, opt, step, cfg.ckpt_dir, cfg.expr_name)
 
                 # validation
                 if step % cfg.valid_every == 0:
@@ -90,8 +90,8 @@ def main(cfg: HW1Config) -> None:
                         score_dict["valid/acc"] = total_valid_acc.mean
                         t.set_postfix(score_dict)
                         
-                    writer.add_scalar("valid/loss", total_valid_loss.mean, global_step=step)
-                    writer.add_scalar("valid/acc", total_valid_acc.mean, global_step=step)
+                    writer.add_scalar("valid/loss", score_dict["valid/loss"], global_step=step)
+                    writer.add_scalar("valid/acc", score_dict["valid/acc"], global_step=step)
 
                 # predict and calculate loss
                 imgs, labels = batch
@@ -114,18 +114,21 @@ def main(cfg: HW1Config) -> None:
                 opt.zero_grad()
                 
                 # log training loss and acc
-                writer.add_scalar("train/loss", loss, global_step=step)
-                writer.add_scalar("train/acc", acc, global_step=step)
                 train_loss.update(loss.item(), len(labels))
                 train_acc.update(acc.item(), len(labels))
-                score_dict["train/loss"] = train_loss.mean
-                score_dict["train/acc"] = train_acc.mean
 
                 if step % cfg.print_every == 0:
+                    score_dict["train/loss"] = train_loss.mean
+                    score_dict["train/acc"] = train_acc.mean
+                    writer.add_scalar("train/loss", score_dict["train/loss"], global_step=step)
+                    writer.add_scalar("train/acc", score_dict["train/acc"], global_step=step)
                     t.set_postfix(score_dict)
                     train_loss, train_acc = Score(), Score()
 
-        save_ckpt(model, opt, cfg.total_steps, cfg.ckpt_dir, expr_name)
+        writer.add_scalar("train/loss", train_loss.mean, global_step=cfg.total_steps)
+        writer.add_scalar("train/acc", train_acc.mean, global_step=cfg.total_steps)
+        save_ckpt(model, opt, cfg.total_steps, cfg.ckpt_dir, cfg.expr_name)
+
         # last validation
         with tqdm(total=len(valid_dl.dataset)) as pbar:
             total_valid_loss, total_valid_acc = Score(), Score()

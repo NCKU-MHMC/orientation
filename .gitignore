@@ -133,7 +133,11 @@ dist
 
 *.ckpt
 __pycache__
+
 /deep_learning/hw1/outputs/
 /deep_learning/hw1/runs/
+
+/deep_learning/hw2/outputs/
+/deep_learning/hw2/runs/
 
 events.out.tfevents.*

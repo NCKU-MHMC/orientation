@@ -15,6 +15,8 @@ class DataConfig:
 
     num_workers: int
 
+    augment: bool
+
 
 @dataclass
 class ModelConfig:
