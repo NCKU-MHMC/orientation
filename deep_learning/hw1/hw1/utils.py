@@ -1,10 +1,17 @@
 import torch
-from torch import optim
+from torch import optim, nn, Tensor
 from torch.nn import Parameter
 
 from hw1.config import OptimConfig
 
 from typing import Iterator, Optional, TypeVar, TypeGuard, Callable
+
+class Lambda(nn.Module):
+    def __init__(self, lambd: Callable[[Tensor], Tensor]):
+        super(Lambda, self).__init__()
+        self.lambd = lambd
+    def forward(self, x: Tensor):
+        return self.lambd(x)
 
 class Score:
     def __init__(self) -> None:
