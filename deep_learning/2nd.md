@@ -333,6 +333,7 @@ download: true
 
   # Self-Supervised
   ## SimCLR
+  - 使用資料擴增建構正樣本
   - 正樣本特徵**越接近**越好
   - 負樣本特徵**差越多**越好
   - MLP=$g(\cdot)$，輔助訓練的 projector
