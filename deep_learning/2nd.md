@@ -12,7 +12,7 @@ info: |
 drawings:
   persist: false
 transition: slide-left
-title: Deep Learning 1
+title: Deep Learning 2
 download: true
 ---
 
