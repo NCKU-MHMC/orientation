@@ -11,10 +11,10 @@ test_ckpt: last
 device_id: 0
 
 data:
-  train_paths: ["<data_path>/Imagenet/Imagenet32/train/train_data_batch_1",
-                "<data_path>/Imagenet/Imagenet32/train/train_data_batch_2"]
-  valid_paths: ["<data_path>/Imagenet/Imagenet32/train/train_data_batch_3",]
-  test_paths: ["<data_path>/Imagenet/Imagenet32/valid/val_data"]
+  train_paths: ["/media/toonnyy8/DC462D80462D5C90/datatank/dataset/Imagenet/Imagenet32/train/train_data_batch_1",
+                "/media/toonnyy8/DC462D80462D5C90/datatank/dataset/Imagenet/Imagenet32/train/train_data_batch_2"]
+  valid_paths: ["/media/toonnyy8/DC462D80462D5C90/datatank/dataset/Imagenet/Imagenet32/train/train_data_batch_3",]
+  test_paths: ["/media/toonnyy8/DC462D80462D5C90/datatank/dataset/Imagenet/Imagenet32/valid/val_data"]
 
   train_batch_size: 1024
   valid_batch_size: 1024
