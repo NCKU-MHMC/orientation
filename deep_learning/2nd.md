@@ -105,7 +105,7 @@ download: true
 
 <p class="pl-10 text-xl">
 
-### Test
+### Text Augmentation
 
 - Replacing Words or Phrases with Their Synonyms
 - Back Translation
@@ -117,6 +117,7 @@ download: true
 </div>
 
 </div>
+
 
 ---
 
