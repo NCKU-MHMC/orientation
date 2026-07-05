@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flow Matching 互動教學:2D 玩具資料</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.22.0/tf.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e1420; --panel:#151d2e; --panel-edge:#243350;
+    --grid:#20304b; --ink:#e8edf6; --muted:#8fa0bc;
+    --amber:#ffb454; --cyan:#5edfff; --violet:#b48cff; --pink:#ff6b9d;
+    --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans TC',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);padding:20px 22px 48px;
+       background-image:radial-gradient(circle at 50% -10%,#1d1a33 0%,var(--bg) 55%);}
+  header{max-width:1200px;margin:0 auto 18px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--violet);text-transform:uppercase}
+  h1{font-size:clamp(20px,3vw,28px);font-weight:700;margin:6px 0 4px}
+  h1 .fm{color:var(--violet)}
+  .sub{color:var(--muted);font-size:13.5px;max-width:790px;line-height:1.7}
+
+  .wrap{max-width:1200px;margin:0 auto}
+  .controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;
+    background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;
+    padding:12px 16px;margin:14px 0 16px}
+  .ctrl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+  .ctrl label{white-space:nowrap}
+  select,button{font-family:var(--sans);font-size:13px;border-radius:8px;border:1px solid var(--panel-edge);
+    background:#0f1626;color:var(--ink);padding:6px 10px;cursor:pointer}
+  button:hover{border-color:var(--violet)}
+  button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+  button.primary{background:var(--violet);color:#160b2a;font-weight:700;border:none;padding:7px 16px}
+  input[type=range]{accent-color:var(--violet);width:110px}
+  #tSlide{width:150px}
+  .val{font-family:var(--mono);color:var(--ink);min-width:3ch;text-align:right}
+  .toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+  .toggle input{accent-color:var(--amber)}
+  .readout{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:auto;display:flex;gap:16px;flex-wrap:wrap}
+  .readout b{color:var(--ink);font-weight:500}
+  .readout .r-loss b{color:var(--amber)} .readout .r-t b{color:var(--violet)}
+
+  .panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+  .panel{background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;padding:12px 14px 14px;min-width:0}
+  .panel h2{font-size:13.5px;font-weight:700;letter-spacing:.03em;margin-bottom:2px}
+  .panel .hint{font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.5}
+  canvas{width:100%;display:block;border-radius:8px;background:#0c1220;touch-action:none}
+  #fieldCv{cursor:crosshair}
+
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+  .notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:16px}
+  .note{background:var(--panel);border:1px solid var(--panel-edge);border-left:3px solid var(--violet);
+    border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.8;color:var(--muted)}
+  .note h3{font-size:13.5px;color:var(--ink);margin-bottom:6px}
+  .note.n2{border-left-color:var(--pink)} .note.n3{border-left-color:var(--cyan)}
+  .note code{font-family:var(--mono);font-size:12px;color:var(--cyan);background:#0c1220;padding:1px 5px;border-radius:4px}
+  .note b{color:var(--ink);font-weight:500}
+  .loading{font-family:var(--mono);font-size:12px;color:var(--muted);padding:8px 0}
+  @media (max-width:720px){ .readout{margin-left:0} body{padding:14px 12px 40px} }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">生成模型入門 · 第二堂 · Lab Demo 03</div>
+  <h1><span class="fm">Flow Matching</span> 互動教學 — 學一個把分布「流」過去的速度場</h1>
+  <p class="sub">模型只學一件事:速度場 <span style="font-family:var(--mono)">v<sub>θ</sub>(x, t)</span>。
+    訓練時把來源點 x₀ 與目標點 x₁ 用直線 <span style="font-family:var(--mono)">x_t=(1−t)x₀+t·x₁</span> 連起來,回歸目標速度 <span style="font-family:var(--mono)">x₁−x₀</span>;
+    取樣時從來源分布出發,沿速度場積分 ODE 到 t=1。這是 DDPM 的近親(SD3、Flux 都用這套 rectified flow),
+    而它的招牌是:<b style="color:var(--pink)">來源不必是高斯——任意兩個分布都能相連</b>。拖動 t 滑桿,就是在親手做取樣積分。</p>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div class="ctrl"><label for="srcSel">來源分布 p₀</label>
+      <select id="srcSel">
+        <option value="gauss" selected>高斯 N(0,I)</option>
+        <option value="moons">雙月 Two Moons</option>
+        <option value="ring">圓環 Ring</option>
+        <option value="mixture">高斯混合 ×6</option>
+        <option value="mixtureOff">高斯混合 ×6(中心偏移)</option>
+        <option value="spiral">螺旋 Spiral</option>
+      </select>
+    </div>
+    <div class="ctrl"><label for="tgtSel">目標分布 p₁</label>
+      <select id="tgtSel">
+        <option value="moons" selected>雙月 Two Moons</option>
+        <option value="ring">圓環 Ring</option>
+        <option value="mixture">高斯混合 ×6</option>
+        <option value="mixtureOff">高斯混合 ×6(中心偏移)</option>
+        <option value="spiral">螺旋 Spiral</option>
+        <option value="gauss">高斯 N(0,I)</option>
+      </select>
+    </div>
+    <div class="ctrl"><label for="tSlide">時間 t</label>
+      <input type="range" id="tSlide" min="0" max="1" step="0.01" value="0">
+      <span class="val" id="tVal">0.00</span>
+    </div>
+    <label class="toggle ctrl"><input type="checkbox" id="autoT" checked> 自動播放</label>
+    <div class="ctrl"><label for="speed">訓練速度</label>
+      <input type="range" id="speed" min="1" max="12" step="1" value="4">
+      <span class="val" id="speedVal">4</span>
+    </div>
+    <div class="ctrl">
+      <button class="primary" id="playBtn">▶ 開始訓練</button>
+      <button id="resetBtn">↺ 重設模型</button>
+    </div>
+    <label class="toggle ctrl"><input type="checkbox" id="showTrail" checked> 軌跡</label>
+    <div class="readout">
+      <span>step <b id="stepVal">0</b></span>
+      <span class="r-loss">FM loss <b id="lossVal">–</b></span>
+    </div>
+  </div>
+
+  <div class="loading" id="loading">正在初始化 TensorFlow.js…</div>
+
+  <div class="panels">
+    <div class="panel">
+      <h2>傳輸過程:p₀ →(t)→ p₁</h2>
+      <p class="hint">彩色粒子=一批來源樣本,沿學到的速度場積分到目前時間 t。灰點=它們的出發位置,暗色點=目標資料。t=1 時的粒子就是<b>生成樣本</b>。粒子顏色只用來追蹤「誰被搬到哪」。</p>
+      <canvas id="flowCv"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:linear-gradient(90deg,#5edfff,#ff6bd6)"></span>傳輸中的粒子</span>
+        <span><span class="dot" style="background:#3a4a68"></span>目標資料 p₁</span>
+        <span><span class="dot" style="background:#55617e"></span>出發位置 p₀</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>速度場 v(x, t)(可點擊/拖曳)</h2>
+      <p class="hint">箭頭=目前時間 t 的速度場,越亮代表速度越大。<b>點擊任一位置</b>:粉紅路徑顯示「一顆此刻在這裡的粒子」會被場帶去哪(積分到 t=1)。拖動 t 滑桿,看整個場如何隨時間變形。</p>
+      <canvas id="fieldCv"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--cyan)"></span>慢 → <span class="dot" style="background:var(--amber)"></span>快</span>
+        <span><span class="dot" style="background:var(--pink)"></span>你選的起點與它的路徑</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Flow Matching 損失</h2>
+      <p class="hint">單純的回歸 MSE:<span style="font-family:var(--mono)">‖v<sub>θ</sub>(x_t,t) − (x₁−x₀)‖²</span>。沒有對抗、沒有 KL——注意它像一般監督學習一樣<b>平穩下降</b>,對比 GAN 的震盪。</p>
+      <canvas id="lossCv"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--amber)"></span>FM MSE</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3>① 與 DDPM 的關係</h3>
+      DDPM 的 forward process 是「逐步加噪到純高斯」,網路學「預測噪聲」;flow matching 把這件事改寫成<b>連續時間的傳輸問題</b>:
+      直接學一個速度場,把 p₀ 沿 ODE 搬到 p₁。兩者訓練都是<b>簡單回歸</b>(這就是它們比 GAN 穩定的原因),
+      差別在 FM 用直線插值當監督訊號、取樣走確定性 ODE,步數可以更少。當 p₀=N(0,I) 時,本 demo 就相當於一個 2D 的擴散模型。
+    </div>
+    <div class="note n2">
+      <h3>② 招牌:連接任意兩個分布</h3>
+      把來源改成<b>雙月</b>、目標改成<b>圓環</b>——不需要高斯中介,速度場直接學會把兩個彎月「掰開、拉圓」。
+      注意個別粒子的軌跡<b>並不是直線</b>:訓練時隨機配對的直線互相交叉,模型學到的是它們的<b>平均場</b>,所以路徑會彎(這正是 rectified flow 要再做 reflow 拉直的動機)。
+      在速度場面板點擊不同位置,感受同一個場在不同 t 的方向變化。
+    </div>
+    <div class="note n3">
+      <h3>③ 建議實驗流程(與 VAE/GAN 對照)</h3>
+      1) 高斯 → <b>中心偏移混合</b>:同一份資料,VAE 會「搭橋」、GAN 會「漏群」,FM 則靠多步積分把質量乾淨地分到每一群——但拖 t 滑桿可以看到,粒子要走過中間的低密度區,<b>取樣成本=積分步數</b>就是它付出的代價。<br>
+      2) 高斯 → 圓環:對比 VAE 蓋不乾淨的拓撲,FM 的表現如何?<br>
+      3) 雙月 → 螺旋、混合 → 圓環……任意搭配,體會「生成=分布間的傳輸」這個統一視角。
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ============ 全域狀態 ============ */
+let VIEW = 3.0;
+const H = 64, BS = 256, P = 240, STEPS = 28, FG = 15;   // 粒子數、積分步數、向量場格數
+let params = null, optimizer = null;
+let srcName = 'gauss', tgtName = 'moons';
+let srcData = null, tgtData = null;        // 非高斯來源/目標的資料
+let particles = null, partC = null;        // 固定一批來源粒子與追蹤顏色
+let traj = null;                            // (STEPS+1)×P×2 軌跡快取
+let flowT = 0, autoT = true, playing = false, stepsPerFrame = 4;
+let step = 0, lossHist = [], frame = 0;
+let probe = null, probePath = null;         // 使用者點的起點與其路徑
+
+/* ============ 資料集(與前兩個 demo 相同) ============ */
+const gauss = () => {
+  const u = Math.random()||1e-9, v = Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+};
+function makeDataset(name, n = 1500){
+  const pts = new Float32Array(n*2), c = new Float32Array(n);
+  for(let i=0;i<n;i++){
+    let x=0,y=0,ci=0;
+    if(name==='gauss'){
+      x=gauss(); y=gauss(); ci=Math.atan2(y,x)/(2*Math.PI)+0.5;
+    }else if(name==='moons'){
+      const t = Math.random()*Math.PI, up = i%2===0;
+      if(up){ x=Math.cos(t); y=Math.sin(t); ci=t/Math.PI*0.5; }
+      else  { x=1-Math.cos(t); y=0.5-Math.sin(t); ci=0.5+t/Math.PI*0.5; }
+      x=(x-0.5)*1.7; y=(y-0.25)*1.7; x+=gauss()*0.07; y+=gauss()*0.07;
+    }else if(name==='ring'){
+      const th = Math.random()*2*Math.PI, r = 1.9+gauss()*0.09;
+      x=r*Math.cos(th); y=r*Math.sin(th); ci=th/(2*Math.PI);
+    }else if(name==='mixture'){
+      const k = i%6, th = k/6*2*Math.PI;
+      x=1.9*Math.cos(th)+gauss()*0.17; y=1.9*Math.sin(th)+gauss()*0.17; ci=k/6;
+    }else if(name==='mixtureOff'){
+      // 以最左邊的高斯 (角度 π,即 (-r,0)) 為基準,把整個混合的中心平移到它身上
+      const r = 3.0, k = i%6, th = k/6*2*Math.PI;
+      x=r*Math.cos(th)-r+gauss()*0.12; y=r*Math.sin(th)+gauss()*0.12; ci=k/6;
+    }else{ // spiral
+      const t = Math.random();
+      const th = 1.9*2*Math.PI*t, r = 0.25+2.0*t;
+      x=r*Math.cos(th)+gauss()*0.05; y=r*Math.sin(th)+gauss()*0.05; ci=t;
+    }
+    pts[2*i]=x; pts[2*i+1]=y; c[i]=ci;
+  }
+  return {pts, c, n};
+}
+
+function setDistributions(){
+  VIEW = (srcName==='mixtureOff'||tgtName==='mixtureOff') ? 6.6 : 3.0;
+  srcData = makeDataset(srcName);
+  tgtData = makeDataset(tgtName);
+  // 固定一批來源粒子(取前 P 筆,已是隨機生成)
+  particles = srcData.pts.slice(0, P*2);
+  partC = srcData.c.slice(0, P);
+  traj = new Float32Array((STEPS+1)*P*2);
+  probe = null; probePath = null;
+}
+
+/* ============ 模型:v_θ(x,t),輸入 [x,y,t,sin2πt,cos2πt] ============ */
+const dense = (ni,no)=>({ W: tf.variable(tf.randomNormal([ni,no],0,Math.sqrt(1.4/ni))), b: tf.variable(tf.zeros([no])) });
+const fw = (l,x)=> x.matMul(l.W).add(l.b);
+function buildModel(){
+  disposeModel();
+  params = { l1:dense(5,H), l2:dense(H,H), l3:dense(H,H), out:dense(H,2) };
+  optimizer = tf.train.adam(2e-3);
+  step = 0; lossHist = [];
+}
+function disposeModel(){
+  if(!params) return;
+  for(const k in params){ params[k].W.dispose(); params[k].b.dispose(); }
+  params = null;
+}
+const varList = ()=> Object.values(params).flatMap(l=>[l.W,l.b]);
+function vField(x, t){          // x:[n,2], t:[n,1] → v:[n,2]
+  const tp = t.mul(2*Math.PI);
+  const f = tf.concat([x, t, tf.sin(tp), tf.cos(tp)], 1);
+  let h = tf.tanh(fw(params.l1,f)); h = tf.tanh(fw(params.l2,h)); h = tf.tanh(fw(params.l3,h));
+  return fw(params.out,h);
+}
+
+/* ============ 訓練:conditional flow matching ============ */
+function sampleRows(D, bs){
+  const b = new Float32Array(bs*2);
+  for(let i=0;i<bs;i++){ const j=(Math.random()*D.n)|0; b[2*i]=D.pts[2*j]; b[2*i+1]=D.pts[2*j+1]; }
+  return b;
+}
+function trainStep(){
+  const x0 = tf.tensor2d(sampleRows(srcData,BS),[BS,2]);
+  const x1 = tf.tensor2d(sampleRows(tgtData,BS),[BS,2]);
+  const cost = optimizer.minimize(()=>{
+    const t  = tf.randomUniform([BS,1]);
+    const xt = x0.mul(tf.scalar(1).sub(t)).add(x1.mul(t));   // 直線插值
+    const v  = vField(xt, t);
+    return v.sub(x1.sub(x0)).square().sum(-1).mean();        // 回歸 x1-x0
+  }, true, varList());
+  const L = cost.dataSync()[0];
+  cost.dispose(); x0.dispose(); x1.dispose();
+  step++;
+  return L;
+}
+
+/* ============ 軌跡快取:Euler 積分 0→1 ============ */
+function recomputeTraj(){
+  const pos = particles.slice(), dt = 1/STEPS;
+  traj.set(pos, 0);
+  for(let s=0;s<STEPS;s++){
+    const v = tf.tidy(()=>{
+      const x = tf.tensor2d(pos,[P,2]);
+      const t = tf.fill([P,1], s*dt);
+      return vField(x,t).dataSync();
+    });
+    for(let i=0;i<P*2;i++) pos[i]+=v[i]*dt;
+    traj.set(pos, (s+1)*P*2);
+  }
+  recomputeProbe();
+}
+function recomputeProbe(){
+  if(!probe){ probePath=null; return; }
+  const t0 = Math.min(1, Math.max(0, flowT));
+  const n = Math.max(4, Math.round((1-t0)*STEPS));
+  const path = new Float32Array((n+1)*2);
+  let px=probe[0], py=probe[1];
+  path[0]=px; path[1]=py;
+  const dt = (1-t0)/n;
+  for(let s=0;s<n;s++){
+    const v = tf.tidy(()=>{
+      const x = tf.tensor2d([px,py],[1,2]);
+      const t = tf.fill([1,1], t0+s*dt);
+      return vField(x,t).dataSync();
+    });
+    px+=v[0]*dt; py+=v[1]*dt;
+    path[2*(s+1)]=px; path[2*(s+1)+1]=py;
+  }
+  probePath = path;
+}
+
+/* ============ 畫布工具 ============ */
+function setupCanvas(cv, square=true){
+  const dpr = window.devicePixelRatio||1;
+  const w = cv.clientWidth, h = square? w : Math.round(w*0.62);
+  cv.width = w*dpr; cv.height = h*dpr;
+  cv.style.height = h+'px';
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  return ctx;
+}
+const flowCv = document.getElementById('flowCv');
+const fieldCv = document.getElementById('fieldCv');
+const lossCv = document.getElementById('lossCv');
+let ftx, vtx, xtx;
+function resizeAll(){ ftx=setupCanvas(flowCv); vtx=setupCanvas(fieldCv); xtx=setupCanvas(lossCv,false); draw(); }
+window.addEventListener('resize', ()=>resizeAll());
+
+const toPx = (cv,x,y)=>[ (x/VIEW*0.5+0.5)*cv.clientWidth, (0.5-y/VIEW*0.5)*cv.clientWidth ];
+const toXY = (cv,px,py)=>[ (px/cv.clientWidth-0.5)*2*VIEW, (0.5-py/cv.clientWidth)*2*VIEW ];
+const hue = c => `hsl(${190+c*150},85%,65%)`;
+
+function drawGrid(ctx,cv){
+  const w=cv.clientWidth;
+  ctx.clearRect(0,0,w,w);
+  ctx.strokeStyle='#1a2740'; ctx.lineWidth=1;
+  const vmax = Math.ceil(VIEW)-1;
+  for(let v=-vmax;v<=vmax;v++){
+    const [px]=toPx(cv,v,0), [,py]=toPx(cv,0,v);
+    ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,w);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(w,py);ctx.stroke();
+  }
+  ctx.strokeStyle='#2b3d5e';
+  const [cx]=toPx(cv,0,0), [,cy]=toPx(cv,0,0);
+  ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,w);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(w,cy);ctx.stroke();
+}
+
+/* ============ 主繪圖 ============ */
+function trajAt(sIdx, i){ const o=(sIdx*P+i)*2; return [traj[o], traj[o+1]]; }
+function draw(){
+  if(!params||!traj) return;
+  const tcl = Math.min(1, Math.max(0, flowT));
+  const sF = tcl*STEPS, s0 = Math.floor(sF), s1 = Math.min(STEPS, s0+1), a = sF-s0;
+
+  /* ---- 傳輸面板 ---- */
+  drawGrid(ftx, flowCv);
+  // 目標資料(暗色錨點)
+  ftx.fillStyle='#3a4a68';
+  for(let i=0;i<600;i++){
+    const [px,py]=toPx(flowCv,tgtData.pts[2*i],tgtData.pts[2*i+1]);
+    ftx.beginPath();ftx.arc(px,py,1.6,0,7);ftx.fill();
+  }
+  // 出發位置(灰殘影)
+  ftx.fillStyle='#55617e'; ftx.globalAlpha=0.45;
+  for(let i=0;i<P;i++){
+    const [px,py]=toPx(flowCv,particles[2*i],particles[2*i+1]);
+    ftx.beginPath();ftx.arc(px,py,1.4,0,7);ftx.fill();
+  }
+  ftx.globalAlpha=1;
+  // 軌跡尾巴
+  if(document.getElementById('showTrail').checked){
+    ftx.lineWidth=1;
+    for(let i=0;i<P;i+=3){
+      ftx.strokeStyle=hue(partC[i]); ftx.globalAlpha=0.28;
+      ftx.beginPath();
+      for(let s=0;s<=s0;s++){
+        const [x,y]=trajAt(s,i), [px,py]=toPx(flowCv,x,y);
+        s?ftx.lineTo(px,py):ftx.moveTo(px,py);
+      }
+      ftx.stroke();
+    }
+    ftx.globalAlpha=1;
+  }
+  // 目前粒子(兩個快取步之間線性內插)
+  for(let i=0;i<P;i++){
+    const [xA,yA]=trajAt(s0,i), [xB,yB]=trajAt(s1,i);
+    const [px,py]=toPx(flowCv, xA+(xB-xA)*a, yA+(yB-yA)*a);
+    ftx.fillStyle=hue(partC[i]); ftx.globalAlpha=0.9;
+    ftx.beginPath();ftx.arc(px,py,2.3,0,7);ftx.fill();
+  }
+  ftx.globalAlpha=1;
+  // 探測粒子的終點也畫在傳輸面板
+  if(probePath){
+    const n=probePath.length/2-1;
+    const [qx,qy]=toPx(flowCv,probePath[2*n],probePath[2*n+1]);
+    ftx.fillStyle='#ff6b9d'; ftx.strokeStyle='#fff'; ftx.lineWidth=1.5;
+    ftx.beginPath();ftx.arc(qx,qy,5.5,0,7);ftx.fill();ftx.stroke();
+  }
+
+  /* ---- 速度場面板 ---- */
+  drawGrid(vtx, fieldCv);
+  // 目標資料淡淡鋪底,幫助對位
+  vtx.fillStyle='#2c3a58';
+  for(let i=0;i<500;i++){
+    const [px,py]=toPx(fieldCv,tgtData.pts[2*i],tgtData.pts[2*i+1]);
+    vtx.beginPath();vtx.arc(px,py,1.3,0,7);vtx.fill();
+  }
+  // 箭頭網格
+  const gp = new Float32Array(FG*FG*2);
+  for(let i=0;i<FG;i++)for(let j=0;j<FG;j++){
+    gp[2*(i*FG+j)]   = -VIEW*0.92 + 2*VIEW*0.92*j/(FG-1);
+    gp[2*(i*FG+j)+1] = -VIEW*0.92 + 2*VIEW*0.92*i/(FG-1);
+  }
+  const vs = tf.tidy(()=>{
+    const x = tf.tensor2d(gp,[FG*FG,2]);
+    const t = tf.fill([FG*FG,1], Math.min(tcl,0.999));
+    return vField(x,t).dataSync();
+  });
+  let vmaxMag=1e-6;
+  for(let i=0;i<FG*FG;i++) vmaxMag=Math.max(vmaxMag,Math.hypot(vs[2*i],vs[2*i+1]));
+  const alen = fieldCv.clientWidth/FG*0.75;
+  for(let i=0;i<FG*FG;i++){
+    const mag=Math.hypot(vs[2*i],vs[2*i+1]), r=mag/vmaxMag;
+    const [px,py]=toPx(fieldCv,gp[2*i],gp[2*i+1]);
+    const ux=vs[2*i]/(mag||1), uy=-vs[2*i+1]/(mag||1);          // 畫布 y 向下
+    const L=alen*(0.25+0.75*r);
+    vtx.strokeStyle=`hsl(${190-150*r},85%,${45+25*r}%)`;        // 慢=青、快=琥珀
+    vtx.lineWidth=1.4; vtx.globalAlpha=0.4+0.6*r;
+    vtx.beginPath();vtx.moveTo(px,py);vtx.lineTo(px+ux*L,py+uy*L);vtx.stroke();
+    vtx.beginPath();                                             // 箭頭
+    vtx.moveTo(px+ux*L,py+uy*L);
+    vtx.lineTo(px+ux*L-(ux*0.35+uy*0.25)*L*0.5, py+uy*L-(uy*0.35-ux*0.25)*L*0.5);
+    vtx.moveTo(px+ux*L,py+uy*L);
+    vtx.lineTo(px+ux*L-(ux*0.35-uy*0.25)*L*0.5, py+uy*L-(uy*0.35+ux*0.25)*L*0.5);
+    vtx.stroke();
+  }
+  vtx.globalAlpha=1;
+  // 探測路徑
+  if(probe && probePath){
+    vtx.strokeStyle='#ff6b9d'; vtx.lineWidth=2;
+    vtx.beginPath();
+    for(let s=0;s<probePath.length/2;s++){
+      const [px,py]=toPx(fieldCv,probePath[2*s],probePath[2*s+1]);
+      s?vtx.lineTo(px,py):vtx.moveTo(px,py);
+    }
+    vtx.stroke();
+    const [px,py]=toPx(fieldCv,probe[0],probe[1]);
+    vtx.beginPath();vtx.arc(px,py,6,0,7);vtx.stroke();
+    vtx.beginPath();vtx.moveTo(px-10,py);vtx.lineTo(px+10,py);vtx.moveTo(px,py-10);vtx.lineTo(px,py+10);vtx.stroke();
+  }
+
+  /* ---- 損失曲線 ---- */
+  const w=lossCv.clientWidth, hh=lossCv.clientHeight;
+  xtx.clearRect(0,0,w,hh);
+  const win = lossHist.slice(-240);
+  if(win.length>1){
+    let ymax=0; for(const p of win) ymax=Math.max(ymax,p);
+    ymax=Math.max(ymax,1e-3)*1.1;
+    xtx.strokeStyle='#1a2740';
+    for(let k=1;k<4;k++){ const y=hh*k/4; xtx.beginPath();xtx.moveTo(0,y);xtx.lineTo(w,y);xtx.stroke(); }
+    xtx.strokeStyle='#ffb454'; xtx.lineWidth=1.8; xtx.beginPath();
+    win.forEach((p,i)=>{ const x=i/(win.length-1)*w, y=hh-(p/ymax)*hh*0.94-4; i?xtx.lineTo(x,y):xtx.moveTo(x,y); });
+    xtx.stroke();
+    xtx.fillStyle='#8fa0bc'; xtx.font='10px IBM Plex Mono';
+    xtx.fillText(ymax.toFixed(2), 4, 11);
+  }
+}
+
+/* ============ 互動 ============ */
+function pickProbe(ev){
+  const r = fieldCv.getBoundingClientRect();
+  const px = (ev.touches? ev.touches[0].clientX:ev.clientX)-r.left;
+  const py = (ev.touches? ev.touches[0].clientY:ev.clientY)-r.top;
+  probe = toXY(fieldCv,px,py);
+  recomputeProbe();
+  if(!playing) draw();
+}
+let dragging=false;
+fieldCv.addEventListener('pointerdown',e=>{dragging=true;fieldCv.setPointerCapture(e.pointerId);pickProbe(e);});
+fieldCv.addEventListener('pointermove',e=>{ if(dragging) pickProbe(e); });
+fieldCv.addEventListener('pointerup',()=>dragging=false);
+
+const tSlide=document.getElementById('tSlide');
+tSlide.addEventListener('input',e=>{
+  flowT=+e.target.value; document.getElementById('autoT').checked=false; autoT=false;
+  recomputeProbe();
+  document.getElementById('tVal').textContent=flowT.toFixed(2);
+  if(!playing) draw();
+});
+document.getElementById('autoT').addEventListener('change',e=>{ autoT=e.target.checked; });
+document.getElementById('speed').addEventListener('input',e=>{
+  stepsPerFrame=+e.target.value; document.getElementById('speedVal').textContent=stepsPerFrame;
+});
+function onDistChange(){
+  srcName=document.getElementById('srcSel').value;
+  tgtName=document.getElementById('tgtSel').value;
+  setDistributions(); buildModel(); recomputeTraj();
+}
+document.getElementById('srcSel').addEventListener('change',onDistChange);
+document.getElementById('tgtSel').addEventListener('change',onDistChange);
+document.getElementById('resetBtn').addEventListener('click',()=>{ buildModel(); recomputeTraj(); });
+const playBtn=document.getElementById('playBtn');
+playBtn.addEventListener('click',()=>{
+  playing=!playing; playBtn.textContent = playing? '⏸ 暫停訓練':'▶ 繼續訓練';
+  if(!playing){ recomputeTraj(); draw(); }
+});
+document.getElementById('showTrail').addEventListener('change',()=>draw());
+
+/* ============ 主迴圈 ============ */
+function loop(){
+  if(params){
+    if(playing){
+      let L=null;
+      for(let i=0;i<stepsPerFrame;i++) L=trainStep();
+      if(step%10<stepsPerFrame && L!==null){
+        lossHist.push(L);
+        document.getElementById('stepVal').textContent=step;
+        document.getElementById('lossVal').textContent=L.toFixed(3);
+      }
+      if(frame%6===0) recomputeTraj();      // 模型在變,定期重算軌跡
+    }
+    if(autoT){
+      flowT += 1/240;                        // 約 4 秒走完 0→1,停一下再重來
+      if(flowT>1.25) flowT=-0.15;
+      const tc=Math.min(1,Math.max(0,flowT));
+      tSlide.value=tc; document.getElementById('tVal').textContent=tc.toFixed(2);
+    }
+    if(frame%2===0) draw();
+  }
+  frame++;
+  requestAnimationFrame(loop);
+}
+
+/* ============ 啟動 ============ */
+(async function init(){
+  try{ await tf.setBackend('webgl'); }catch(e){ await tf.setBackend('cpu'); }
+  await tf.ready();
+  setDistributions();
+  buildModel();
+  recomputeTraj();
+  document.getElementById('loading').style.display='none';
+  resizeAll();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

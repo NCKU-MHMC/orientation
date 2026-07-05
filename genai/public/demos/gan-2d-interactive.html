@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GAN 互動教學:2D 玩具資料</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.22.0/tf.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e1420; --panel:#151d2e; --panel-edge:#243350;
+    --grid:#20304b; --ink:#e8edf6; --muted:#8fa0bc;
+    --amber:#ffb454; --cyan:#5edfff; --violet:#b48cff; --pink:#ff6b9d;
+    --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans TC',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);padding:20px 22px 48px;
+       background-image:radial-gradient(circle at 80% -10%,#231a30 0%,var(--bg) 55%);}
+  header{max-width:1200px;margin:0 auto 18px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--pink);text-transform:uppercase}
+  h1{font-size:clamp(20px,3vw,28px);font-weight:700;margin:6px 0 4px}
+  h1 .vs{color:var(--amber)}
+  .sub{color:var(--muted);font-size:13.5px;max-width:780px;line-height:1.7}
+
+  .wrap{max-width:1200px;margin:0 auto}
+  .controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;
+    background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;
+    padding:12px 16px;margin:14px 0 16px}
+  .ctrl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+  .ctrl label{white-space:nowrap}
+  select,button{font-family:var(--sans);font-size:13px;border-radius:8px;border:1px solid var(--panel-edge);
+    background:#0f1626;color:var(--ink);padding:6px 10px;cursor:pointer}
+  button:hover{border-color:var(--pink)}
+  button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
+  button.primary{background:var(--pink);color:#1c0410;font-weight:700;border:none;padding:7px 16px}
+  input[type=range]{accent-color:var(--pink);width:110px}
+  .val{font-family:var(--mono);color:var(--ink);min-width:3ch;text-align:right}
+  .toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+  .toggle input{accent-color:var(--amber)}
+  .readout{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:auto;display:flex;gap:16px;flex-wrap:wrap}
+  .readout b{color:var(--ink);font-weight:500}
+  .readout .r-dr b{color:var(--amber)} .readout .r-df b{color:var(--cyan)}
+
+  .panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+  .panel{background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;padding:12px 14px 14px;min-width:0}
+  .panel h2{font-size:13.5px;font-weight:700;letter-spacing:.03em;margin-bottom:2px}
+  .panel .hint{font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.5}
+  canvas{width:100%;display:block;border-radius:8px;background:#0c1220;touch-action:none}
+  #discCv{cursor:crosshair}
+
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .swatch{width:34px;height:8px;border-radius:4px;display:inline-block;
+    background:linear-gradient(90deg,#1e2e54,#7a5a4a,#ffb454)}
+
+  .notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:16px}
+  .note{background:var(--panel);border:1px solid var(--panel-edge);border-left:3px solid var(--pink);
+    border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.8;color:var(--muted)}
+  .note h3{font-size:13.5px;color:var(--ink);margin-bottom:6px}
+  .note.n2{border-left-color:var(--amber)} .note.n3{border-left-color:var(--cyan)}
+  .note code{font-family:var(--mono);font-size:12px;color:var(--cyan);background:#0c1220;padding:1px 5px;border-radius:4px}
+  .note b{color:var(--ink);font-weight:500}
+  .loading{font-family:var(--mono);font-size:12px;color:var(--muted);padding:8px 0}
+  @media (max-width:720px){ .readout{margin-left:0} body{padding:14px 12px 40px} }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">生成模型入門 · 第一堂 · Lab Demo 02</div>
+  <h1>GAN 互動教學 — Generator <span class="vs">vs.</span> Discriminator 的對抗訓練</h1>
+  <p class="sub">一個 2D GAN 正在你的瀏覽器裡即時對抗訓練(TensorFlow.js)。左圖是資料空間,中間是<b>判別器的決策地景</b>:
+    亮色代表 D 認為「像真的」。注意 GAN <b>沒有 encoder、沒有重建</b>——生成器唯一的學習訊號,就是這張地景的梯度。
+    平衡時 D(real) 與 D(fake) 都會逼近 <span style="font-family:var(--mono)">0.5</span>。</p>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div class="ctrl"><label for="dataset">資料集</label>
+      <select id="dataset">
+        <option value="moons">雙月 Two Moons</option>
+        <option value="ring">圓環 Ring</option>
+        <option value="mixture" selected>高斯混合 ×6</option>
+        <option value="mixtureOff">高斯混合 ×6(中心偏移)</option>
+        <option value="spiral">螺旋 Spiral</option>
+      </select>
+    </div>
+    <div class="ctrl"><label for="kD">D 更新次數 / G 一次</label>
+      <input type="range" id="kD" min="1" max="5" step="1" value="1">
+      <span class="val" id="kDVal">1</span>
+    </div>
+    <div class="ctrl"><label for="speed">訓練速度</label>
+      <input type="range" id="speed" min="1" max="12" step="1" value="4">
+      <span class="val" id="speedVal">4</span>
+    </div>
+    <div class="ctrl">
+      <button class="primary" id="playBtn">▶ 開始訓練</button>
+      <button id="resetBtn">↺ 重設模型</button>
+    </div>
+    <label class="toggle ctrl"><input type="checkbox" id="showGen" checked> 生成樣本</label>
+    <label class="toggle ctrl"><input type="checkbox" id="showGrid" checked> 生成器網格</label>
+    <label class="toggle ctrl"><input type="checkbox" id="overlayD"> 左圖疊上 D 地景</label>
+    <div class="readout">
+      <span>step <b id="stepVal">0</b></span>
+      <span class="r-dr">D(real) <b id="drVal">–</b></span>
+      <span class="r-df">D(fake) <b id="dfVal">–</b></span>
+    </div>
+  </div>
+
+  <div class="loading" id="loading">正在初始化 TensorFlow.js…</div>
+
+  <div class="panels">
+    <div class="panel">
+      <h2>資料空間 x ∈ ℝ²</h2>
+      <p class="hint">彩色點=真實資料。白點=G(z), z~N(0,I) 的生成樣本。網格=生成器把潛在空間的方格映射進資料空間的樣子——<b>mode collapse 發生時,整張網格會塌縮到少數幾個點</b>。</p>
+      <canvas id="dataCv"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:linear-gradient(90deg,#5edfff,#ff6bd6)"></span>真實資料</span>
+        <span><span class="dot" style="background:#fff"></span>生成樣本 G(z)</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>判別器地景 D(x)(可點擊查詢)</h2>
+      <p class="hint">整個平面上 D 的輸出:亮=判為真、暗=判為假。生成器會被推往亮的地方;D 又會把生成點附近「壓暗」。點擊任一位置查詢 D(x) 的數值。</p>
+      <canvas id="discCv"></canvas>
+      <div class="legend">
+        <span><span class="swatch"></span>D(x): 0(假)→ 1(真)</span>
+        <span><span class="dot" style="background:var(--pink)"></span>你查詢的點 <span id="probeVal" style="font-family:var(--mono);color:var(--ink)"></span></span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>損失曲線(注意:不會單調下降)</h2>
+      <p class="hint">對抗訓練是<b>賽局</b>而非最佳化單一目標:兩條曲線互相拉扯、震盪是常態。健康的訊號不是 loss 變低,而是 D(real)、D(fake) 同時徘徊在 0.5 附近。</p>
+      <canvas id="lossCv"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--amber)"></span>D loss</span>
+        <span><span class="dot" style="background:var(--cyan)"></span>G loss(non-saturating)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3>① Mode Collapse 現場觀察</h3>
+      預設選了<b>高斯混合</b>,因為它最容易誘發 mode collapse:訓練一陣子後,白點(與生成器網格)可能只覆蓋 6 群中的 2~3 群,
+      甚至在幾群之間<b>來回跳動</b>(mode hopping)。對比 VAE demo:VAE 會「每群都蓋到但糊糊的」,GAN 則是「蓋到的很銳利,但可能漏掉整群」。
+      這就是 <b>likelihood-based vs. adversarial</b> 兩條路線的核心差異。
+      另外可切到「<b>中心偏移</b>」版本:整個混合的中心不在原點,而是落在原本最左邊的高斯上。
+      觀察訓練初期生成點如何從原點附近整體<b>漂移</b>到偏移後的資料上,以及離中心最遠的群是否更容易被漏掉。
+    </div>
+    <div class="note n2">
+      <h3>② 讀懂判別器地景</h3>
+      點擊中間面板查詢 D(x)。訓練初期地景對比強烈(D 輕鬆分辨真假);接近平衡時整片會趨向<b>均勻的中間色(≈0.5)</b>——D 再也分不出來了。
+      若把 <code>D 更新次數</code> 調到 5,D 會變得太強:地景在生成點附近變得又暗又陡,G 的梯度訊號劣化,常導致訓練卡死——這是 GAN 訓練不穩定的經典來源。
+    </div>
+    <div class="note n3">
+      <h3>③ 建議實驗流程</h3>
+      1) 高斯混合 + 預設參數,觀察是否 collapse、是否 mode hopping。<br>
+      2) 切到<b>圓環</b>:GAN 沒有「連續蓋滿先驗」的壓力,常能貼出比 VAE 更乾淨的環——但也可能只貼出一段弧。<br>
+      3) 開啟「左圖疊上 D 地景」,直接看生成點如何<b>順著亮區的梯度爬坡</b>。<br>
+      4) 與 VAE demo 並排:同一份資料,比較樣本銳利度、覆蓋度與訓練曲線的長相。
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ============ 全域狀態 ============ */
+let VIEW = 3.0;                                 // 畫布範圍 [-VIEW,VIEW]²,依資料集調整
+const H = 48, BS = 256, HM = 52;               // HM: 熱圖解析度
+let G = null, D = null, gOpt = null, dOpt = null;
+let data = null, evalSub = null, evalC = null;  // 視覺化用資料子集 (Float32Array)
+let realEvalT = null, gridT = null, genZ = null;
+let step = 0, playing = false, kD = 1, stepsPerFrame = 4;
+let lossHist = [];                              // {dl, gl}
+let probe = null, frame = 0;
+let heatCache = null;                           // Uint8ClampedArray HM*HM*4
+const heatCanvas = document.createElement('canvas');
+
+/* ============ 資料集(與 VAE demo 相同) ============ */
+function makeDataset(name, n = 1500){
+  const pts = new Float32Array(n*2), c = new Float32Array(n);
+  const g = () => {
+    const u = Math.random()||1e-9, v = Math.random();
+    return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+  };
+  for(let i=0;i<n;i++){
+    let x=0,y=0,ci=0;
+    if(name==='moons'){
+      const t = Math.random()*Math.PI, up = i%2===0;
+      if(up){ x=Math.cos(t); y=Math.sin(t); ci=t/Math.PI*0.5; }
+      else  { x=1-Math.cos(t); y=0.5-Math.sin(t); ci=0.5+t/Math.PI*0.5; }
+      x=(x-0.5)*1.7; y=(y-0.25)*1.7; x+=g()*0.07; y+=g()*0.07;
+    }else if(name==='ring'){
+      const th = Math.random()*2*Math.PI, r = 1.9+g()*0.09;
+      x=r*Math.cos(th); y=r*Math.sin(th); ci=th/(2*Math.PI);
+    }else if(name==='mixture'){
+      const k = i%6, th = k/6*2*Math.PI;
+      x=2.3*Math.cos(th)+g()*0.13; y=2.3*Math.sin(th)+g()*0.13; ci=k/6;
+    }else if(name==='mixtureOff'){
+      // 以最左邊的高斯 (角度 π,即 (-r,0)) 為基準,把整個混合的中心平移到它身上
+      const r = 3.0, k = i%6, th = k/6*2*Math.PI;
+      x=r*Math.cos(th)-r+g()*0.12; y=r*Math.sin(th)+g()*0.12; ci=k/6;
+    }else{
+      const t = Math.random();
+      const th = 1.9*2*Math.PI*t, r = 0.25+2.0*t;
+      x=r*Math.cos(th)+g()*0.05; y=r*Math.sin(th)+g()*0.05; ci=t;
+    }
+    pts[2*i]=x; pts[2*i+1]=y; c[i]=ci;
+  }
+  return {pts, c, n};
+}
+function buildGridT(){
+  gridT?.dispose();
+  const gpts = new Float32Array(HM*HM*2);
+  for(let i=0;i<HM;i++)for(let j=0;j<HM;j++){
+    gpts[2*(i*HM+j)]   = -VIEW + 2*VIEW*j/(HM-1);
+    gpts[2*(i*HM+j)+1] =  VIEW - 2*VIEW*i/(HM-1);
+  }
+  gridT = tf.tensor2d(gpts,[HM*HM,2]);
+}
+function setDataset(name){
+  VIEW = (name==='mixtureOff') ? 6.6 : 3.0;   // 偏移版資料橫跨 [-6,0],放大畫布範圍
+  buildGridT(); heatCache = null;
+  data = makeDataset(name);
+  const m = Math.min(800, data.n);
+  evalSub = new Float32Array(m*2); evalC = new Float32Array(m);
+  for(let i=0;i<m;i++){ evalSub[2*i]=data.pts[2*i]; evalSub[2*i+1]=data.pts[2*i+1]; evalC[i]=data.c[i]; }
+  realEvalT?.dispose();
+  realEvalT = tf.tensor2d(evalSub,[m,2]);
+}
+
+/* ============ 模型 ============ */
+const dense = (ni,no)=>({ W: tf.variable(tf.randomNormal([ni,no],0,Math.sqrt(1.4/ni))), b: tf.variable(tf.zeros([no])) });
+const fw = (l,x)=> x.matMul(l.W).add(l.b);
+const lrelu = x => tf.leakyRelu(x, 0.2);
+
+function buildModel(){
+  disposeModel();
+  G = { l1:dense(2,H), l2:dense(H,H), out:dense(H,2) };        // z → x
+  D = { l1:dense(2,H), l2:dense(H,H), out:dense(H,1) };        // x → logit
+  gOpt = tf.train.adam(1e-3, 0.5);
+  dOpt = tf.train.adam(1e-3, 0.5);
+  step = 0; lossHist = []; heatCache = null;
+}
+function disposeModel(){
+  for(const M of [G,D]) if(M) for(const k in M){ M[k].W.dispose(); M[k].b.dispose(); }
+  G = D = null;
+}
+const gVars = ()=> Object.values(G).flatMap(l=>[l.W,l.b]);
+const dVars = ()=> Object.values(D).flatMap(l=>[l.W,l.b]);
+function gForward(z){ let h=tf.tanh(fw(G.l1,z)); h=tf.tanh(fw(G.l2,h)); return fw(G.out,h); }
+function dForward(x){ let h=lrelu(fw(D.l1,x)); h=lrelu(fw(D.l2,h)); return fw(D.out,h); }  // logits
+
+/* ============ 訓練:非飽和損失 (softplus 形式的 BCE-with-logits) ============ */
+function sampleBatch(bs=BS){
+  const b = new Float32Array(bs*2);
+  for(let i=0;i<bs;i++){ const j=(Math.random()*data.n)|0; b[2*i]=data.pts[2*j]; b[2*i+1]=data.pts[2*j+1]; }
+  return tf.tensor2d(b,[bs,2]);
+}
+function trainRound(){
+  let dl=0, gl=0;
+  for(let k=0;k<kD;k++){                       // --- D:最大化分辨能力
+    const xr = sampleBatch(), z = tf.randomNormal([BS,2]);
+    const cost = dOpt.minimize(()=>{
+      const xf = gForward(z);
+      const lReal = dForward(xr), lFake = dForward(xf);
+      return tf.mean(tf.softplus(lReal.neg())).add(tf.mean(tf.softplus(lFake)));
+    }, true, dVars());
+    dl = cost.dataSync()[0]; cost.dispose(); xr.dispose(); z.dispose();
+  }
+  {                                            // --- G:非飽和目標 max log D(G(z))
+    const z = tf.randomNormal([BS,2]);
+    const cost = gOpt.minimize(()=>{
+      const lFake = dForward(gForward(z));
+      return tf.mean(tf.softplus(lFake.neg()));
+    }, true, gVars());
+    gl = cost.dataSync()[0]; cost.dispose(); z.dispose();
+  }
+  step++;
+  return {dl, gl};
+}
+function evalScores(){
+  return tf.tidy(()=>{
+    const dr = tf.sigmoid(dForward(realEvalT)).mean().dataSync()[0];
+    const df = tf.sigmoid(dForward(gForward(genZ))).mean().dataSync()[0];
+    return {dr, df};
+  });
+}
+
+/* ============ 畫布工具(與 VAE demo 相同) ============ */
+function setupCanvas(cv, square=true){
+  const dpr = window.devicePixelRatio||1;
+  const w = cv.clientWidth, h = square? w : Math.round(w*0.62);
+  cv.width = w*dpr; cv.height = h*dpr;
+  cv.style.height = h+'px';
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  return ctx;
+}
+const dataCv = document.getElementById('dataCv');
+const discCv = document.getElementById('discCv');
+const lossCv = document.getElementById('lossCv');
+let dtx, htx, xtx;
+function resizeAll(){ dtx=setupCanvas(dataCv); htx=setupCanvas(discCv); xtx=setupCanvas(lossCv,false); draw(true); }
+window.addEventListener('resize', ()=>resizeAll());
+
+const toPx = (cv,x,y)=>[ (x/VIEW*0.5+0.5)*cv.clientWidth, (0.5-y/VIEW*0.5)*cv.clientWidth ];
+const toXY = (cv,px,py)=>[ (px/cv.clientWidth-0.5)*2*VIEW, (0.5-py/cv.clientWidth)*2*VIEW ];
+const hue = c => `hsl(${190+c*150},85%,65%)`;
+
+function drawGrid(ctx,cv){
+  const w=cv.clientWidth;
+  ctx.clearRect(0,0,w,w);
+  ctx.strokeStyle='#1a2740'; ctx.lineWidth=1;
+  const vmax = Math.ceil(VIEW)-1;
+  for(let v=-vmax;v<=vmax;v++){
+    const [px]=toPx(cv,v,0), [,py]=toPx(cv,0,v);
+    ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,w);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(w,py);ctx.stroke();
+  }
+  ctx.strokeStyle='#2b3d5e';
+  const [cx]=toPx(cv,0,0), [,cy]=toPx(cv,0,0);
+  ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,w);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(w,cy);ctx.stroke();
+}
+
+/* ============ 判別器熱圖 ============ */
+function computeHeatmap(){
+  const vals = tf.tidy(()=> tf.sigmoid(dForward(gridT)).dataSync());
+  const img = new Uint8ClampedArray(HM*HM*4);
+  // 低:深藍 (20,32,66) → 高:琥珀 (255,180,84),中段自然過渡
+  for(let i=0;i<HM*HM;i++){
+    const v = vals[i];
+    img[4*i]   = 20 + v*(255-20);
+    img[4*i+1] = 32 + v*(180-32);
+    img[4*i+2] = 66 + v*(84-66);
+    img[4*i+3] = 255;
+  }
+  heatCache = img;
+}
+function blitHeatmap(ctx, cv, alpha=1){
+  if(!heatCache) return;
+  heatCanvas.width = HM; heatCanvas.height = HM;
+  heatCanvas.getContext('2d').putImageData(new ImageData(heatCache,HM,HM),0,0);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(heatCanvas, 0, 0, cv.clientWidth, cv.clientWidth);
+  ctx.restore();
+}
+
+/* ============ 主繪圖 ============ */
+function draw(force=false){
+  if(!G||!data) return;
+  if(frame%4===0 || force || !heatCache) computeHeatmap();
+
+  /* ---- 資料空間 ---- */
+  drawGrid(dtx,dataCv);
+  if(document.getElementById('overlayD').checked) blitHeatmap(dtx,dataCv,0.35);
+  // 生成器網格(signature:mode collapse 時整張塌縮)
+  if(document.getElementById('showGrid').checked){
+    const Gn=13, zs=new Float32Array(Gn*Gn*2);
+    for(let i=0;i<Gn;i++)for(let j=0;j<Gn;j++){
+      zs[2*(i*Gn+j)] = -2.2+4.4*j/(Gn-1); zs[2*(i*Gn+j)+1] = -2.2+4.4*i/(Gn-1);
+    }
+    const out = tf.tidy(()=> gForward(tf.tensor2d(zs,[Gn*Gn,2])).dataSync());
+    dtx.strokeStyle='rgba(255,255,255,0.14)'; dtx.lineWidth=1;
+    for(let i=0;i<Gn;i++){ dtx.beginPath();
+      for(let j=0;j<Gn;j++){ const k=i*Gn+j,[px,py]=toPx(dataCv,out[2*k],out[2*k+1]); j?dtx.lineTo(px,py):dtx.moveTo(px,py);} dtx.stroke(); }
+    for(let j=0;j<Gn;j++){ dtx.beginPath();
+      for(let i=0;i<Gn;i++){ const k=i*Gn+j,[px,py]=toPx(dataCv,out[2*k],out[2*k+1]); i?dtx.lineTo(px,py):dtx.moveTo(px,py);} dtx.stroke(); }
+  }
+  // 真實資料
+  const m = evalC.length;
+  for(let i=0;i<m;i++){
+    const [px,py]=toPx(dataCv,evalSub[2*i],evalSub[2*i+1]);
+    dtx.fillStyle=hue(evalC[i]); dtx.globalAlpha=0.75;
+    dtx.beginPath();dtx.arc(px,py,2.1,0,7);dtx.fill();
+  }
+  dtx.globalAlpha=1;
+  // 生成樣本
+  if(document.getElementById('showGen').checked){
+    const gen = tf.tidy(()=> gForward(genZ).dataSync());
+    dtx.fillStyle='#ffffff';
+    for(let i=0;i<gen.length/2;i++){
+      const [px,py]=toPx(dataCv,gen[2*i],gen[2*i+1]);
+      dtx.globalAlpha=0.85; dtx.beginPath();dtx.arc(px,py,1.6,0,7);dtx.fill();
+    }
+    dtx.globalAlpha=1;
+  }
+
+  /* ---- 判別器地景 ---- */
+  htx.clearRect(0,0,discCv.clientWidth,discCv.clientWidth);
+  blitHeatmap(htx,discCv,1);
+  // 疊上真假樣本的輪廓,幫助對照
+  for(let i=0;i<m;i+=3){
+    const [px,py]=toPx(discCv,evalSub[2*i],evalSub[2*i+1]);
+    htx.fillStyle='rgba(232,237,246,0.5)';
+    htx.beginPath();htx.arc(px,py,1.3,0,7);htx.fill();
+  }
+  const genH = tf.tidy(()=> gForward(genZ).dataSync());
+  htx.fillStyle='rgba(94,223,255,0.7)';
+  for(let i=0;i<genH.length/2;i+=2){
+    const [px,py]=toPx(discCv,genH[2*i],genH[2*i+1]);
+    htx.beginPath();htx.arc(px,py,1.3,0,7);htx.fill();
+  }
+  // 查詢點
+  if(probe){
+    const dv = tf.tidy(()=> tf.sigmoid(dForward(tf.tensor2d(probe,[1,2]))).dataSync()[0]);
+    const [px,py]=toPx(discCv,probe[0],probe[1]);
+    htx.strokeStyle='#ff6b9d'; htx.lineWidth=2;
+    htx.beginPath();htx.arc(px,py,7,0,7);htx.stroke();
+    htx.beginPath();htx.moveTo(px-11,py);htx.lineTo(px+11,py);htx.moveTo(px,py-11);htx.lineTo(px,py+11);htx.stroke();
+    htx.font='11px IBM Plex Mono'; htx.fillStyle='#fff';
+    htx.fillText('D='+dv.toFixed(2), px+10, py-10);
+    document.getElementById('probeVal').textContent = 'D='+dv.toFixed(2);
+  }
+
+  /* ---- 損失曲線 ---- */
+  const w=lossCv.clientWidth, hh=lossCv.clientHeight;
+  xtx.clearRect(0,0,w,hh);
+  const win = lossHist.slice(-240);
+  if(win.length>1){
+    let ymax=0; for(const p of win) ymax=Math.max(ymax,p.dl,p.gl);
+    ymax=Math.max(ymax,1e-3)*1.1;
+    xtx.strokeStyle='#1a2740';
+    for(let k=1;k<4;k++){ const y=hh*k/4; xtx.beginPath();xtx.moveTo(0,y);xtx.lineTo(w,y);xtx.stroke(); }
+    const line=(key,col)=>{
+      xtx.strokeStyle=col; xtx.lineWidth=1.8; xtx.beginPath();
+      win.forEach((p,i)=>{ const x=i/(win.length-1)*w, y=hh-(p[key]/ymax)*hh*0.94-4; i?xtx.lineTo(x,y):xtx.moveTo(x,y); });
+      xtx.stroke();
+    };
+    line('dl','#ffb454'); line('gl','#5edfff');
+    xtx.fillStyle='#8fa0bc'; xtx.font='10px IBM Plex Mono';
+    xtx.fillText(ymax.toFixed(2), 4, 11);
+  }
+}
+
+/* ============ 互動 ============ */
+function pickProbe(ev){
+  const r = discCv.getBoundingClientRect();
+  const px = (ev.touches? ev.touches[0].clientX:ev.clientX)-r.left;
+  const py = (ev.touches? ev.touches[0].clientY:ev.clientY)-r.top;
+  probe = toXY(discCv,px,py);
+  if(!playing) draw();
+}
+let dragging=false;
+discCv.addEventListener('pointerdown',e=>{dragging=true;discCv.setPointerCapture(e.pointerId);pickProbe(e);});
+discCv.addEventListener('pointermove',e=>{ if(dragging) pickProbe(e); });
+discCv.addEventListener('pointerup',()=>dragging=false);
+
+document.getElementById('kD').addEventListener('input',e=>{
+  kD=+e.target.value; document.getElementById('kDVal').textContent=kD;
+});
+document.getElementById('speed').addEventListener('input',e=>{
+  stepsPerFrame=+e.target.value; document.getElementById('speedVal').textContent=stepsPerFrame;
+});
+document.getElementById('dataset').addEventListener('change',e=>{
+  setDataset(e.target.value); buildModel(); probe=null;
+  document.getElementById('probeVal').textContent='';
+});
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  buildModel(); probe=null; document.getElementById('probeVal').textContent='';
+});
+const playBtn=document.getElementById('playBtn');
+playBtn.addEventListener('click',()=>{
+  playing=!playing; playBtn.textContent = playing? '⏸ 暫停':'▶ 開始訓練';
+});
+for(const id of ['showGen','showGrid','overlayD'])
+  document.getElementById(id).addEventListener('change',()=>draw(true));
+
+/* ============ 主迴圈 ============ */
+function loop(){
+  if(G){
+    if(playing){
+      let last=null;
+      for(let i=0;i<stepsPerFrame;i++) last = trainRound();
+      if(step%10<stepsPerFrame && last){
+        lossHist.push(last);
+        const s=evalScores();
+        document.getElementById('stepVal').textContent=step;
+        document.getElementById('drVal').textContent=s.dr.toFixed(2);
+        document.getElementById('dfVal').textContent=s.df.toFixed(2);
+      }
+    }
+    if(frame%2===0 && (playing||frame%30===0)) draw();
+  }
+  frame++;
+  requestAnimationFrame(loop);
+}
+
+/* ============ 啟動 ============ */
+(async function init(){
+  try{ await tf.setBackend('webgl'); }catch(e){ await tf.setBackend('cpu'); }
+  await tf.ready();
+  genZ = tf.randomNormal([400,2]);
+  setDataset('mixture');   // setDataset 會依 VIEW 建立熱圖座標網格
+  buildModel();
+  document.getElementById('loading').style.display='none';
+  resizeAll();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+/* ============================================================
+   生成學習入門 · 投影片全域樣式
+   設計系統直接繼承三個 TF.js demo:
+   深藍儀表板 + IBM Plex Mono 標籤 + 四色語意
+   (青=VAE / 粉=GAN / 紫=FM·理論 / 琥珀=loss·重點)
+   ============================================================ */
+
+:root {
+  --bg: #0e1420;
+  --panel: #151d2e;
+  --panel-deep: #0c1220;
+  --edge: #243350;
+  --grid: #1b2740;
+  --ink: #e8edf6;
+  --muted: #8fa0bc;
+  --amber: #ffb454;
+  --cyan: #5edfff;
+  --violet: #b48cff;
+  --pink: #ff6b9d;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+/* ---------- 底色:與 demo 相同的深藍 + 頂部微光 ---------- */
+.slidev-layout {
+  background-color: var(--bg);
+  background-image: radial-gradient(circle at 50% -20%, #1a2338 0%, var(--bg) 60%);
+  color: var(--ink);
+}
+
+/* ---------- 標題 ---------- */
+.slidev-layout h1 {
+  color: var(--ink);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.slidev-layout h1 + p { opacity: 0.85; }
+.slidev-layout h2, .slidev-layout h3 { color: var(--ink); }
+
+/* 一般內容頁的 h1:左側細色條,像 demo 的 note 邊框 */
+.slidev-layout.default h1,
+.slidev-layout.two-cols h1,
+.slidev-layout.two-cols-header h1 {
+  border-left: 5px solid var(--violet);
+  padding-left: 0.45em;
+  font-size: 1.7rem;
+}
+
+/* ---------- eyebrow:demo 頁首的 mono 小標 ---------- */
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--violet);
+}
+
+/* ---------- 章節分隔頁:各自的語意色 ---------- */
+.slidev-layout.section {
+  background-image:
+    radial-gradient(circle at 15% 8%, color-mix(in srgb, var(--acc, var(--violet)) 16%, transparent) 0%, transparent 52%),
+    radial-gradient(circle at 50% -20%, #1a2338 0%, var(--bg) 60%);
+}
+.slidev-layout.section h1 {
+  border-left: 8px solid var(--acc, var(--violet));
+  padding-left: 0.5em;
+}
+.slidev-layout.section h2 {
+  color: var(--muted);
+  font-weight: 400;
+  padding-left: 0.95em;
+}
+.sec-intro   { --acc: var(--amber); }
+.sec-tax     { --acc: var(--violet); }
+.sec-vae     { --acc: var(--cyan); }
+.sec-gan     { --acc: var(--pink); }
+.sec-vs      { --acc: var(--amber); }
+.sec-loss    { --acc: var(--violet); }
+
+/* ---------- 表格:demo 面板風格 ---------- */
+.slidev-layout table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel);
+}
+.slidev-layout th {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 0.86em;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  background: #101828;
+  border-bottom: 1px solid var(--edge);
+  border-right: none;
+  padding: 0.45em 0.7em;
+}
+.slidev-layout td {
+  border-bottom: 1px solid var(--grid);
+  border-right: none;
+  padding: 0.42em 0.7em;
+}
+.slidev-layout tr:last-child td { border-bottom: none; }
+.slidev-layout tr:hover td { background: rgba(94, 223, 255, 0.04); }
+
+/* ---------- 行內 code:demo 的青色晶片 ---------- */
+.slidev-layout :not(pre) > code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  color: var(--cyan);
+  background: var(--panel-deep);
+  border: 1px solid var(--edge);
+  padding: 0.08em 0.38em;
+  border-radius: 4px;
+}
+
+/* ---------- 連結與強調 ---------- */
+.slidev-layout a { color: var(--amber); border-bottom: 1px dotted color-mix(in srgb, var(--amber) 55%, transparent); }
+.slidev-layout a:hover { color: var(--ink); border-bottom-color: var(--ink); }
+.slidev-layout strong, .slidev-layout b { color: var(--ink); font-weight: 700; }
+
+/* ---------- 數學式 ---------- */
+.slidev-layout .katex { color: var(--ink); }
+.slidev-layout .katex-display { margin: 0.55em 0; }
+.slidev-layout .katex-display > .katex { font-size: 1.06em; }
+
+/* ---------- 內容框(投影片內的 border div)微調 ---------- */
+.slidev-layout [class*='border'] { border-color: var(--edge); }
+.slidev-layout .border-cyan-400   { border-color: color-mix(in srgb, var(--cyan) 65%, transparent) !important; }
+.slidev-layout .border-pink-400   { border-color: color-mix(in srgb, var(--pink) 65%, transparent) !important; }
+.slidev-layout .border-violet-400 { border-color: color-mix(in srgb, var(--violet) 65%, transparent) !important; }
+.slidev-layout .border-amber-400  { border-color: color-mix(in srgb, var(--amber) 65%, transparent) !important; }
+.slidev-layout .rounded, .slidev-layout [class*='rounded'] { background-color: color-mix(in srgb, var(--panel) 60%, transparent); }
+
+/* 提示框(左邊粗色條那種)底色統一為面板色 */
+.slidev-layout .border-l-4 {
+  border-radius: 6px;
+  background-color: var(--panel) !important;
+}
+.slidev-layout .border-l-4.border-amber-400  { border-left-color: var(--amber) !important; }
+.slidev-layout .border-l-4.border-cyan-400   { border-left-color: var(--cyan) !important; }
+.slidev-layout .border-l-4.border-violet-400 { border-left-color: var(--violet) !important; }
+.slidev-layout .border-l-4.border-pink-400   { border-left-color: var(--pink) !important; }
+
+/* ---------- 封面 ---------- */
+.slidev-layout.cover h1 {
+  font-size: 2.6rem;
+  background: linear-gradient(92deg, var(--cyan) 0%, var(--violet) 55%, var(--pink) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  padding-bottom: 0.08em;
+}
+.slidev-layout.cover h2 { color: var(--ink); font-weight: 500; }
+
+/* ---------- 結尾頁 ---------- */
+.slidev-layout.end { background-image: radial-gradient(circle at 50% 110%, #231a30 0%, var(--bg) 60%); }
+
+/* ---------- 動畫節制 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .slidev-layout *, .hud-fill { transition: none !important; animation: none !important; }
+}
