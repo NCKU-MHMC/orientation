@@ -139,5 +139,10 @@ __pycache__
 
 /deep_learning/hw2/outputs/
 /deep_learning/hw2/runs/
+/deep_learning/hw2/
 
 events.out.tfevents.*
+
+.*
+
+generation

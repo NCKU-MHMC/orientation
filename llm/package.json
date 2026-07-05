@@ -1,5 +1,6 @@
 {
-  "name": "orientation",
+  "name": "llm",
+  "type": "module",
   "private": true,
   "scripts": {
     "build": "slidev build",
@@ -7,13 +8,12 @@
     "export": "slidev export"
   },
   "dependencies": {
-    "@mrdrogdrog/optional": "^1.2.1",
-    "@slidev/cli": "^0.42.5",
+    "@slidev/cli": "^52.1.0",
     "@slidev/theme-default": "latest",
-    "@slidev/theme-seriph": "latest"
+    "@slidev/theme-seriph": "latest",
+    "vue": "^3.5.18"
   },
   "devDependencies": {
-    "http-server": "^14.1.1",
-    "playwright-chromium": "^1.36.2"
+    "playwright-chromium": "^1.54.2"
   }
 }
