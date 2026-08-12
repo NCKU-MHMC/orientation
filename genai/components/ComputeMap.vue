@@ -8,7 +8,7 @@ const ROWS = [
       { t: '從 p_data 取樣', ok: true },
       { t: '算 p_θ 密度', ok: true },
     ],
-    stand: '不需要代打',
+    stand: '不需要代理',
     family: 'MLE → AR / VAE / DPM',
   },
   {
@@ -18,7 +18,7 @@ const ROWS = [
       { t: '從 p_θ 取樣', ok: true },
       { t: '算 p_data 密度', ok: false },
     ],
-    stand: 'reward / energy 代打',
+    stand: 'reward / energy 代理',
     family: 'VI · RLHF',
   },
   {
@@ -28,7 +28,7 @@ const ROWS = [
       { t: '算 p_data 密度', ok: false },
       { t: '算 p_θ 密度', ok: false },
     ],
-    stand: '判別器代打',
+    stand: '判別器代理',
     family: 'GAN',
   },
 ]
@@ -37,7 +37,7 @@ const ROWS = [
 <template>
   <div class="map">
     <div class="head">
-      <span>散度</span><span>它要什麼</span><span>代打的是誰</span><span>於是變成</span>
+      <span>散度</span><span>它要什麼</span><span>由誰代理</span><span>於是變成</span>
     </div>
     <div v-for="r in ROWS" :key="r.ruler" class="row" :style="{ '--c': r.c }">
       <div class="ruler">{{ r.ruler }}</div>
@@ -46,7 +46,7 @@ const ROWS = [
           <b>{{ n.ok ? '✓' : '✗' }}</b>{{ n.t }}
         </span>
       </div>
-      <div class="stand" :class="{ none: r.stand === '不需要代打' }">{{ r.stand }}</div>
+      <div class="stand" :class="{ none: r.stand === '不需要代理' }">{{ r.stand }}</div>
       <div class="family">{{ r.family }}</div>
     </div>
   </div>

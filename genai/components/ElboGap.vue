@@ -1,6 +1,6 @@
 <script setup>
 // ELBO 與 log p(x) 的關係:log p(x) = ELBO + KL(q ‖ 真後驗)。
-// 間隙不是誤差項,是「偵察兵有多不準」的量。q 越靈活,下界越緊。
+// 間隙不是誤差項,是 q_φ 偏離真後驗的程度。q 越靈活,下界越緊。
 import { typeScale } from './chart-style.js'
 
 const W = 700, H = 225

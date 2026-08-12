@@ -23,7 +23,7 @@ mdc: true
 
 # 選一把尺
 
-## 生成 = 分布逼近,而「逼近」不是一個唯一定義的動作
+## 生成即分布逼近,而「逼近」並非唯一定義的操作
 
 <div class="pt-6 text-sm opacity-70">
 實驗室新生課程 · 180 分鐘<br>
@@ -174,9 +174,9 @@ class: sec-ruler
 
 <div class="mt-5 p-3 border-l-4 border-amber-400 text-sm">
 
-問題來了:**「逼近」是什麼意思?**
+**「逼近」是什麼意思?**
 
-兩個分布之間的差異,得先定義一個評估基準才能量化。
+兩個分布之間的差異,必須先定義一個評估基準才能量化。
 
 </div>
 
@@ -254,7 +254,7 @@ $p>0$ 而 $q\to 0$ 的地方,$\log\frac{p}{q}\to+\infty$
 <DivergenceFit :w="0.5" :curves="['forward']" annotate="forward" />
 
 <div v-click class="mt-3 p-3 border-l-4 border-cyan-400 text-sm">
-forward KL 寧可把大量機率放在<b>資料根本不存在的谷底</b>,也不敢在任何一個峰上放 0。<br>
+forward KL 會把可觀的機率質量配置在<b>資料實際不存在的谷底</b>,以換取不在任何一個峰上取 0。<br>
 <span class="opacity-70">「糊」就是這樣來的。base model 那句「這取決於很多因素」也是。</span>
 </div>
 
@@ -271,7 +271,7 @@ forward KL 寧可把大量機率放在<b>資料根本不存在的谷底</b>,也�
 <DivergenceFit :w="0.5" :curves="['forward', 'reverse']" annotate="reverse" />
 
 <div v-click class="mt-3 p-3 border-l-4 border-pink-400 text-sm">
-reverse KL 直接放棄左邊那個峰,把自己縮進右峰裡:<b>銳利,但漏掉一半的 support。</b><br>
+reverse KL 的解直接放棄左峰,收縮到右峰內部:<b>銳利,但漏掉一半的 support。</b><br>
 <span class="opacity-70">對齊後模型「十次取樣、十個一樣」,就是這麼來的。</span>
 </div>
 
@@ -300,7 +300,7 @@ reverse KL 直接放棄左邊那個峰,把自己縮進右峰裡:<b>銳利,但漏
 $$\mathrm{KL}(p\|q)+\mathrm{KL}(q\|p)$$
 
 繼承**兩邊**的無限大。<br>
-support 不重疊 → $\infty$,而且是沒得救的 $\infty$。
+support 不重疊 → $\infty$,且梯度不帶任何方向資訊。
 
 </div>
 
@@ -319,7 +319,7 @@ $$m=\tfrac{p+q}{2}$$
 
 <div v-click class="mt-5 text-center">
 
-於是 **永遠有界**:$\;0\le\mathrm{JSD}(p\|q)\le\log 2$,而且 $\sqrt{\mathrm{JSD}}$ 是真正的距離度量。
+於是 **恆為有界**:$\;0\le\mathrm{JSD}(p\|q)\le\log 2$,而且 $\sqrt{\mathrm{JSD}}$ 滿足度量公理,包含三角不等式。
 
 </div>
 
@@ -336,12 +336,12 @@ $$m=\tfrac{p+q}{2}$$
 <JsdSaturate />
 
 <div v-click class="mt-2 p-3 border-l-4 border-amber-400 text-sm">
-兩個分布一分開,JSD 立刻貼到 <katex-elem expr="\log 2" /> 就<b>不動了</b>:曲線變平,梯度變 0。<br>
+兩個分布一旦分開到 support 幾乎不重疊,JSD 就貼上 <katex-elem expr="\log 2" /> <b>不再變動</b>:曲線變平,梯度趨近 0。<br>
 <span class="opacity-70">「你離目標很遠」與「你離目標非常遠」給出同一個 loss,模型就不知道該往哪走。</span>
 </div>
 
 <div v-click class="mt-2 text-xs opacity-70">
-這正是原始 GAN 的病理,也是 non-saturating loss 與 WGAN 的動機。後面 ④ 會回來算帳。
+這正是原始 GAN 的病理,也是 non-saturating loss 與 WGAN 的動機。④ 會回到這一點。
 </div>
 
 <!--
@@ -368,7 +368,7 @@ $$V(D^*,G)=2\,\mathrm{JSD}(p\|q)-2\log 2$$
 
 <div v-click class="mt-5 p-3 border-l-4 border-violet-400 text-sm">
 
-所以 JSD 的意思是:**「一個最好的分類器,能多有把握地分辨這個樣本來自誰。」**
+所以 JSD 度量的是:**最佳判別器分辨樣本來源時,能取得多大的優勢。**
 
 形式上它等於 $I(X;Z)$,其中 $Z\sim\text{Bernoulli}(1/2)$ 是「來自 $p$ 還是 $q$」的標籤。
 
@@ -524,7 +524,7 @@ class: sec-compute
 
 <div v-click class="mt-6 text-center text-base">
 
-$\log p_{\text{data}}(x)$ 拿不到。**整個生成模型的分類法,就是從這一個缺口長出來的。**
+$\log p_{\text{data}}(x)$ 拿不到。**整個生成模型的分類法,都是從這一個缺口推導出來的。**
 
 </div>
 
@@ -549,7 +549,7 @@ GAN 的判別器<b>不是設計上的巧思,是計算上的必然</b>。<br>
 <!--
 本堂最該被記住的一頁。
 
-講法:先蓋住「代打」與「於是變成」兩欄,只念前兩欄,讓學生自己推。多數人推得出 GAN 那一列。
+講法:先蓋住「由誰代理」與「於是變成」兩欄,只念前兩欄,讓學生自己推。多數人推得出 GAN 那一列。
 
 推不出來也沒關係,重點是他們親身體驗到「這是被逼出來的,不是被發明出來的」。
 -->
@@ -561,7 +561,7 @@ GAN 的判別器<b>不是設計上的巧思,是計算上的必然</b>。<br>
 <FamilyTree />
 
 <div v-click class="mt-2 p-3 border-l-4 border-cyan-400 text-sm">
-Goodfellow 那棵樹之所以長這樣,不是因為有人想把模型分成六類,而是因為
+Goodfellow 那棵樹之所以是這個形狀,不是因為有人想把模型分成六類,而是因為
 <b>「<katex-elem expr="p_\theta(x)" /> 寫不寫得出來」這一問只有三種答案</b>:寫得出、寫不出但有下界、完全寫不出。
 </div>
 
@@ -633,8 +633,8 @@ layout: center
 
 <div class="text-lg leading-relaxed">
 
-reverse KL 那一列的「**reward 代打**」,<br>
-與 GAN 那一列的「**判別器代打**」,<br>
+reverse KL 那一列的「**reward 代理**」,<br>
+與 GAN 那一列的「**判別器代理**」,<br>
 其實是同一件事的兩種說法:
 
 </div>
@@ -690,7 +690,7 @@ $$H(p,q)=-\mathbb{E}_{x\sim p}[\log q(x)]=\underbrace{H(p)}_{\text{與 }\theta\t
 </div>
 
 <div v-click class="mt-5 p-3 border-l-4 border-cyan-400 text-sm">
-<b>分類任務</b>:目標是 one-hot,<katex-elem expr="H(p)=0" />,所以 cross-entropy <b>就是</b> forward KL,一絲不差。<br>
+<b>分類任務</b>:目標是 one-hot,<katex-elem expr="H(p)=0" />,所以 cross-entropy <b>就是</b> forward KL,兩者恆等。<br>
 一旦目標變軟(label smoothing、知識蒸餾),兩者才分家。
 </div>
 
@@ -850,7 +850,7 @@ scheduled sampling / RL / DPO / DDO 的共同點**不是「用了 RL」**,<br>
 </v-clicks>
 
 <!--
-第 2 點對 memory agent 組是直球:長對話漂移不是 context window 的問題,
+第 2 點直接對應 memory agent 組的問題:長對話漂移不是 context window 的問題,
 是訓練目標從來沒看過自己生成的長前綴。
 
 第 3 點是整個下堂課的入口,講完停 15 秒。
@@ -961,7 +961,7 @@ class: text-center
 
 # VAE
 
-<div class="text-lg opacity-80 mt-3">同一個 forward KL,但密度算不動,只好退一步取下界</div>
+<div class="text-lg opacity-80 mt-3">同一個 forward KL,但邊際化不可解,只能退而最佳化一個下界</div>
 
 <!--
 100–120 分。
@@ -998,15 +998,15 @@ $$p_\theta(x) = \int p_\theta(x \mid z)\, p(z)\, dz, \qquad p(z) = \mathcal{N}(0
 </div>
 
 <div class="mt-4 p-3 border-l-4 border-amber-400 text-sm">
-蒙地卡羅救不了:<katex-elem expr="p_\theta(x)\approx\frac1K\sum_k p_\theta(x\mid z_k),\ z_k\sim p(z)" />。
-高維時幾乎所有 <katex-elem expr="z_k" /> 都與這個 <katex-elem expr="x" /> 無關,變異數爆炸。
+樸素蒙地卡羅無效:<katex-elem expr="p_\theta(x)\approx\frac1K\sum_k p_\theta(x\mid z_k),\ z_k\sim p(z)" />。
+高維時幾乎所有 <katex-elem expr="z_k" /> 都與這個 <katex-elem expr="x" /> 無關,估計量的變異數過大。
 </div>
 
 </v-clicks>
 
 <div v-click class="mt-3 text-center text-base">
 
-**破局點**:訓練一個「偵察兵」<katex-elem expr="q_\phi(z\mid x)" />,直接告訴我們哪些 $z$ 可能生出這個 $x$。
+**出路**:另外訓練一個推斷網路 <katex-elem expr="q_\phi(z\mid x)" />,直接指出哪些 $z$ 有可能生成這個 $x$。
 
 </div>
 
@@ -1035,7 +1035,7 @@ $$
 
 $$\log p_\theta(x) = \mathrm{ELBO} + \mathrm{KL}\big(q_\phi(z\mid x)\,\|\,p_\theta(z\mid x)\big)$$
 
-間隙**恰好等於偵察兵對真後驗的 KL**。$q$ 越準,下界越緊。
+間隙**恰好等於 $q_\phi$ 對真後驗的 KL**。$q$ 越接近真後驗,下界越緊。
 
 </div>
 
@@ -1110,7 +1110,7 @@ $$\mathcal{L}_{\beta} = \underbrace{\mathbb{E}_{q_\phi}\big[\log p_\theta(x\mid 
 β-VAE 原始動機是 disentanglement(Higgins et al., ICLR 2017),
 但教學上它是把 ELBO 兩項拉鋸可視化的最好工具。
 
-順帶一提:這顆 β 跟 RLHF 目標裡那個 β 是同一個角色:正則強度,把新分布拉向參考分布。
+順帶一提:這個 β 與 RLHF 目標裡那個 β 是同一個角色:正則強度,把新分布拉向參考分布。
 ⑤ 會正式回收。
 -->
 
@@ -1129,12 +1129,12 @@ $$\mathcal{L}_{\beta} = \underbrace{\mathbb{E}_{q_\phi}\big[\log p_\theta(x\mid 
 demo 裡高斯混合中間那座「橋」是兩股力的合成。
 
 posterior collapse 的語音錨點:用 autoregressive decoder 做 VAE 時,decoder 自己就能把資料
-建得很好,乾脆忽略 z,KL 項歸零、z 失效。這是語音表示學習的實際痛點。
+建得很好,於是直接忽略 z,KL 項歸零、z 失效。這是語音表示學習的實際痛點。
 -->
 
 ---
 
-# VAE 的後續改進:對症下藥
+# VAE 的後續改進:每一項都對準一個缺陷
 
 <div class="text-xs">
 
@@ -1150,7 +1150,7 @@ posterior collapse 的語音錨點:用 autoregressive decoder 做 VAE 時,decode
 </div>
 
 <div v-click class="mt-3 p-3 border-l-4 border-cyan-400 text-sm">
-<b>VAE 的現代角色</b>:Stable Diffusion 的第一層就是一顆對抗式訓練的 VAE,先把影像壓進 latent space,
+<b>VAE 的現代角色</b>:Stable Diffusion 的第一層就是一個對抗式訓練的 VAE,先把影像壓進 latent space,
 diffusion 才在低維空間跑。這條研究線沒有消失,它變成了別人的第一層。
 </div>
 
@@ -1231,7 +1231,7 @@ $$\mathrm{KL}(p_g \| p_{\text{data}}) \;-\; 2\,\mathrm{JSD}(p_g \| p_{\text{data
 </div>
 
 <div v-click class="mt-4 p-3 border-l-4 border-violet-400 text-sm">
-你為了修梯度消失而換掉的那個 loss,<b>順手把 mode-covering 也一起換掉了。</b><br>
+為了修梯度消失而換掉的那個 loss,<b>同時也換掉了 mode-covering。</b><br>
 <span class="opacity-70">GAN 的兩種 loss,分別坐在兩種失效模式上。</span>
 </div>
 
@@ -1261,7 +1261,7 @@ $\mathbb{E}_{p_{\text{data}}}[\log D(x)]$ 這一項**不含 $G$**。而 $D(x)$ �
 其餘三層(不必全講):
 
 2. non-saturating loss 本身已含 reverse KL(上一頁)
-3. min-max 沒有位能函數 → 繞圈 → mode hopping;$D$ 會遺忘,塌縮後沒有回頭的力
+3. min-max 沒有位能函數 → 繞圈 → mode hopping;$D$ 會遺忘,塌縮後缺乏回復機制
 4. 一步生成的幾何代價:只蓋單一模式的映射既平滑又便宜,塌縮是低成本解
 
 </div>
@@ -1324,7 +1324,7 @@ layout: center
 
 ---
 
-# GAN 的改進 (1):病根在評估基準,不在架構
+# GAN 的改進 (1):成因在評估基準,不在架構
 
 <GanFixes />
 
@@ -1337,7 +1337,7 @@ layout: center
 Wasserstein 用「搬土」講:兩座不重疊的土堆,JSD 只會說「完全不同」(log 2,無梯度);
 W 距離會說「相距 5 公尺」,距離變近就有獎勵,G 才有路標。
 
-回想 demo:kD=5 時那片又暗又陡的地景,就是這些方法要鏟平的東西。
+回想 demo:kD=5 時那片又暗又陡的地景,正是這些方法要抹平的對象。
 -->
 
 ---
@@ -1349,7 +1349,7 @@ W 距離會說「相距 5 公尺」,距離變近就有獎勵,G 才有路標。
 | 工作 | 年份 | 對付什麼 | 怎麼做 |
 |---|---|---|---|
 | **WGAN** | 2017 | JSD 飽和、梯度消失 | 換成 Wasserstein 距離;$D$ 變成不設上限的 critic |
-| **WGAN-GP** | 2017 | weight clipping 太粗暴 | 用 gradient penalty $(\|\nabla_{\hat{x}} f\|-1)^2$ 軟性施加 Lipschitz 約束 |
+| **WGAN-GP** | 2017 | weight clipping 過於粗糙 | 用 gradient penalty $(\|\nabla_{\hat{x}} f\|-1)^2$ 軟性施加 Lipschitz 約束 |
 | **Spectral Norm** | 2018 | 同上,更便宜 | 每層權重除以最大奇異值,直接控制 $D$ 的 Lipschitz 常數 |
 | **R1 penalty** | 2018 | 收斂性 | 只在真資料上懲罰 $\|\nabla_x D\|^2$;局部收斂有理論保證,StyleGAN 全系列採用 |
 
@@ -1542,7 +1542,7 @@ class: sec-loss
 
 ---
 
-# 兩個基準的旅行地圖
+# 兩個基準的遷移地圖
 
 <LossTravel />
 
@@ -1551,7 +1551,7 @@ class: sec-loss
 
 - 知識蒸餾:soft label 攜帶類別之間的相似結構(這張 3 有點像 8),比 one-hot 資訊多;
   溫度 τ 把分布抹軟,放大暗知識。
-- RLHF:沒有 KL 項會 reward hacking(語言退化)。那個 β 就是 β-VAE 那顆旋鈕的親戚。
+- RLHF:沒有 KL 項會 reward hacking(語言退化)。那個 β 與 β-VAE 那顆旋鈕是同一個角色。
   學生若走 LLM 方向,這是第一個會親手調的 KL。
 
 DANN 值得一句:min-max 不一定要兩個 optimizer 輪流,梯度反轉層把 max 塞進同一次 backward,
@@ -1596,7 +1596,7 @@ RLHF 用的是後者,這是對齊後多樣性塌陷的直接來源。
 
 <div v-click class="mt-4 text-center text-base">
 
-模型會過時,**這兩個基準與它們各自的盲點不會**。
+架構每隔幾年換一次,**這兩個基準與它們各自的盲點則會被一併繼承下去**。
 
 </div>
 
@@ -1675,7 +1675,7 @@ layout: center
 <!--
 明確告訴學生:下面兩列今天留白是刻意的,下堂課才填。
 
-先劇透一句:下堂課你會發現 temperature、CFG、DPO 全部可以寫成同一個式子。
+先預告一句:下堂課你會發現 temperature、CFG、DPO 全部可以寫成同一個式子。
 -->
 
 ---
@@ -1773,7 +1773,7 @@ B 的設計意圖:強迫學生用同一組詞彙描述同一份資料上的三�
 跟 VAE、GAN 都不同,對照才完整。
 
 注意用詞:demo 叫 Flow Matching,但學生要帶走的是「Diffusion / FM 這一類」的行為,
-不是「FM 這個牌子」的行為。
+不是「FM 這個名稱」專屬的行為。
 -->
 
 ---

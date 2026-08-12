@@ -1,5 +1,5 @@
 <script setup>
-// GAN 改進的共同哲學:病根在評估基準,不在架構。
+// GAN 改進的共同結構:成因在評估基準,不在架構。
 // 左:JSD 在不重疊時飽和,D 地景是一道階梯,G 站在平台上沒有坡可爬。
 // 右:Lipschitz 約束(WGAN / GP / SN / R1)把地景壓平緩,任何位置都有方向。
 import { typeScale } from './chart-style.js'
@@ -66,7 +66,7 @@ const ballT = 0.16
       W₁(p,q) = sup 在 ‖f‖_L ≤ 1 之下的 E_p[f] − E_q[f]:兩個分布不重疊也給得出「差多遠」,而不是只回答「完全不同」。
     </text>
     <text :x="L" :y="H - 5" fill="#ffb454" :font-size="FS.small">
-      共同動作:不是換架構,是換評估基準,或強迫這個基準的地景不許太陡。
+      共同動作:不換架構,而是換掉評估基準,或限制這個基準的地景不得過陡。
     </text>
   </svg>
 </template>
