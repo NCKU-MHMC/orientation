@@ -61,7 +61,7 @@ const link = (i) => ({ x1: BOX[i].x + BOX[i].w, x2: BOX[i + 1].x })
     </text>
 
     <text x="14" :y="H - 8" fill="#8fa0bc" :font-size="FS.small">
-      不對「抽樣」這個動作微分,而是把骰子丟到模型外面,模型只負責平移(μ)與縮放(σ)骰子的結果。
+      不對「抽樣」這個動作微分,而是把隨機源移到計算圖外,模型只負責對它做平移(μ)與縮放(σ)。
     </text>
   </svg>
 </template>

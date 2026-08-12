@@ -53,7 +53,7 @@ const FS = typeScale(W)
       D 是逐點評分器:它一次只看一個樣本,回答「這一個像不像真的」。
     </text>
     <text x="14" :y="H - 8" fill="#ff6b9d" :font-size="FS.small">
-      「你漏了一整群」是分布層級的性質,這條迴路上沒有任何地方能傳遞它。
+      「模式覆蓋不足」是分布層級的性質,這條迴路上沒有任何地方能傳遞它。
     </text>
   </svg>
 </template>

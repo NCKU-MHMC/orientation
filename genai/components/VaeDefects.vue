@@ -11,7 +11,7 @@ const TERM = [
   { x: 400, w: 210, c: '#ffb454', t: '正則項', s: 'KL( q_φ(z|x) ‖ p(z) )' },
 ]
 const CARD = [
-  { x: 8, c: '#5edfff', n: '① 樣本糊', from: 62 + 105,
+  { x: 8, c: '#5edfff', n: '① 樣本模糊', from: 62 + 105,
     s: '高斯 likelihood = MSE。一個 z 對應多個合理輸出時,最優解是平均。' },
   { x: 180, c: '#5edfff', n: '② 下界間隙', from: 62 + 105,
     s: '優化的是 ELBO 不是 log p(x)。q 家族太簡單,間隙就大。' },

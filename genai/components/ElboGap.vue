@@ -9,7 +9,7 @@ const FS = typeScale(W)
 const TOP = 44, BASE = 158, FULL = BASE - TOP  // log p(x) 的總高度
 const BW = 108
 const CASES = [
-  { x: 96, gap: 0.42, t: '對角高斯 q', s: '每維獨立,抓不到後驗的相關性' },
+  { x: 96, gap: 0.42, t: '對角高斯 q', s: '每維獨立,無法表達後驗的相關性' },
   { x: 306, gap: 0.16, t: '較靈活的 q', s: 'normalizing flow / 更深的 encoder' },
   { x: 516, gap: 0.0, t: 'q = 真後驗', s: '下界收緊成等式(實際做不到)' },
 ]
@@ -47,7 +47,7 @@ const CASES = [
     <line x1="60" :y1="BASE" :x2="W - 24" :y2="BASE" stroke="#243350" />
 
     <text x="60" :y="H - 8" fill="#ffb454" :font-size="FS.small">
-      間隙 = KL(q_φ(z|x) ‖ p_θ(z|x)) ≥ 0。所以 ELBO 永遠是下界,而且你量不出自己差了多少。
+      間隙 = KL(q_φ(z|x) ‖ p_θ(z|x)) ≥ 0。所以 ELBO 恆為下界,而且間隙本身無法直接量測。
     </text>
   </svg>
 </template>

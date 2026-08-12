@@ -36,7 +36,7 @@ const INF = [80, 104, 130, 156, 180] // 推論軌道逐步下沉
     <circle v-for="i in [1, 2, 3, 4]" :key="'i' + i" :cx="X[i]" :cy="INF[i]" r="7"
             fill="#0c1220" stroke="#ff6b9d" stroke-width="2" />
     <text :x="X[4]" y="204" fill="#ff6b9d" :font-size="FS.title" text-anchor="end">
-      推論軌道 · 前綴取自模型自己的 q_θ
+      推論軌道 · 前綴取自模型輸出的 q_θ
     </text>
 
     <text x="40" y="105" fill="#8fa0bc" :font-size="FS.small">共用起點 x₁</text>

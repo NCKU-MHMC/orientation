@@ -37,11 +37,11 @@ const LANES = [
     <div class="ends">
       <div>
         <b style="color: #5edfff">mode-covering</b>
-        <span>涵蓋全部,糊</span>
+        <span>涵蓋全部,品質低</span>
       </div>
       <div class="text-right">
         <b style="color: #ff6b9d">mode-seeking</b>
-        <span>銳利,可能漏</span>
+        <span>品質高,覆蓋不足</span>
       </div>
     </div>
 

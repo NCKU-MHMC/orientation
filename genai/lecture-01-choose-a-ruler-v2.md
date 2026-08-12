@@ -104,16 +104,16 @@ base model 的空泛 hedging,<br>
 <!--
 第 12 分鐘提出論題,下堂課最後一頁回收。
 
-現在這條軸還是空的。今天結束時,最上面一列會被填滿;下堂課你會看到下面兩列其實是上面那一列的「推論時版本」與「權重版本」。
+現在這條軸還是空的。今天結束時,最上面一列會被填滿;下堂課會看到下面兩列其實是上面那一列的「推論時版本」與「權重版本」。
 -->
 
 ---
 
-# 你們手上的題目,其實都是機率問題
+# 實驗室現有題目,本質上都是機率問題
 
 <div class="text-sm">
 
-| 實驗室題目 | 它其實是什麼機率問題 | 在軸上的位置 |
+| 實驗室題目 | 對應的機率問題 | 在軸上的位置 |
 |---|---|---|
 | prompt engineering | 選擇條件變數 $c$,操控 $p(y \mid c)$ | 只換條件,不動目標函數 |
 | memory agent | 條件集合的建構;長 context 下 $p(\text{task} \mid \text{prompt})$ 被稀釋 | 同上 |
@@ -217,7 +217,7 @@ $$\mathrm{KL}(p\|q)=\int p(x)\,\log\frac{p(x)}{q(x)}\,dx$$
 
 $p>0$ 而 $q\to 0$ 的地方,$\log\frac{p}{q}\to+\infty$
 
-→ $q$ **必須蓋住 $p$ 的全部 support**
+→ $q$ **必須覆蓋 $p$ 的全部 support**
 
 <div class="mt-2" style="color: var(--cyan)">zero-avoiding · mode-covering</div>
 
@@ -255,13 +255,13 @@ $p>0$ 而 $q\to 0$ 的地方,$\log\frac{p}{q}\to+\infty$
 
 <div v-click class="mt-3 p-3 border-l-4 border-cyan-400 text-sm">
 forward KL 會把可觀的機率質量配置在<b>資料實際不存在的谷底</b>,以換取不在任何一個峰上取 0。<br>
-<span class="opacity-70">「糊」就是這樣來的。base model 那句「這取決於很多因素」也是。</span>
+<span class="opacity-70">樣本模糊的成因就在這裡。base model 那句「這取決於很多因素」同理。</span>
 </div>
 
 <!--
 解出來的參數:μ=0, σ=1.70。兩個真峰的寬度只有 0.55。
 
-這裡停 30 秒讓學生看那座橋。橋上沒有任何真實資料,但 forward KL 逼它必須存在。
+這裡停 30 秒,讓學生看兩峰之間那段機率質量。該區域沒有任何真實資料,但 forward KL 迫使它必須存在。
 -->
 
 ---
@@ -271,7 +271,7 @@ forward KL 會把可觀的機率質量配置在<b>資料實際不存在的谷底
 <DivergenceFit :w="0.5" :curves="['forward', 'reverse']" annotate="reverse" />
 
 <div v-click class="mt-3 p-3 border-l-4 border-pink-400 text-sm">
-reverse KL 的解直接放棄左峰,收縮到右峰內部:<b>銳利,但漏掉一半的 support。</b><br>
+reverse KL 的解直接放棄左峰,收縮到右峰內部:<b>樣本銳利度高,但只覆蓋一半的 support。</b><br>
 <span class="opacity-70">對齊後模型「十次取樣、十個一樣」,就是這麼來的。</span>
 </div>
 
@@ -337,7 +337,7 @@ $$m=\tfrac{p+q}{2}$$
 
 <div v-click class="mt-2 p-3 border-l-4 border-amber-400 text-sm">
 兩個分布一旦分開到 support 幾乎不重疊,JSD 就貼上 <katex-elem expr="\log 2" /> <b>不再變動</b>:曲線變平,梯度趨近 0。<br>
-<span class="opacity-70">「你離目標很遠」與「你離目標非常遠」給出同一個 loss,模型就不知道該往哪走。</span>
+<span class="opacity-70">「距離目標很遠」與「距離目標非常遠」對應到同一個 loss,模型無從判斷更新方向。</span>
 </div>
 
 <div v-click class="mt-2 text-xs opacity-70">
@@ -419,7 +419,7 @@ class: text-center
 
 <div class="text-2xl px-10 leading-relaxed">
 
-選擇散度 = **選擇你願意犯哪一種錯**。
+選擇散度 = **選擇我們願意承擔哪一種錯誤**。
 
 </div>
 
@@ -446,8 +446,8 @@ class: text-center
 | 行為 | mode-covering | 中間,但會飽和 | mode-seeking |
 | 對稱 | 否 | 是 | 否 |
 | 上界 | 無 | $\log 2$ | 無 |
-| **失效模式** | 過度平滑、hedging、覆蓋過廣 | 梯度消失或震盪 | 模式塌縮、多樣性喪失 |
-| 你在哪裡看過 | base model 的空泛回答 | GAN 訓練不收斂 | RLHF 後的樣板化回覆 |
+| **失效模式** | 過度平滑、hedging、覆蓋過廣 | 梯度消失或振盪 | 模式塌縮、多樣性低 |
+| 對應的實際現象 | base model 的空泛回答 | GAN 訓練不收斂 | RLHF 後的樣板化回覆 |
 
 </div>
 
@@ -462,13 +462,13 @@ class: text-center
 <div class="p-3 border-l-4 border-violet-400">
 <b>課後練習(不佔課堂時間)</b><br>
 用單一高斯擬合 1D 雙峰混合,分別最小化三個散度,數值求解 <katex-elem expr="\mu,\sigma" />。<br>
-<span class="text-xs opacity-70">做過一次就不會再搞混。</span>
+<span class="text-xs opacity-70">實作過一次即可建立可靠的直覺。</span>
 </div>
 
 </div>
 
 <!--
-最後一列「你在哪裡看過」是這張表的重點,前四列只是把剛才講的收起來。
+最後一列「對應的實際現象」是這張表的重點,前四列只是把剛才講的收起來。
 
 課後練習其實就是今天那張 B-1 的產生方式,鼓勵他們自己重跑一次。
 -->
@@ -490,7 +490,7 @@ class: sec-compute
 
 ---
 
-# 一個散度要能算,你得先拿得到兩樣東西
+# 一個散度要能計算,必須先取得兩項資訊
 
 <div class="grid grid-cols-2 gap-6 mt-6 text-sm">
 
@@ -587,13 +587,13 @@ Goodfellow 那棵樹之所以是這個形狀,不是因為有人想把模型分�
 </div>
 
 <!--
-刻意用三格量表而不是形容詞。「偏糊」「銳利」「極高」放在同一張表裡沒有可比性,點數有。
+刻意用三格量表而不是形容詞。「偏模糊」「銳利」「極高」這類形容詞放在同一張表裡沒有可比性,點數有。
 
 Diffusion 與 Flow Matching 放同一列,不是為了省空間。它們是同一個框架:
 學一個時間相關的向量場(或等價的 score),把簡單先驗沿一條機率路徑搬到資料分布。
 Song et al. 的 probability-flow ODE 說明 diffusion 的 SDE 有同 marginal 的 ODE 形式;
 Lipman et al. 進一步證明 diffusion 用的路徑只是 conditional flow matching 的一個特例。
-所以「取樣速度」那一格畫成虛線區間:步數取決於路徑與取樣器,不是取決於你叫它哪個名字。
+所以「取樣速度」那一格畫成虛線區間:步數取決於路徑與取樣器,不是取決於它叫哪個名字。
 
 提問:「AR 又穩、密度又精確,為什麼大家還要搞別的?」
 答:取樣是序列式的,一張 512×512 影像等於 26 萬次前向;而且沒有天然的潛在空間可以編輯。
@@ -616,7 +616,7 @@ Xiao, Kreis & Vahdat, "Tackling the Generative Learning Trilemma with Denoising 
 ICLR 2022 (arXiv:2112.07804)。
 
 這頁的教學功能是把「取捨」從一句安慰話變成一個結構性陳述:
-你選的散度決定你坐在哪一條邊上,而不是你的網路不夠大。
+所選的散度決定模型坐在哪一條邊上,而不是網路不夠大。
 
 近年幾乎所有生成模型的工程進展,都可以問一句:「它在攻這個三角的哪一邊?」
 latent diffusion 在低維空間跑、蒸餾把步數壓下來、rectified flow 把路徑拉直,
@@ -635,16 +635,16 @@ layout: center
 
 reverse KL 那一列的「**reward 代理**」,<br>
 與 GAN 那一列的「**判別器代理**」,<br>
-其實是同一件事的兩種說法:
+是同一件事的兩種說法:
 
 </div>
 
 <div v-click class="mt-6 p-4 border-l-4 border-violet-400 text-lg">
-兩者都在補同一個拿不到的東西:<katex-elem expr="\log p_{\text{data}}" />。
+兩者都在補上同一個無法取得的量:<katex-elem expr="\log p_{\text{data}}" />。
 </div>
 
 <div v-click class="mt-5 text-sm opacity-70">
-下堂課的 capstone(DDO)就站在這句話上:如果 likelihood-based 模型本來就算得出 <katex-elem expr="\log p_\theta" />,那判別器其實可以不用另外蓋一個網路。
+下堂課的 capstone(DDO)就站在這句話上:如果 likelihood-based 模型本來就算得出 <katex-elem expr="\log p_\theta" />,那判別器就不需要另外建構一個網路。
 </div>
 
 </div>
@@ -744,7 +744,7 @@ confidence vs. accuracy 那組請特別記 ②:你拿 sequence log-prob 當信�
 
 <div class="text-sm">
 
-鏈鎖法則會 **telescope**:字串的 log-likelihood 與你怎麼切 token 無關,會變的只有分母。
+鏈鎖法則會 **telescope**:字串的 log-likelihood 與 token 切法無關,會變的只有分母。
 
 </div>
 
@@ -825,7 +825,7 @@ $$\mathrm{KL}(p\|q)=\sum_t \mathbb{E}_{x_{\lt t}\sim \textcolor{#ff6b9d}{p}}\Big
 
 ### 1 · teacher forcing 不是訓練技巧
 
-它是 forward KL 分解式的**字面實作**。式子裡寫了前綴取自 $p$,你就只能餵真實前綴。
+它是 forward KL 分解式的**字面實作**。式子裡寫明前綴取自 $p$,因此只能輸入真實前綴。
 
 </div>
 
@@ -936,7 +936,7 @@ $p(y\mid x)$ **良好定義**,與 $x$ **值得被回答**,是兩件完全不同�
 $\log p(x)$ 是**負值累加**,句子越長分數越低
 
 <div class="mt-3 opacity-75">
-直接拿來排序 → 永遠選最短的。<br>
+直接用於排序 → 永遠選出最短的候選。<br>
 需要長度正規化,而正規化方式本身就是一個設計選擇。
 </div>
 
@@ -945,7 +945,7 @@ $\log p(x)$ 是**負值累加**,句子越長分數越低
 </div>
 
 <div v-click class="mt-5 text-center text-sm opacity-80">
-兩個陷阱的共同點:<b>你以為你在量「模型多有把握」,其實你量到的是「這串 token 有多長、有多罕見」。</b>
+兩個陷阱的共同點:<b>看似在量測「模型的信心」,實際量到的是「這串 token 的長度與罕見程度」。</b>
 </div>
 
 <!--
@@ -1053,7 +1053,7 @@ Jensen 那一步放大寫一次,請一位學生說出為什麼不等號方向是
 <ElboGap />
 
 <div v-click class="mt-2 p-3 border-l-4 border-pink-400 text-sm">
-你優化的是 ELBO,不是 <katex-elem expr="\log p_\theta(x)" />。而<b>間隙的大小取決於你選的 <katex-elem expr="q" /> 家族</b>,不取決於 decoder 有多大。<br>
+我們優化的是 ELBO,不是 <katex-elem expr="\log p_\theta(x)" />。而<b>間隙的大小取決於所選的 <katex-elem expr="q" /> 家族</b>,不取決於 decoder 的規模。<br>
 <span class="opacity-70">所以 VAE 報出來的 likelihood 一律是保守估計,拿去跟 AR 的精確 likelihood 比是不公平的。</span>
 </div>
 
@@ -1098,7 +1098,7 @@ $$\mathcal{L}_{\beta} = \underbrace{\mathbb{E}_{q_\phi}\big[\log p_\theta(x\mid 
 |---|---|---|
 | $\beta = 0$ | 退化成普通 autoencoder,重建極準 | 潛在空間四散;從先驗取樣落在沒學過的區域,**生成崩壞** |
 | $\beta = 1$ | 標準 VAE(正宗 ELBO) | 重建與生成的折衷 |
-| $\beta \gg 1$ | 潛在空間被硬壓成 $\mathcal{N}(0,I)$ | 重建劣化、樣本糊成一團;**posterior collapse** 前兆 |
+| $\beta \gg 1$ | 潛在空間被壓向 $\mathcal{N}(0,I)$ | 重建劣化、樣本趨向均值;**posterior collapse** 前兆 |
 
 </div>
 
@@ -1125,8 +1125,8 @@ $$\mathcal{L}_{\beta} = \underbrace{\mathbb{E}_{q_\phi}\big[\log p_\theta(x\mid 
 
 缺陷 ① 的兩層成因要講清楚:
 - 損失層:高斯 likelihood 等價 MSE,一對多時最優解是平均。平均臉沒有毛孔。
-- 路線層:forward KL 本來就 mode-covering,罰漏不罰糊。
-demo 裡高斯混合中間那座「橋」是兩股力的合成。
+- 路線層:forward KL 本來就 mode-covering,懲罰覆蓋不足,不懲罰模糊。
+demo 裡高斯混合中間那段虛假質量是兩股力的合成。
 
 posterior collapse 的語音錨點:用 autoregressive decoder 做 VAE 時,decoder 自己就能把資料
 建得很好,於是直接忽略 z,KL 項歸零、z 失效。這是語音表示學習的實際痛點。
@@ -1140,9 +1140,9 @@ posterior collapse 的語音錨點:用 autoregressive decoder 做 VAE 時,decode
 
 | 缺陷 | 改進方向 | 代表工作 | 一句話 |
 |---|---|---|---|
-| ① 樣本糊 | 離散潛在空間 + 強 decoder | **VQ-VAE** (2017) / **VQ-VAE-2** (2019) | $z$ 改成 codebook 查表,生成交給 AR prior;催生 DALL·E 路線 |
-| ① 樣本糊 | 疊多層潛在變數 | **NVAE** (2020)、**VDVAE** (2021) | hierarchical VAE:多層 $z$ 逐級細化 |
-| ① 樣本糊 | 借判別器的感知基準 | **VAE-GAN** (2016) | 重建項換成對抗式的 feature-level loss |
+| ① 樣本模糊 | 離散潛在空間 + 強 decoder | **VQ-VAE** (2017) / **VQ-VAE-2** (2019) | $z$ 改成 codebook 查表,生成交給 AR prior;催生 DALL·E 路線 |
+| ① 樣本模糊 | 堆疊多層潛在變數 | **NVAE** (2020)、**VDVAE** (2021) | hierarchical VAE:多層 $z$ 逐級細化 |
+| ① 樣本模糊 | 引入判別器的感知基準 | **VAE-GAN** (2016) | 重建項換成對抗式的 feature-level loss |
 | ④ prior hole | 學出來的先驗 | **VampPrior** (2018) | 先驗改成 pseudo-input 的 posterior 混合,把洞填掉 |
 | ③ collapse | KL annealing / free bits | (訓練技巧系) | 前期關小 KL,或給每一維 KL 保底 |
 | ② 間隙 | 更緊的下界 / 更靈活的 $q$ | **IWAE** (2015) | 多樣本重要性加權,間隙隨樣本數收斂 |
@@ -1158,7 +1158,7 @@ diffusion 才在低維空間跑。這條研究線沒有消失,它變成了別人
 不必逐列細講,挑兩個各講 30 秒:
 
 - VQ-VAE:把「連續 z + 高斯先驗」整組換成「離散 codebook + 學出來的 AR 先驗」,
-  一次繞開糊(likelihood 交給強 decoder 與 prior)與 prior hole(先驗是學的)。
+  一次繞開樣本模糊(likelihood 交給強 decoder 與 prior)與 prior hole(先驗是學的)。
 - NVAE / VDVAE:證明純 VAE 認真做架構也能生成高解析人臉;更重要的是 hierarchical 這個形狀
   就是 diffusion 的前身,下堂課的伏筆。
 
@@ -1238,7 +1238,7 @@ $$\mathrm{KL}(p_g \| p_{\text{data}}) \;-\; 2\,\mathrm{JSD}(p_g \| p_{\text{data
 <!--
 Arjovsky & Bottou (2017) 是這頁的依據。
 
-這頁是整個 ④ 段最能展示「目標函數決定失效模式」的一頁:換 loss 就是換你願意犯的錯。
+這頁是整個 ④ 段最能展示「目標函數決定失效模式」的一頁:換 loss 就是換我們願意承擔的錯誤。
 -->
 
 ---
@@ -1249,7 +1249,7 @@ Arjovsky & Bottou (2017) 是這頁的依據。
 
 <div class="p-4 rounded border border-pink-400 text-sm mb-3">
 
-### 1 · 生成器的 loss 裡根本沒有資料
+### 1 · 生成器的 loss 中不含資料項
 
 $\mathbb{E}_{p_{\text{data}}}[\log D(x)]$ 這一項**不含 $G$**。而 $D(x)$ 是**逐點**判斷:
 「覆蓋度」是分布層級的性質,**判別器的介面裡沒有這個欄位。**
@@ -1261,7 +1261,7 @@ $\mathbb{E}_{p_{\text{data}}}[\log D(x)]$ 這一項**不含 $G$**。而 $D(x)$ �
 其餘三層(不必全講):
 
 2. non-saturating loss 本身已含 reverse KL(上一頁)
-3. min-max 沒有位能函數 → 繞圈 → mode hopping;$D$ 會遺忘,塌縮後缺乏回復機制
+3. min-max 沒有位能函數 → 軌跡循環 → mode hopping;$D$ 會遺忘,塌縮後缺乏回復機制
 4. 一步生成的幾何代價:只蓋單一模式的映射既平滑又便宜,塌縮是低成本解
 
 </div>
@@ -1269,11 +1269,11 @@ $\mathbb{E}_{p_{\text{data}}}[\log D(x)]$ 這一項**不含 $G$**。而 $D(x)$ �
 </v-clicks>
 
 <div v-click class="mt-5 p-3 border-l-4 border-amber-400 text-sm">
-下堂課會看到:RLHF 的 reward model 有<b>一模一樣</b>的盲點。它也是逐點評分器,永遠不會說「你的回應分布太窄了」。LLM-as-judge 同理。
+下堂課會看到:RLHF 的 reward model 有<b>一模一樣</b>的盲點。它也是逐點評分器,永遠不會指出「回應分布過窄」。LLM-as-judge 同理。
 </div>
 
 <!--
-第 1 層是本頁唯一必講的。用一句話問學生:「判別器有沒有辦法告訴生成器『你漏了一群』?」
+第 1 層是本頁唯一必講的。用一句話問學生:「判別器有沒有辦法告訴生成器『有一個 mode 沒被覆蓋』?」
 
 答案是沒有,因為它一次只看一個點。這個介面限制在 RLHF 裡原封不動地重演。
 -->
@@ -1295,7 +1295,7 @@ layout: center
 
 <div v-click class="mt-7 text-xl" style="color: var(--amber)">
 
-畫面上有任何東西告訴你「有兩群被漏掉了」嗎?
+畫面上有任何資訊指出「有兩個 mode 未被覆蓋」嗎?
 
 </div>
 
@@ -1304,8 +1304,8 @@ layout: center
 **沒有。**
 
 <div class="text-sm opacity-75 mt-3">
-被漏掉的那幾群在判別器地景上是<b>亮</b>的,但生成點看不見那份亮度。<br>
-亮著,但沒人去。這就是 mode collapse。
+未被覆蓋的那幾個 mode,在判別器地景上分數<b>偏高</b>,但生成分布不會移向該處。<br>
+判別器已標示出高分區域,生成分布仍未覆蓋。這就是 mode collapse。
 </div>
 
 </div>
@@ -1319,7 +1319,7 @@ layout: center
 <!--
 一定要現場操作,不要只放截圖。
 
-操作順序:先訓練到 collapse → 學生看到只剩兩三群 → 再疊 D 地景 → 讓他們自己發現那些空群是亮的。
+操作順序:先訓練到 collapse → 學生看到只剩兩三個 mode → 再疊 D 地景 → 讓他們自己發現未覆蓋的區域分數偏高。
 -->
 
 ---
@@ -1384,7 +1384,7 @@ R1 值得多一句:它只在真資料上罰梯度,比 GP 便宜(不用取插值�
 
 <div v-click class="mt-4 text-sm">
 
-**GAN 的現代角色**:一步生成、樣本銳利,適合「要快、對感知品質敏感、又不要求全覆蓋」的場合。
+**GAN 的現代角色**:單步生成、樣本銳利度高,適合「速度優先、對感知品質敏感、且不要求完整覆蓋」的場合。
 
 <div class="grid grid-cols-2 gap-3 mt-2 text-xs">
 <div class="p-2 rounded border border-gray-500">超解析度:SRGAN / <b>ESRGAN</b> 用對抗項補回 MSE 抹掉的高頻紋理</div>
@@ -1400,7 +1400,7 @@ R1 值得多一句:它只在真資料上罰梯度,比 GP 便宜(不用取插值�
 
 語音組多給 1 分鐘:HiFi-GAN 的任務是 mel-spectrogram → 波形。逐點 loss 對相位幾乎無能為力
 (同一個 mel 對應多種合理相位,又是一對多),所以用 multi-period + multi-scale 判別器
-加 feature matching loss。一步到位、可即時合成。這正是 GAN「快、銳利、不求密度」的用武之地。
+加 feature matching loss。一步到位、可即時合成。這正是 GAN「快、銳利度高、不需要密度」的適用場景。
 -->
 
 ---
@@ -1502,8 +1502,8 @@ class: sec-vs
 | | **VAE** | **GAN** |
 |---|---|---|
 | 評估基準 | KL(經由 MLE / ELBO),**固定** | 判別器 / JSD,**學出來的** |
-| 行為模式 | mode-**covering**:每群都蓋,代價是糊、有橋 | mode-**seeking**:蓋到的銳利,代價是漏群 |
-| 訓練 | 單一目標,穩定下降 | 兩人賽局,震盪、可能不收斂 |
+| 行為模式 | mode-**covering**:覆蓋所有 mode,代價是模糊與峰間虛假質量 | mode-**seeking**:覆蓋到的品質高,代價是模式覆蓋不足 |
+| 訓練 | 單一目標,穩定下降 | 雙人 min-max 賽局,振盪、可能不收斂 |
 | 密度 | 有下界(可比較、可做異常偵測) | 無 |
 | 潛在空間 | 有 encoder,天生做表示學習 | 無 encoder,要另外做 inversion |
 | loss 可讀性 | 直接讀 ELBO | 不可讀;健康訊號看 $D(\text{real}),D(\text{fake})\to 0.5$ |
@@ -1513,11 +1513,11 @@ class: sec-vs
 
 <div v-click class="mt-3 p-3 border-l-4 border-amber-400 text-sm">
 <b>第二次讀法</b>:把左欄遮起來,這整張表就是 ② 那條「forward KL ↔ reverse KL」軸的工程版。<br>
-<span class="opacity-70">你們在 B-1 看到的「單峰 q 追雙峰 p」,今天長成了兩個模型家族。</span>
+<span class="opacity-70">B-1 那個「單峰 q 逼近雙峰 p」的情境,在此展開成兩個模型家族。</span>
 </div>
 
 <!--
-「中心偏移高斯混合」是三個 demo 共用的對照組:VAE 搭橋、GAN 漏群、FM 乾淨分群但要多步積分。
+「中心偏移高斯混合」是三個 demo 共用的對照組:VAE 產生峰間虛假質量、GAN 模式覆蓋不足、FM 分群乾淨但需要多步積分。
 同一份資料,三種行為。時間充裕的話現場把兩個 demo 分頁並排。
 
 FID 順帶一提即可(兩組樣本過 Inception 取特徵,擬合高斯後算 Fréchet 距離),
@@ -1571,7 +1571,7 @@ DANN 值得一句:min-max 不一定要兩個 optimizer 輪流,梯度反轉層把
 「我有一個參考分布,請新分布別離它太遠。」
 
 <div class="mt-3 opacity-80">
-一旦你認出這個句型,<b>方向就是可以選的</b>:
+一旦辨識出這個句型,<b>方向就是可選的</b>:
 寫 <katex-elem expr="\mathrm{KL}(\pi_{\text{ref}}\|\pi_\theta)" /> 得到 covering,
 寫 <katex-elem expr="\mathrm{KL}(\pi_\theta\|\pi_{\text{ref}})" /> 得到 seeking。<br>
 RLHF 用的是後者,這是對齊後多樣性塌陷的直接來源。
@@ -1586,8 +1586,8 @@ RLHF 用的是後者,這是對齊後多樣性塌陷的直接來源。
 「我寫不出『像真的』的公式,那就訓練一個分類器當基準,然後騙過它。」
 
 <div class="mt-3 opacity-80">
-一旦你認出這個句型,<b>那個逐點評分的盲點就跟著搬過去了</b>:
-判別器、reward model、LLM-as-judge 都不會告訴你「你的輸出分布太窄」。
+一旦辨識出這個句型,<b>逐點評分的盲點也一併沿用過去</b>:
+判別器、reward model、LLM-as-judge 都不會指出「輸出分布過窄」。
 </div>
 
 </div>
@@ -1658,7 +1658,7 @@ layout: center
 
 <div class="p-3 border-l-4 border-amber-400">
 <b>下堂課 · 第 2 列</b><br>
-<span class="opacity-75">訓練結束了,但分布不是你要的 → 推論時滑動</span>
+<span class="opacity-75">訓練完成後調整分布 → 推論時滑動</span>
 </div>
 
 <div class="p-3 border-l-4 border-pink-400">
@@ -1696,28 +1696,28 @@ class: sec-recap
 
 ---
 
-# 作業 A · 把你自己的題目寫成機率式子
+# 作業 A · 將自己的研究題目寫成機率式子
 
 <div class="text-sm">
 
-挑**一個你現在正在做的題目**(不是假想的),完成下面四件事:
+選擇**一個正在進行中的題目**(非假想題目),完成下面四件事:
 
 </div>
 
 <div class="mt-3 text-sm">
 
-| | 要寫的東西 | 具體要求 |
+| | 要寫的內容 | 具體要求 |
 |---|---|---|
-| **A1** | 指認變數 | 哪一個是 $x$?哪一個是 $y$?哪一個是條件 $c$?各用一句話說明它在你的資料裡實際是什麼(不是抽象符號) |
-| **A2** | 寫出目標函數 | 你**實際在最小化**的那個式子。如果是現成模型微調,就寫出那個 loss 的數學形式 |
+| **A1** | 指認變數 | 哪一個是 $x$?哪一個是 $y$?哪一個是條件 $c$?各用一句話說明它在該題目的資料中實際對應什麼(非抽象符號) |
+| **A2** | 寫出目標函數 | **實際在最小化**的那個式子。如果是現成模型微調,就寫出那個 loss 的數學形式 |
 | **A3** | 定位 | 它落在那條軸的**哪一側**?給出理由,理由必須引用 A2 的式子,不能只說「感覺上」 |
-| **A4** | 預測失效模式 | 根據 A3 的位置,預測你的系統**應該**出現哪一種失效:過度平滑 / 覆蓋過廣,還是模式塌縮 / 多樣性喪失 |
+| **A4** | 預測失效模式 | 根據 A3 的位置,預測該系統**應當**出現哪一種失效:過度平滑 / 覆蓋過廣,還是模式塌縮 / 多樣性喪失 |
 
 </div>
 
 <div v-click class="mt-4 p-3 border-l-4 border-amber-400 text-sm">
-<b>A4 是這份作業真正的重點。</b>下堂課我們會把你的預測跟你系統的實際行為對照。
-預測錯了比預測對了更有價值,那代表軸上還有你沒看到的東西。
+<b>A4 是這份作業真正的重點。</b>下堂課將把各位的預測與系統的實際行為對照。
+預測錯了比預測對了更有價值,那代表軸上仍有尚未辨識的因素。
 </div>
 
 <!--
@@ -1740,17 +1740,17 @@ A2 是最多人會卡的地方。提示他們:如果你在用 HuggingFace 的 Tr
 
 <div class="p-3 rounded border border-cyan-400">
 <b>VAE 2D</b><br>
-<span class="text-xs opacity-75"><katex-elem expr="\beta=1" />。注意群與群之間有沒有東西</span>
+<span class="text-xs opacity-75"><katex-elem expr="\beta=1" />。注意 mode 之間是否出現質量</span>
 </div>
 
 <div class="p-3 rounded border border-pink-400">
 <b>GAN 2D</b><br>
-<span class="text-xs opacity-75">訓到穩定為止。數一下蓋到幾群</span>
+<span class="text-xs opacity-75">訓練至穩定。記錄覆蓋到幾個 mode</span>
 </div>
 
 <div class="p-3 rounded border border-violet-400">
 <b>Flow Matching 2D</b><br>
-<span class="text-xs opacity-75">記下你用了幾步積分</span>
+<span class="text-xs opacity-75">記錄所使用的積分步數</span>
 </div>
 
 </div>
@@ -1763,7 +1763,7 @@ A2 是最多人會卡的地方。提示他們:如果你在用 HuggingFace 的 Tr
 
 <div v-click class="mt-3 p-3 border-l-4 border-cyan-400 text-sm">
 必須用到這三個詞:<b>mode-covering</b>、<b>mode-seeking</b>、<b>逐點評分的盲點</b>。<br>
-<span class="opacity-70">用不上表示你還沒把 demo 的現象跟機制接起來,回去重看 ② 跟 ④。</span>
+<span class="opacity-70">若用不上,表示現象與機制尚未接起來,請重看 ② 與 ④。</span>
 </div>
 
 <!--
@@ -1787,14 +1787,14 @@ B 的設計意圖:強迫學生用同一組詞彙描述同一份資料上的三�
 ### 格式
 
 - **A + B 合併成一份 PDF,兩頁 A4 以內**
-- 手寫拍照可以,式子看得清楚就好
+- 可接受手寫掃描,惟式子須清晰可辨
 - B 的三張截圖算在兩頁內
 - 檔名:`姓名_lecture01.pdf`
 
 ### 繳交
 
 - **下堂課開始前**(兩天後)上傳到課程資料夾
-- 遲交仍要交;開場的對照環節會直接用到你的 A4
+- 遲交仍要交;開場的對照環節會直接用到 A4
 
 </div>
 
@@ -1861,7 +1861,7 @@ A 寫不出來的,通常不是數學不夠,是題目本身還沒定義清楚。<
 ### 三個互動 demo(作業 B 用)
 
 - <a href="/demos/divergence-2d-interactive.html" target="_blank">散度的選擇</a> — 三個散度同時量測
-- <a href="/demos/gan-2d-interactive.html" target="_blank">GAN 2D</a> — 「亮著但沒人去」
+- <a href="/demos/gan-2d-interactive.html" target="_blank">GAN 2D</a> — 未被覆蓋的高分區域
 - <a href="/demos/vae-2d-interactive.html" target="_blank">VAE 2D</a> / <a href="/demos/flow-matching-2d-interactive.html" target="_blank">Flow Matching 2D</a>
 
 ### 想深入的
@@ -1899,7 +1899,7 @@ class: text-center
 </div>
 
 <div class="mt-8 text-sm opacity-70">
-帶著你的作業來,第一件事就是把六個題目標到這條軸上。
+請攜帶作業,第一件事就是把六個題目標到這條軸上。
 </div>
 
 <!--

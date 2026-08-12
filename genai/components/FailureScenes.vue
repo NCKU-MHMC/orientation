@@ -9,7 +9,7 @@ defineProps({ verdict: { type: Boolean, default: false } })
       <div class="tag">現場 A · base model</div>
       <div class="ask">「這題的標準答案是什麼?」</div>
       <div class="say"><span>「這取決於很多因素……不同情境下可能有不同看法……」</span></div>
-      <div class="diag">什麼都想蓋住 → <b>空泛 hedging</b></div>
+      <div class="diag">試圖覆蓋全部 → <b>空泛 hedging</b></div>
     </div>
 
     <div class="mid" v-if="verdict">同一條軸<br />的兩端</div>

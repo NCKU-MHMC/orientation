@@ -48,15 +48,15 @@ const fits = computed(() =>
       <!-- 三條擬合曲線 -->
       <path v-for="f in fits" :key="f.k" :d="f.d" :stroke="f.c" stroke-width="2.4" fill="none" />
 
-      <!-- 標註:forward KL 為什麼非搭橋不可 -->
+      <!-- 標註:forward KL 為什麼必須在兩峰之間配置質量 -->
       <g v-if="annotate === 'forward'">
         <line :x1="sx(0)" :y1="sy(0.02)" :x2="sx(0)" :y2="sy(0.56)"
               stroke="#5edfff" stroke-width="1" stroke-dasharray="3 3" />
         <text :x="sx(0)" :y="sy(0.62)" fill="#5edfff" :font-size="FS.small" text-anchor="middle">
-          這裡 p≈0 卻不敢放 0
+          這裡 p≈0,q 仍不能取 0
         </text>
         <text :x="sx(0)" :y="H - 8" fill="#8fa0bc" :font-size="FS.small" text-anchor="middle">
-          ← 兩峰之間被硬搭了一座橋 →
+          ← 兩峰之間出現虛假的機率質量 →
         </text>
       </g>
 
@@ -65,7 +65,7 @@ const fits = computed(() =>
         <line :x1="sx(-1.6)" :y1="sy(0.02)" :x2="sx(-1.6)" :y2="sy(0.56)"
               stroke="#ff6b9d" stroke-width="1" stroke-dasharray="3 3" />
         <text :x="sx(-1.6)" :y="sy(0.60)" fill="#ff6b9d" :font-size="FS.small" text-anchor="middle">
-          整個峰被漏掉,不受懲罰
+          整個峰未被覆蓋,不受懲罰
         </text>
       </g>
 
