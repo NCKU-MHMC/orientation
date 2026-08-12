@@ -75,6 +75,11 @@
 .sec-gan     { --acc: var(--pink); }
 .sec-vs      { --acc: var(--amber); }
 .sec-loss    { --acc: var(--violet); }
+/* L1「選一把尺」 */
+.sec-ruler   { --acc: var(--violet); }
+.sec-compute { --acc: var(--cyan); }
+.sec-family  { --acc: var(--pink); }
+.sec-recap   { --acc: var(--amber); }
 
 /* ---------- 表格:demo 面板風格 ---------- */
 .slidev-layout table {

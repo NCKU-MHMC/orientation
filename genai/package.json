@@ -3,14 +3,20 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "slidev --open",
-    "build": "slidev build",
-    "export": "slidev export"
+    "dev": "slidev lecture-01-choose-a-ruler.md --open",
+    "dev:gan-vae": "slidev lecture-gan-vae.md --open",
+    "check": "node components/divergence-math.check.mjs && node components/chart-style.check.mjs && node components/md-render.check.mjs lecture-01-choose-a-ruler-v2.md",
+    "build": "slidev build lecture-01-choose-a-ruler.md",
+    "export": "slidev export lecture-01-choose-a-ruler.md",
+    "dev:v2": "slidev lecture-01-choose-a-ruler-v2.md --open",
+    "build:v2": "slidev build lecture-01-choose-a-ruler-v2.md",
+    "export:v2": "slidev export lecture-01-choose-a-ruler-v2.md"
   },
   "dependencies": {
     "@slidev/cli": "^52.1.0",
     "@slidev/theme-default": "latest",
     "@slidev/theme-seriph": "latest",
+    "katex": "^0.16.11",
     "vue": "^3.5.13"
   }
 }
