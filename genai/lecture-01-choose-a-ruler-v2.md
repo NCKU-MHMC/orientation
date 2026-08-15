@@ -31,7 +31,7 @@ mdc: true
 </div>
 
 <div class="abs-br m-6 text-xs opacity-50">
-下堂課:在軸上滑動 · 引導生成
+下堂課:引導生成
 </div>
 
 <!--
@@ -392,7 +392,7 @@ $D^*$ 的推導只需要對 a·log y + b·log(1−y) 求極值,y* = a/(a+b),一�
 
 <div class="text-xs opacity-60 mb-1">把左峰的權重從 50% 降到 30%,三個散度各重解一次:</div>
 
-<DivergenceFit :w="0.3" :curves="['forward', 'jsd', 'reverse']" />
+<DivergenceFit :curves="['forward', 'jsd', 'reverse']" />
 
 <div v-click class="mt-3 p-3 border-l-4 border-amber-400 text-sm">
 兩峰一旦不對稱,<b>JSD 的解會倒向大峰</b>:它放棄小峰,跟 reverse KL 收斂到同一個地方。<br>
@@ -1890,9 +1890,9 @@ class: text-center
 
 <div class="eyebrow">下堂課 · 兩天後</div>
 
-# 在軸上滑動
+# 引導生成
 
-<div class="text-lg opacity-80 mt-3">引導生成:改條件、改取樣、改 logits、改聚合、改權重、改表徵</div>
+<div class="text-lg opacity-80 mt-3">改條件、改取樣、改 logits、改聚合、改權重、改表徵</div>
 
 <div class="mt-10 max-w-3xl mx-auto">
   <SpectrumAxis :rows="1" />

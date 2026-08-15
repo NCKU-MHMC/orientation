@@ -9,7 +9,9 @@ const LANES = [
     name: '訓練目標',
     items: [
       { at: 18, text: 'forward KL · MLE', c: '#5edfff' },
-      { at: 50, text: 'JSD · GAN', c: '#ffb454' },
+      // JSD 不是軸上的一個點:兩峰權重不對稱時它會倒向大峰,對稱時才落在中間。
+      // 釘死 50% 會與第一堂「澄清四」那頁的結論矛盾,所以畫成區間。
+      { at: 50, span: 30, text: 'JSD · GAN', c: '#ffb454' },
       { at: 82, text: 'reverse KL · RLHF', c: '#ff6b9d' },
     ],
   },
@@ -49,6 +51,8 @@ const LANES = [
       <div class="lane-name">{{ lane.name }}</div>
       <div class="lane-track">
         <template v-if="i < props.rows">
+          <span v-for="it in lane.items.filter((x) => x.span)" :key="it.text + '-span'" class="span"
+                :style="{ left: it.at - it.span / 2 + '%', width: it.span + '%', background: it.c }" />
           <span v-for="it in lane.items" :key="it.text" class="chip"
                 :style="{ left: it.at + '%', color: it.c, borderColor: it.c }">{{ it.text }}</span>
         </template>
@@ -100,6 +104,15 @@ const LANES = [
   border-radius: 999px;
   background: var(--panel-deep);
   font-size: 0.78rem;
+}
+/* 有 span 的項目不是一個點,而是一段可能的落點範圍 */
+.span {
+  position: absolute;
+  top: 50%;
+  height: 22px;
+  transform: translateY(-50%);
+  border-radius: 11px;
+  opacity: 0.16;
 }
 .blank {
   position: absolute;

@@ -1,11 +1,12 @@
 <script setup>
 // 配圖 B-1:單一高斯 q 擬合雙峰 p,三個散度解出三種行為。
-import { computed } from 'vue'
-import { XS, FITS, bimodal, gauss } from './divergence-math.js'
+import { computed, ref } from 'vue'
+import { XS, FITS, bimodal, fitAll, gauss } from './divergence-math.js'
 import { typeScale } from './chart-style.js'
 
 const props = defineProps({
-  w: { type: Number, default: 0.5 },        // 左峰權重
+  // 左峰權重。給定值 = 靜態圖(既有頁面);不給 = 顯示滑桿,拖到哪即時重解到哪
+  w: { type: Number, default: null },
   curves: { type: Array, default: () => ['forward', 'jsd', 'reverse'] },
   annotate: { type: String, default: '' },  // '' | 'forward' | 'reverse'
 })
@@ -28,14 +29,30 @@ const META = {
   reverse: { c: '#ff6b9d', label: 'reverse KL', tag: 'mode-seeking' },
 }
 
-const p = computed(() => bimodal(props.w))
+const drag = ref(0.5)
+const w = computed(() => props.w ?? drag.value)
+// 公布過的兩個權重直接用 FITS(精度高、與講稿數字一致),其餘現算
+const table = computed(() => FITS[w.value] ?? fitAll(w.value))
+
+const p = computed(() => bimodal(w.value))
 const pPath = computed(() => `${line(p.value)}L${sx(XMAX)},${sy(0)}L${sx(XMIN)},${sy(0)}Z`)
-const fits = computed(() =>
-  props.curves.map((k) => {
-    const f = FITS[props.w][k]
-    return { k, ...META[k], ...f, d: line(XS.map((x) => gauss(x, f.mu, f.sigma))) }
-  }),
-)
+// 解幾乎相同的曲線會整條疊在一起,只看得到最後畫的那條(w≈0.3 時 JSD 與 reverse KL
+// 就是同一個解)。同組的線改畫成互相錯開的虛線,每條各佔 1/n 段,疊區三色交替可見。
+const DASH = 7
+const same = (a, b) => Math.abs(a.mu - b.mu) < 0.12 && Math.abs(a.sigma - b.sigma) < 0.12
+
+const fits = computed(() => {
+  const raw = props.curves.map((k) => ({ k, ...META[k], ...table.value[k] }))
+  return raw.map((f) => {
+    const group = raw.filter((g) => same(f, g))
+    return {
+      ...f,
+      d: line(XS.map((x) => gauss(x, f.mu, f.sigma))),
+      dash: group.length > 1 ? `${DASH} ${DASH * (group.length - 1)}` : null,
+      off: -DASH * group.indexOf(f),
+    }
+  })
+})
 </script>
 
 <template>
@@ -46,7 +63,8 @@ const fits = computed(() =>
       <text :x="sx(-3.6)" :y="sy(0.66)" fill="#b48cff" :font-size="FS.label">p_data</text>
 
       <!-- 三條擬合曲線 -->
-      <path v-for="f in fits" :key="f.k" :d="f.d" :stroke="f.c" stroke-width="2.4" fill="none" />
+      <path v-for="f in fits" :key="f.k" :d="f.d" :stroke="f.c" stroke-width="2.4" fill="none"
+            :stroke-dasharray="f.dash" :stroke-dashoffset="f.off" />
 
       <!-- 標註:forward KL 為什麼必須在兩峰之間配置質量 -->
       <g v-if="annotate === 'forward'">
@@ -74,11 +92,18 @@ const fits = computed(() =>
 
     <div class="fit-legend">
       <span v-for="f in fits" :key="f.k" :style="{ color: f.c }">
-        <span class="rule" :style="{ borderTopColor: f.c }" />
+        <span class="rule" :style="{ borderTopColor: f.c, borderTopStyle: f.dash ? 'dashed' : 'solid' }" />
         {{ f.label }} · μ={{ f.mu }} σ={{ f.sigma }}
         <span style="color: var(--muted)">({{ f.tag }})</span>
       </span>
     </div>
+
+    <!-- 未指定 w 時當成可拖動的展示界面:拖到哪就重解到哪 -->
+    <label v-if="props.w === null" class="fit-slider">
+      <span>左峰權重 w</span>
+      <input type="range" min="0.1" max="0.9" step="0.05" v-model.number="drag" />
+      <span class="val">{{ w.toFixed(2) }} : {{ (1 - w).toFixed(2) }}</span>
+    </label>
   </div>
 </template>
 
@@ -90,6 +115,24 @@ const fits = computed(() =>
   margin-top: 4px;
   font-family: var(--mono);
   font-size: 0.72rem;
+}
+.fit-slider {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  justify-content: center;
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.fit-slider input {
+  width: 16rem;
+  accent-color: #b48cff;
+}
+.fit-slider .val {
+  color: #b48cff;
+  min-width: 5.4rem;
 }
 .rule {
   display: inline-block;

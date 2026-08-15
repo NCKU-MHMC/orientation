@@ -1,7 +1,7 @@
 // node components/divergence-math.check.mjs
 // 驗證投影片上那三條 q 曲線的參數,與實際最小化散度解出來的一致。
 import assert from 'node:assert/strict'
-import { FITS, bimodal, fitGaussian, separationCurve } from './divergence-math.js'
+import { FITS, bimodal, fitAll, fitGaussian, separationCurve } from './divergence-math.js'
 
 for (const [w, table] of Object.entries(FITS)) {
   const p = bimodal(Number(w))
@@ -22,6 +22,15 @@ assert.ok(Math.abs(FITS[0.5].reverse.mu) > 1.2 && FITS[0.5].reverse.sigma < 0.9)
 // 不對稱時:JSD 翻邊成 mode-seeking,forward 仍然不翻
 assert.deepEqual(FITS[0.3].jsd, FITS[0.3].reverse, 'w=0.3 時 JSD 應與 reverse KL 同解')
 assert.ok(Math.abs(FITS[0.3].forward.mu) < 1.2, 'forward KL 永遠不翻邊')
+
+// 滑桿即時重算(粗網格)不能和公布的 FITS 對不上,否則同一張圖拖回去數字會跳
+for (const [w, table] of Object.entries(FITS)) {
+  const got = fitAll(Number(w))
+  for (const [which, want] of Object.entries(table)) {
+    assert.ok(Math.abs(Math.abs(got[which].mu) - Math.abs(want.mu)) < 0.06, `fitAll ${w}/${which} mu 偏離 FITS`)
+    assert.ok(Math.abs(got[which].sigma - want.sigma) < 0.06, `fitAll ${w}/${which} sigma 偏離 FITS`)
+  }
+}
 
 // JSD 有界於 log 2,分離後飽和 → 梯度消失
 const c = separationCurve()

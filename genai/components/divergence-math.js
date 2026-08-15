@@ -67,6 +67,31 @@ export const FITS = {
   },
 }
 
+/**
+ * 互動用:一次掃描同時解出三個散度的最佳高斯,依 w 快取。
+ * ponytail: 網格比 fitGaussian 粗一倍(0.08)且三個散度共用同一次掃描,
+ * 換到 ~30ms/次,滑桿拖到哪算到哪;要更高精度的定值用 FITS。
+ * mu 以 0 為中心取格點,對稱情況才會剛好解到 mu=0。
+ */
+const fitCache = new Map()
+export function fitAll(w) {
+  const key = w.toFixed(2)
+  if (fitCache.has(key)) return fitCache.get(key)
+  const p = bimodal(w)
+  const best = { forward: { val: Infinity }, jsd: { val: Infinity }, reverse: { val: Infinity } }
+  for (let i = -32; i <= 32; i++) {
+    const mu = +(i * 0.08).toFixed(2)
+    for (let j = 0; j <= 29; j++) {
+      const sigma = +(0.3 + j * 0.08).toFixed(2)
+      const q = XS.map((x) => gauss(x, mu, sigma))
+      const d = divergences(p, q)
+      for (const k in best) if (d[k] < best[k].val) best[k] = { mu, sigma, val: d[k] }
+    }
+  }
+  fitCache.set(key, best)
+  return best
+}
+
 /** 兩個等寬高斯相距 d 時的三個散度 —— 用來畫 JSD 的飽和曲線 */
 export function separationCurve(sigma = 0.5, dMax = 6, steps = 61) {
   return Array.from({ length: steps }, (_, i) => {
