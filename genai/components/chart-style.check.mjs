@@ -32,6 +32,14 @@ const CASES = [
   ['TwoTracks', 700, CONTENT.w],
   ['JsdSaturate(兩張並排)', 340, (CONTENT.w - 12) / 2],
   ['Trilemma(預設 700px)', 560, 700],
+  // 第二堂
+  ['GuidanceLadder', 700, CONTENT.w],
+  ['GuidanceShift', 700, CONTENT.w],
+  ['TempTopP', 700, CONTENT.w],
+  ['IclBayes', 700, CONTENT.w],
+  ['DdoMechanism', 700, CONTENT.w],
+  ['SemanticEntropy', 700, CONTENT.w],
+  ['Calibration', 700, CONTENT.w],
 ]
 for (const [name, vb, render] of CASES) {
   const FS = typeScale(vb, render)
@@ -62,6 +70,16 @@ const TIGHT = [
   ['④ DPM / Flow', px(700, 175), 1, 12 + 21],
   ['④ TokenBars', px(700, 205), 0, 4 + 42],
   ['② JSD 飽和', px(340, 150, (CONTENT.w - 12) / 2), 1, 4 + 22 + 8 + 18],
+  // 第二堂
+  ['L2 ① 六個介入點', px(700, 232), 1, 12],
+  ['L2 ② 係數即座標', px(700, 205), 1, 12],
+  ['L2 ② top-k/top-p', px(700, 200), 1, 12],
+  ['L2 ③ ICL 後驗', px(700, 190), 1, 12],
+  ['L2 ④ 分岔圖回放', px(700, 240), 0, 12 + 29],
+  ['L2 ④ 配圖 B-3', px(700, 236), 1, 12],
+  ['L2 ⑤ 語意熵', px(700, 218), 1, 12],
+  ['L2 ⑤ 校準', px(700, 212), 1, 12],
+  ['L2 ⑥ Punchline', px(700, 232), 1, 16 + 16],
 ]
 for (const [name, chart, notes, extra] of TIGHT) {
   const left = budget(notes, extra) - chart
