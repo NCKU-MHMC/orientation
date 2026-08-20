@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guidance 統一式操場</title>
+<style>
+  :root{
+    --bg:#0e1420; --panel:#151d2e; --panel-edge:#243350;
+    --ink:#e8edf6; --muted:#8fa0bc;
+    --amber:#ffb454; --cyan:#5edfff; --violet:#b48cff; --pink:#ff6b9d;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:system-ui,"Noto Sans TC","PingFang TC",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);padding:20px 22px 40px;
+       background-image:radial-gradient(circle at 80% -10%,#231a30 0%,var(--bg) 55%);}
+  header{max-width:1100px;margin:0 auto 16px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--pink);text-transform:uppercase}
+  h1{font-size:clamp(20px,3vw,28px);font-weight:700;margin:6px 0 4px}
+  .formula{font-family:var(--mono);font-size:15px;color:var(--amber);margin:8px 0;letter-spacing:.01em}
+  .sub{color:var(--muted);font-size:13.5px;max-width:820px;line-height:1.7}
+  .wrap{max-width:1100px;margin:0 auto}
+  .controls{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;
+    background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;
+    padding:12px 16px;margin:14px 0 10px}
+  .presets{display:flex;gap:8px;flex-wrap:wrap}
+  button{font-family:var(--sans);font-size:13px;border-radius:8px;border:1px solid var(--panel-edge);
+    background:#0f1626;color:var(--ink);padding:7px 14px;cursor:pointer}
+  button:hover{border-color:var(--pink)}
+  button.active{background:var(--pink);color:#1c0410;font-weight:700;border-color:var(--pink)}
+  .ctrl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+  input[type=range]{accent-color:var(--amber);width:180px}
+  input[type=range]:disabled{opacity:.35;cursor:not-allowed}
+  .val{font-family:var(--mono);color:var(--ink);min-width:4ch;text-align:right}
+  .toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+  .toggle input{accent-color:var(--cyan)}
+  .readout{font-family:var(--mono);font-size:13px;color:var(--muted);margin-left:auto;display:flex;gap:18px;flex-wrap:wrap}
+  .readout b{color:var(--ink);font-weight:600}
+  .lockNote{display:none;background:#2a1420;border:1px solid var(--pink);color:var(--pink);
+    border-radius:10px;padding:10px 14px;font-size:13.5px;margin-bottom:10px;font-weight:600}
+  .panel{background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;padding:14px 16px}
+  .panel h2{font-size:13.5px;font-weight:700;margin-bottom:2px}
+  .hint{font-size:12.5px;color:var(--muted);margin:2px 0 10px;line-height:1.6}
+  canvas{width:100%;height:380px;display:block;border-radius:8px;background:#0c1220}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:8px}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+  @media (max-width:720px){ .readout{margin-left:0} body{padding:14px 12px 32px} }
+
+/* 課堂 iframe 嵌入時的緊湊模式:視窗高度受限,或由 DemoFrame 掛上 body.embed */
+@media (max-height: 620px) {
+  .sub, .notes { display: none; }
+  h1 { font-size: 18px; margin: 6px 0; }
+}
+body.embed .sub, body.embed .notes { display: none; }
+body.embed h1 { font-size: 18px; margin: 6px 0; }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">生成模型入門 · 第一堂 · Demo 01</div>
+  <h1>Guidance 統一式操場</h1>
+  <div class="formula">log p_guided = log p_base + w · (log p_A − log p_B)　(再 renormalize)</div>
+  <p class="sub">temperature、CFG、contrastive decoding 都只是這一根係數 <b>w</b> 上的不同座標與不同的
+    (A,B) 選擇；唯獨 prompt engineering 動的是 base 本身，不在這根軸上。切換下方四個預設,拉動同一根滑桿。</p>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div class="presets">
+      <button data-preset="temperature">Temperature</button>
+      <button data-preset="cfg">CFG</button>
+      <button data-preset="contrastive">Contrastive Decoding</button>
+      <button data-preset="promptEng">Prompt Engineering</button>
+    </div>
+    <div class="ctrl"><label for="w">w</label>
+      <input type="range" id="w" min="-3" max="3" step="0.1" value="0">
+      <span class="val" id="wVal">0.0</span>
+    </div>
+    <label class="toggle ctrl"><input type="checkbox" id="logView"> 對數空間檢視</label>
+    <div class="readout">
+      <span>H(guided) <b id="hVal">–</b> bits</span>
+      <span>top-1 <b id="t1Val">–</b></span>
+      <span>被截斷質量 <b id="tmVal">–</b></span>
+    </div>
+  </div>
+
+  <div class="lockNote" id="lockNote">此手法不在係數的位置上 — prompt engineering 只更換了 base 的 logits,
+    (A−B) 恆為 0,w 滑桿變灰、拉動它不會改變任何輸出。</div>
+
+  <div class="panel">
+    <h2 id="panelTitle">next-token 分布(20 個候選 token)</h2>
+    <p class="hint" id="hintText"></p>
+    <canvas id="cv"></canvas>
+    <div class="legend" id="legend"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* CORE:BEGIN */
+const CORE = (function(){
+  const TOKENS = ['的','了','是','在','有','我','你','他','這','那','很','也','就','都','不','去','來','說','會','要'];
+  function bumps(n, list){
+    const a = new Array(n).fill(0);
+    for(const [c,w,h] of list) for(let i=0;i<n;i++) a[i] += h*Math.exp(-((i-c)**2)/(2*w*w));
+    return a;
+  }
+  function softmax(logits){
+    const m = Math.max(...logits);
+    const ex = logits.map(x=>Math.exp(x-m));
+    const s = ex.reduce((a,b)=>a+b,0);
+    return ex.map(x=>x/s);
+  }
+  function guidedLogits(base,A,B,w){ return base.map((b,i)=> b + w*(A[i]-B[i])); }
+  function entropy(p){ return p.reduce((s,x)=> x>1e-12 ? s - x*Math.log2(x) : s, 0); }
+  function top1(p){ return Math.max(...p); }
+  function truncatedMass(baseP,guidedP){ return baseP.reduce((s,b,i)=> s + Math.max(b-guidedP[i],0), 0); }
+
+  const ZERO = new Array(20).fill(0);
+  const TEMP_BASE = bumps(20,[[3,1.3,4],[11,1.8,2.2],[16,1,1.4]]);
+  const CFG_BASE  = bumps(20,[[7,1,5],[8,1.3,3]]);
+  const CFG_B     = bumps(20,[[2,2,2],[9,2,1.8],[14,2,2],[18,1.5,1.5]]);
+  const CD_BASE   = bumps(20,[[12,0.9,5],[13,1.1,3]]);
+  const CD_B      = bumps(20,[[12,1,3],[5,2,2],[16,2,2]]);
+  const PE_BASE   = bumps(20,[[1,1,4],[6,1.2,3]]);
+
+  const presets = {
+    temperature: { label:'Temperature', base:TEMP_BASE, A:TEMP_BASE.map(v=>v/4), B:ZERO, locked:false,
+      note:'base=一般 next-token logits。A=base/4、B=0,所以 w·(A−B)=w·base/4,w 只是在放大或縮小 base 自身的落差 — 這正是 1/T 的角色。拉到極端會整個尖化,拉到 0 附近會趨近均勻。' },
+    cfg: { label:'CFG', base:CFG_BASE, A:CFG_BASE, B:CFG_B, locked:false,
+      note:'base=條件分布 log p(x|c)(已偏向主題 token)。A=條件、B=無條件 log p(x)(較平)。w 越大,越往「條件−無條件」方向推,條件被強化,對應 classifier-free guidance 的 scale。' },
+    contrastive: { label:'Contrastive Decoding', base:CD_BASE, A:CD_BASE, B:CD_B, locked:false,
+      note:'base=強模型 log p_strong。A=強模型、B=弱模型 log p_weak。w 越大,越壓低「弱模型也會給高機率」的 token,只留下強模型獨有的信心 — 對應 contrastive decoding / DoLa 的對比強度 λ。' },
+    promptEng: { label:'Prompt Engineering', base:PE_BASE, A:ZERO, B:ZERO, locked:true,
+      note:'按下後只換了 base 的 logits(相當於換了 prompt / 條件變數 c),A=B=0,(A−B) 恆為零向量 — w 這根桿子完全動不了輸出。這就是「prompt 不在係數的位置上」的字面意思。' }
+  };
+  return { TOKENS, softmax, guidedLogits, entropy, top1, truncatedMass, presets };
+})();
+/* CORE:END */
+
+/* ============ 畫布與互動 ============ */
+const cv = document.getElementById('cv');
+let ctx, W, H;
+function resize(){
+  const dpr = window.devicePixelRatio||1;
+  W = cv.clientWidth; H = cv.clientHeight;
+  cv.width = W*dpr; cv.height = H*dpr;
+  ctx = cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  render();
+}
+window.addEventListener('resize', resize);
+
+let presetKey = 'temperature', wVal = 0, logView = false;
+const wSlider = document.getElementById('w'), wValEl = document.getElementById('wVal');
+const lockNote = document.getElementById('lockNote'), hintText = document.getElementById('hintText');
+const legend = document.getElementById('legend');
+
+function current(){ return CORE.presets[presetKey]; }
+
+function drawBars(baseP, guidedP){
+  ctx.clearRect(0,0,W,H);
+  const n = CORE.TOKENS.length, slot = W/n, pad = 20, ymax = Math.max(...baseP, ...guidedP)*1.15;
+  const yTop = 10, yBase = H-pad;
+  for(let i=0;i<n;i++){
+    const bx = i*slot+6, bw = (slot-12)/2;
+    const bh = (baseP[i]/ymax)*(yBase-yTop), gh = (guidedP[i]/ymax)*(yBase-yTop);
+    ctx.fillStyle = 'rgba(180,140,255,0.55)';
+    ctx.fillRect(bx, yBase-bh, bw, bh);
+    ctx.fillStyle = '#ffb454';
+    ctx.fillRect(bx+bw, yBase-gh, bw, gh);
+    ctx.fillStyle = '#8fa0bc'; ctx.font='11px system-ui'; ctx.textAlign='center';
+    ctx.fillText(CORE.TOKENS[i], bx+bw, H-6);
+  }
+}
+function drawLines(base,A,B){
+  ctx.clearRect(0,0,W,H);
+  const n = CORE.TOKENS.length;
+  const g = w => CORE.guidedLogits(base,A,B,w);
+  const lo = g(-3), hi = g(3), cur = g(wVal);
+  const all = [...lo,...hi,...cur];
+  const ymin = Math.min(...all), ymax = Math.max(...all), pad=20;
+  const yOf = v => H-pad - (v-ymin)/(ymax-ymin+1e-9)*(H-2*pad);
+  const xOf = i => (i+0.5)*(W/n);
+  const line = (arr,color,dash)=>{
+    ctx.setLineDash(dash||[]); ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath();
+    arr.forEach((v,i)=> i? ctx.lineTo(xOf(i),yOf(v)) : ctx.moveTo(xOf(i),yOf(v)));
+    ctx.stroke();
+  };
+  line(lo,'#b48cff',[5,4]); line(hi,'#ff6b9d',[5,4]); line(cur,'#ffb454');
+  ctx.setLineDash([]);
+}
+function render(){
+  const p = current();
+  const guided = CORE.guidedLogits(p.base,p.A,p.B,wVal);
+  const baseP = CORE.softmax(p.base), guidedP = CORE.softmax(guided);
+  if(logView){ drawLines(p.base,p.A,p.B); legend.innerHTML =
+    '<span><span class="dot" style="background:#b48cff"></span>w=−3(虛線)</span>'+
+    '<span><span class="dot" style="background:#ff6b9d"></span>w=+3(虛線)</span>'+
+    '<span><span class="dot" style="background:#ffb454"></span>目前 w(實線,應嚴格落在兩虛線之間的線性內插位置)</span>';
+  } else { drawBars(baseP,guidedP); legend.innerHTML =
+    '<span><span class="dot" style="background:rgba(180,140,255,.55)"></span>base 機率(guide 前)</span>'+
+    '<span><span class="dot" style="background:#ffb454"></span>guided 機率(renormalize 後)</span>';
+  }
+  document.getElementById('hVal').textContent = CORE.entropy(guidedP).toFixed(3);
+  document.getElementById('t1Val').textContent = (CORE.top1(guidedP)*100).toFixed(1)+'%';
+  document.getElementById('tmVal').textContent = (CORE.truncatedMass(baseP,guidedP)*100).toFixed(1)+'%';
+  hintText.textContent = p.note;
+}
+
+function setPreset(key){
+  presetKey = key;
+  const p = current();
+  document.querySelectorAll('.presets button').forEach(b=> b.classList.toggle('active', b.dataset.preset===key));
+  wSlider.disabled = p.locked;
+  lockNote.style.display = p.locked ? 'block' : 'none';
+  render();
+}
+document.querySelectorAll('.presets button').forEach(b=>
+  b.addEventListener('click', ()=> setPreset(b.dataset.preset)));
+wSlider.addEventListener('input', e=>{ wVal = +e.target.value; wValEl.textContent = wVal.toFixed(1); render(); });
+document.getElementById('logView').addEventListener('change', e=>{ logView = e.target.checked; render(); });
+
+setPreset('temperature');
+resize();
+</script>
+</body>
+</html>

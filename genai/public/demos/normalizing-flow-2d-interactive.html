@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Normalizing Flow 可逆變換 — 變數變換公式的可視化</title>
+<style>
+  :root{
+    --bg:#0e1420; --panel:#151d2e; --panel-edge:#243350;
+    --ink:#e8edf6; --muted:#8fa0bc;
+    --amber:#ffb454; --cyan:#5edfff; --violet:#b48cff; --pink:#ff6b9d;
+    --mono:'IBM Plex Mono',ui-monospace,'DejaVu Sans Mono',monospace;
+    --sans:'Noto Sans TC','PingFang TC','Microsoft JhengHei',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);padding:20px 22px 48px;
+       background-image:radial-gradient(circle at 50% -10%,#1a2033 0%,var(--bg) 55%);}
+  header,.wrap{max-width:1200px;margin:0 auto}
+  header{margin-bottom:18px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--cyan);text-transform:uppercase}
+  h1{font-size:clamp(20px,3vw,28px);font-weight:700;margin:6px 0 4px}
+  h1 code{font-family:var(--mono);color:var(--amber);font-size:.82em}
+  .sub{color:var(--muted);font-size:14px;max-width:860px;line-height:1.75}
+  .sub b{color:var(--ink);font-weight:500}
+  .sub code{font-family:var(--mono);font-size:12.5px;color:var(--cyan)}
+
+  .controls{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;
+    background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;
+    padding:12px 16px;margin:14px 0 16px}
+  .ctrl{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+  button{font-family:var(--sans);font-size:14px;border-radius:8px;border:1px solid var(--panel-edge);
+    background:#0f1626;color:var(--ink);padding:6px 12px;cursor:pointer}
+  button:hover{border-color:var(--cyan)}
+  button:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  input[type=range]{accent-color:var(--cyan);width:190px}
+  .val{font-family:var(--mono);color:var(--ink);min-width:4.5ch;text-align:right}
+  .readout{font-family:var(--mono);font-size:13px;color:var(--muted);margin-left:auto;line-height:1.7}
+  .readout b{color:var(--ink);font-weight:500}
+  .readout .hi{color:var(--cyan)}
+
+  .panels{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start}
+  .panel{background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;padding:12px 14px 14px;min-width:0}
+  .panel h2{font-size:14px;font-weight:700;margin-bottom:2px}
+  .panel h2 code{font-family:var(--mono);color:var(--cyan);font-size:.92em}
+  .panel .hint{font-size:12.5px;color:var(--muted);margin-bottom:8px;line-height:1.55;min-height:3.2em}
+  canvas{width:100%;display:block;border-radius:8px;background:#0c1220;touch-action:none}
+  canvas.pick{cursor:crosshair}
+  .out{font-family:var(--mono);font-size:12.5px;color:var(--muted);line-height:1.7;margin-top:8px;min-height:4.9em}
+  .out b{color:var(--ink);font-weight:500}
+  .out .big{color:var(--cyan);font-weight:700}
+  .out .amber{color:var(--amber)}
+
+  .note{background:var(--panel);border:1px solid var(--panel-edge);border-left:3px solid var(--cyan);
+    border-radius:10px;padding:13px 16px;font-size:13.5px;line-height:1.8;color:var(--muted);margin-top:14px}
+  .note b{color:var(--ink);font-weight:500}
+  .note code{font-family:var(--mono);font-size:12.5px;color:var(--cyan);background:#0c1220;padding:1px 5px;border-radius:4px}
+  @media (max-width:980px){ .panels{grid-template-columns:1fr} body{padding:14px 12px 40px} .panel .hint,.out{min-height:0} }
+
+/* 課堂 iframe 嵌入時的緊湊模式:視窗高度受限,或由 DemoFrame 掛上 body.embed */
+@media (max-height: 620px) {
+  .sub, .note { display: none; }
+  h1 { font-size: 18px; margin: 6px 0; }
+}
+body.embed .sub, body.embed .note { display: none; }
+body.embed h1 { font-size: 18px; margin: 6px 0; }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">生成模型入門 · 第二堂 · Lab Demo 12</div>
+  <h1>Normalizing Flow 可逆變換 — <code>x = f(z)</code> 與變數變換公式</h1>
+  <p class="sub">四層 affine coupling(RealNVP 型,scale 經 tanh 夾住)把標準 Gaussian 連續變形成雙月牙,
+    參數為預先以 forward KL(MLE)擬合後寫死的值。
+    每一層都可逆且 Jacobian 為三角矩陣,因此 <b>sample 一步完成</b>、
+    <b>logprob 精確可算</b>:log&nbsp;p<sub>x</sub>(x) = log&nbsp;p<sub>z</sub>(f<sup>−1</sup>(x)) + log|det&nbsp;J<sub>f⁻¹</sub>(x)|。
+    右圖熱圖即由這條公式逐點算出的真實密度。</p>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div class="ctrl"><label for="depth">層深 t</label>
+      <input type="range" id="depth" min="0" max="4" step="0.05" value="4"><span class="val" id="depthVal">4.00</span>
+    </div>
+    <div class="ctrl"><button id="btnSample">sample:z → x 一步映射</button>
+      <button id="btnRT">可逆性驗證(200 點 round-trip)</button></div>
+    <div class="readout" id="ro">層深 <b id="roT">4.00</b> / 4 · round-trip 誤差 <b id="roRT">—</b></div>
+  </div>
+
+  <div class="panels">
+    <div class="panel">
+      <h2>z 空間 — base 分布 <code>N(0, I)</code></h2>
+      <p class="hint">標準 Gaussian 的等高線(r = 1, 2)與座標網格。灰點為固定的一批 base 樣本,
+        中圖顯示同一批點被推往資料空間的過程。</p>
+      <canvas id="cvZ"></canvas>
+      <div class="out" id="outZ">z 端讀數:按「sample」後顯示抽出的 z。</div>
+    </div>
+    <div class="panel">
+      <h2>變形過程 — 沿層插值 <code>t ∈ [0, 4]</code></h2>
+      <p class="hint">拉動「層深」滑桿:座標網格經前 ⌊t⌋ 層完整變換、再對第 ⌊t⌋+1 層做線性插值。
+        網格不撕裂、不重疊,即為可逆性的視覺形式。</p>
+      <canvas id="cvM"></canvas>
+      <div class="out" id="outM">折線 = sample 的 z→x 軌跡,每層一個頂點。</div>
+    </div>
+    <div class="panel">
+      <h2>x 空間 — 資料與精確密度</h2>
+      <p class="hint">灰點=雙月牙資料;熱圖=模型密度 exp(log&nbsp;p(x)),由反向變換 + log-det 逐點算出。
+        點選任一位置可查詢 logprob 的兩項分解。</p>
+      <canvas id="cvX" class="pick"></canvas>
+      <div class="out" id="outX">點選左方畫布任一位置查詢 log p(x)。</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>九十秒讀法</b>:① 把層深滑桿從 0 拉到 4:Gaussian 網格連續變形成雙月牙的形狀,全程無撕裂——每層可逆,合成映射也可逆。
+    ② 按 <code>sample</code>:一次 forward 即得樣本,對照 AR demo 的逐維動畫,NF 的 sample 是一步到位。
+    ③ 在右圖資料密處與空曠處各點一次:讀數把 log&nbsp;p(x) 拆成 base 項 log&nbsp;p<sub>z</sub>(f<sup>−1</sup>(x)) 與
+    log|det&nbsp;J<sub>f⁻¹</sub>(x)| 兩項,相加即總和;熱圖就是這個量的逐點取值,精確、不需近似。
+    ④ 按「可逆性驗證」:200 個隨機點 x → z → x 的最大誤差落在浮點精度量級,可逆不是口號而是數值事實。
+    代價寫在模型結構裡:每層必須可逆、Jacobian 必須可算,表達力因此受限。
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ===CORE:BEGIN=== */
+/* 純函式區,無 DOM 依賴;normalizing-flow-2d-interactive.check.mjs 會抽出這段在 node 執行。
+   LAYERS 為預先擬合的參數:4 層 affine coupling(hidden=12),
+   以 forward KL / MLE 對雙月牙資料做梯度下降(Adam, 80k steps)後寫死。 */
+const LAYERS = [{"a":[4.375938,-0.324007,-0.076675,-0.008473,0.155834,0.183414,0.011541,-2.654681,-0.015511,-0.893605,-0.673956,-0.107238],"b":[2.579108,-0.712781,0.489491,-1.301655,-0.129831,-0.154767,-0.413473,2.24907,-0.889721,0.737887,-1.567528,0.219772],"c":[-0.054264,-0.99541,-0.660285,0.818866,0.388317,0.257934,0.707039,2.408165,0.8521,0.474401,-0.073918,-0.867818],"c0":-0.395343,"d":[-1.939764,-0.892322,-0.176025,-0.079934,0.391872,0.421073,0.009021,-0.117894,-0.100339,0.888432,-0.776409,-0.312831],"d0":0.32645},{"a":[-4.062747,0.13538,0.413773,2.871183,-0.033353,0.114422,0.627745,-9.891713,0.510185,2.356899,-0.080079,4.681994],"b":[-1.046648,-0.150456,0.558911,-1.954851,-0.808933,-0.03685,0.804031,-0.116445,-0.832652,0.505735,-0.126869,-0.003562],"c":[0.692257,0.015165,0.370961,-0.912174,0.729704,-0.174979,-0.400902,-1.113441,0.997767,0.679496,0.373126,-0.574979],"c0":-0.347998,"d":[-1.552521,-1.005331,0.530282,-1.203455,0.659652,-0.706823,0.599092,0.801055,-0.438727,1.136936,0.370491,-0.851408],"d0":-0.185735},{"a":[-0.907732,-1.301325,-0.532877,0.476456,-0.036696,0.133887,-1.083237,-3.638069,-0.001162,0.742178,1.51834,0.548277],"b":[-1.548791,1.863314,-0.526752,-0.912402,0.863155,-0.792149,-0.130005,-0.143181,0.000257,1.140092,-0.361731,-1.166901],"c":[0.337247,1.000584,-0.643261,0.761683,-1.184321,1.04932,-0.772317,-1.070114,0.001376,0.861563,0.148262,1.470757],"c0":-0.774216,"d":[-1.164373,0.653802,-0.302039,0.5468,-0.389266,0.690024,0.418255,-0.052527,-0.000547,0.843718,-1.008725,0.503238],"d0":-0.51714},{"a":[0,0.002113,0.081821,0.761323,0.084694,-0.000005,0.000239,-1.526663,0.916591,-0.140036,0.494386,-1.012912],"b":[0,0.000881,0.119846,-1.115574,0.014402,0.000003,-0.000179,1.119697,0.559621,-0.05558,-0.302304,-0.437046],"c":[0,0.002124,0.258423,-0.167624,0.022553,0.000006,-0.000122,-0.405291,-0.113467,-0.005353,0.402697,-0.049512],"c0":0.207726,"d":[0,0.000783,-0.334258,0.717059,0.091064,0.000013,0.000101,-0.51184,0.077064,-0.021049,0.03098,0.352196],"d0":0.22885}];
+const NLAYER = 4, SCLAMP = 2.0, L2PI = Math.log(2*Math.PI);
+/* coupling 條件網路:s = SCLAMP·tanh(·)(夾住 scale),t 為 shift */
+const coupleST = (li, u) => { const L = LAYERS[li]; let sr = L.c0, t = L.d0;
+  for (let j = 0; j < L.a.length; j++) { const h = Math.tanh(L.a[j]*u + L.b[j]); sr += L.c[j]*h; t += L.d[j]*h; }
+  return [SCLAMP*Math.tanh(sr/SCLAMP), t]; };
+/* 單層 forward:偶數層固定第 0 維、變換第 1 維;奇數層交替(交替遮罩) */
+const layerFwd = (li, p) => { let [a, b] = p;
+  if (li % 2 === 0) { const [s, t] = coupleST(li, a); return [a, b*Math.exp(s) + t]; }
+  const [s, t] = coupleST(li, b); return [a*Math.exp(s) + t, b]; };
+const CORE = {
+  L: NLAYER,
+  forward(z) { let p = [z[0], z[1]]; const traj = [[...p]]; let ld = 0;
+    for (let li = 0; li < NLAYER; li++) {
+      const [s] = coupleST(li, li % 2 === 0 ? p[0] : p[1]); ld += s;
+      p = layerFwd(li, p); traj.push([...p]); }
+    return { x: p, traj, logdet: ld }; },
+  inverse(x) { let a = x[0], b = x[1], ld = 0;
+    for (let li = NLAYER-1; li >= 0; li--) {
+      if (li % 2 === 0) { const [s, t] = coupleST(li, a); b = (b-t)*Math.exp(-s); ld -= s; }
+      else { const [s, t] = coupleST(li, b); a = (a-t)*Math.exp(-s); ld -= s; } }
+    return { z: [a, b], logdet: ld }; },
+  /* log|det J_{f^{-1}}(x)| */
+  logdet(x) { return this.inverse(x).logdet; },
+  /* 變數變換公式的兩項分解 */
+  logprobParts(x) { const { z, logdet } = this.inverse(x);
+    const base = -L2PI - 0.5*(z[0]*z[0] + z[1]*z[1]);
+    return { base, logdet, total: base + logdet, z }; },
+  logprob(x) { return this.logprobParts(x).total; },
+  /* 層深滑桿用的插值變換:前 ⌊t⌋ 層完整套用,對下一層線性插值,t∈[0,L] */
+  partial(z, t) { let p = [z[0], z[1]]; const k = Math.min(NLAYER, Math.floor(t)), f = t - k;
+    for (let li = 0; li < k; li++) p = layerFwd(li, p);
+    if (f > 1e-12 && k < NLAYER) { const q = layerFwd(k, p);
+      p = [p[0] + f*(q[0]-p[0]), p[1] + f*(q[1]-p[1])]; }
+    return p; },
+};
+/* ===CORE:END=== */
+
+/* ---------- 共用:座標、資料、亂數 ---------- */
+const VIEW = 3.0;
+let seed = 20260816;
+const rand = () => { seed = (seed*1664525 + 1013904223) >>> 0; return seed/4294967296; };
+const randn = () => { const u = rand() || 1e-12, v = rand();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
+const moons = n => { const a = [];
+  for (let i = 0; i < n; i++) { const t = rand()*Math.PI; let x, y;
+    if (i % 2 === 0) { x = Math.cos(t); y = Math.sin(t); } else { x = 1-Math.cos(t); y = 0.5-Math.sin(t); }
+    a.push([(x-0.5)*1.7 + randn()*0.07, (y-0.25)*1.7 + randn()*0.07]); }
+  return a; };
+const DATA = moons(500);
+const ZCLOUD = []; for (let i = 0; i < 260; i++) ZCLOUD.push([randn(), randn()]);
+
+const $ = id => document.getElementById(id);
+const CV = { Z: $('cvZ'), M: $('cvM'), X: $('cvX') };
+const CTX = {};
+const toPx = (cv, x, y) => [(x/VIEW*0.5 + 0.5)*cv.clientWidth, (0.5 - y/VIEW*0.5)*cv.clientWidth];
+const toXY = (cv, px, py) => [(px/cv.clientWidth - 0.5)*2*VIEW, (0.5 - py/cv.clientWidth)*2*VIEW];
+
+/* ---------- 密度熱圖(載入時算一次) ---------- */
+const HM_N = 130;
+const heat = document.createElement('canvas'); heat.width = HM_N; heat.height = HM_N;
+{
+  const hctx = heat.getContext('2d'), img = hctx.createImageData(HM_N, HM_N);
+  for (let r = 0; r < HM_N; r++) for (let c = 0; c < HM_N; c++) {
+    const x = -VIEW + 2*VIEW*(c + 0.5)/HM_N, y = VIEW - 2*VIEW*(r + 0.5)/HM_N;
+    const p = Math.exp(CORE.logprob([x, y]));
+    const v = Math.min(1, Math.pow(p/0.9, 0.45));       // 峰值密度 ~0.9,開根號展寬動態範圍
+    const o = (r*HM_N + c)*4;
+    img.data[o]   = 12 + v*(v < 0.5 ? 60 : 82);          // 深藍 → 青
+    img.data[o+1] = 18 + v*170;
+    img.data[o+2] = 32 + v*200;
+    img.data[o+3] = 255;
+  }
+  hctx.putImageData(img, 0, 0);
+}
+
+/* ---------- 各面板繪製 ---------- */
+let lastSample = null;   // {z, traj, x}
+let probe = null;        // {x:[..], parts}
+
+function drawZ() {
+  const cv = CV.Z, ctx = CTX.Z, w = cv.clientWidth; ctx.clearRect(0, 0, w, w);
+  ctx.strokeStyle = '#1a2740'; ctx.lineWidth = 1;
+  for (let v = -2; v <= 2; v++) { const [px] = toPx(cv, v, 0), [, py] = toPx(cv, 0, v);
+    ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, w); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(w, py); ctx.stroke(); }
+  ctx.setLineDash([4, 4]); ctx.strokeStyle = '#3a4d75';
+  for (const r of [1, 2]) { const [cx, cy] = toPx(cv, 0, 0);
+    ctx.beginPath(); ctx.arc(cx, cy, r/VIEW*0.5*w, 0, 7); ctx.stroke(); }
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#4b5c7d'; ctx.globalAlpha = 0.55;
+  for (const [x, y] of ZCLOUD) { const [px, py] = toPx(cv, x, y);
+    ctx.beginPath(); ctx.arc(px, py, 1.7, 0, 7); ctx.fill(); }
+  ctx.globalAlpha = 1;
+  if (lastSample) { const [px, py] = toPx(cv, lastSample.z[0], lastSample.z[1]);
+    ctx.fillStyle = '#ffb454'; ctx.beginPath(); ctx.arc(px, py, 4.5, 0, 7); ctx.fill(); }
+  if (probe) { const [px, py] = toPx(cv, probe.parts.z[0], probe.parts.z[1]);
+    ctx.strokeStyle = '#5edfff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(px, py, 6.5, 0, 7); ctx.stroke(); }
+}
+
+function drawM() {
+  const t = +$('depth').value;
+  const cv = CV.M, ctx = CTX.M, w = cv.clientWidth; ctx.clearRect(0, 0, w, w);
+  const NSEG = 56, STEP = 0.5, EXT = 2.5;
+  ctx.lineWidth = 1;
+  for (let g = -EXT; g <= EXT + 1e-9; g += STEP) {
+    const major = Math.abs(g - Math.round(g)) < 1e-9;
+    ctx.strokeStyle = major ? '#31456b' : '#22304d';
+    for (const vert of [true, false]) {
+      ctx.beginPath();
+      for (let i = 0; i <= NSEG; i++) { const s = -EXT + 2*EXT*i/NSEG;
+        const p = CORE.partial(vert ? [g, s] : [s, g], t);
+        const [px, py] = toPx(cv, p[0], p[1]);
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py); }
+      ctx.stroke();
+    }
+  }
+  ctx.fillStyle = '#5edfff'; ctx.globalAlpha = 0.5;
+  for (const z of ZCLOUD) { const p = CORE.partial(z, t), [px, py] = toPx(cv, p[0], p[1]);
+    ctx.beginPath(); ctx.arc(px, py, 1.7, 0, 7); ctx.fill(); }
+  ctx.globalAlpha = 1;
+  if (lastSample) {
+    ctx.strokeStyle = '#ffb454'; ctx.lineWidth = 2; ctx.beginPath();
+    lastSample.traj.forEach((p, i) => { const [px, py] = toPx(cv, p[0], p[1]);
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py); });
+    ctx.stroke();
+    lastSample.traj.forEach((p, i) => { const [px, py] = toPx(cv, p[0], p[1]);
+      ctx.fillStyle = i === 0 ? '#8fa0bc' : '#ffb454';
+      ctx.beginPath(); ctx.arc(px, py, i === lastSample.traj.length-1 ? 4.5 : 3, 0, 7); ctx.fill(); });
+    const cur = CORE.partial(lastSample.z, t), [cx, cy] = toPx(cv, cur[0], cur[1]);
+    ctx.strokeStyle = '#ffb454'; ctx.beginPath(); ctx.arc(cx, cy, 7, 0, 7); ctx.stroke();
+  }
+}
+
+function drawX() {
+  const cv = CV.X, ctx = CTX.X, w = cv.clientWidth; ctx.clearRect(0, 0, w, w);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(heat, 0, 0, w, w);
+  ctx.fillStyle = '#9aa8c4'; ctx.globalAlpha = 0.6;
+  for (const [x, y] of DATA) { const [px, py] = toPx(cv, x, y);
+    ctx.beginPath(); ctx.arc(px, py, 1.6, 0, 7); ctx.fill(); }
+  ctx.globalAlpha = 1;
+  if (lastSample) { const [px, py] = toPx(cv, lastSample.x[0], lastSample.x[1]);
+    ctx.fillStyle = '#ffb454'; ctx.beginPath(); ctx.arc(px, py, 4.5, 0, 7); ctx.fill(); }
+  if (probe) { const [px, py] = toPx(cv, probe.x[0], probe.x[1]);
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(px, py, 8, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px-13, py); ctx.lineTo(px+13, py);
+    ctx.moveTo(px, py-13); ctx.lineTo(px, py+13); ctx.stroke(); }
+}
+
+function drawAll() { drawZ(); drawM(); drawX(); }
+const fmt = (v, d=3) => v.toFixed(d);
+
+/* ---------- 互動 ---------- */
+$('depth').addEventListener('input', () => {
+  const t = +$('depth').value;
+  $('depthVal').textContent = t.toFixed(2);
+  $('roT').textContent = t.toFixed(2);
+  drawM();
+});
+
+$('btnSample').addEventListener('click', () => {
+  const z = [randn(), randn()];
+  const { x, traj } = CORE.forward(z);
+  lastSample = { z, traj, x };
+  $('outZ').innerHTML = `z ~ N(0, I) 抽出:<b>(${fmt(z[0],2)}, ${fmt(z[1],2)})</b><br>` +
+    `log p<sub>z</sub>(z) = <b>${fmt(-L2PI - 0.5*(z[0]**2 + z[1]**2))}</b>`;
+  const segs = traj.map((p, i) => `L${i}:(${fmt(p[0],2)}, ${fmt(p[1],2)})`).join(' → ');
+  $('outM').innerHTML = `軌跡 ${segs}`;
+  $('outX').innerHTML = `sample 落點 x = <b>(${fmt(x[0],2)}, ${fmt(x[1],2)})</b> · ` +
+    `一次 forward 完成,無逐維迭代。`;
+  drawAll();
+});
+
+$('btnRT').addEventListener('click', () => {
+  let worst = 0;
+  for (let i = 0; i < 200; i++) {
+    const x = [rand()*2*VIEW - VIEW, rand()*2*VIEW - VIEW];
+    const { z } = CORE.inverse(x);
+    const { x: xr } = CORE.forward(z);
+    worst = Math.max(worst, Math.abs(xr[0]-x[0]), Math.abs(xr[1]-x[1]));
+  }
+  $('roRT').innerHTML = `<span class="hi">${worst.toExponential(2)}</span>`;
+  $('outX').innerHTML = `可逆性驗證:200 個隨機 x 經 x → z → x 的最大誤差 ` +
+    `<b>${worst.toExponential(2)}</b>,落在浮點精度量級。`;
+});
+
+CV.X.addEventListener('pointerdown', ev => {
+  const r = CV.X.getBoundingClientRect();
+  const x = toXY(CV.X, ev.clientX - r.left, ev.clientY - r.top);
+  const parts = CORE.logprobParts(x);
+  probe = { x, parts };
+  $('outX').innerHTML =
+    `x = (${fmt(x[0],2)}, ${fmt(x[1],2)}) → z = (${fmt(parts.z[0],2)}, ${fmt(parts.z[1],2)})<br>` +
+    `base 項 log p<sub>z</sub>(f⁻¹(x)) = <b>${fmt(parts.base)}</b><br>` +
+    `log|det J<sub>f⁻¹</sub>(x)| = <b>${fmt(parts.logdet)}</b><br>` +
+    `總和 log p(x) = <span class="big">${fmt(parts.total)}</span>`;
+  drawZ(); drawX();
+});
+
+function resize() {
+  for (const k of ['Z', 'M', 'X']) { const cv = CV[k], dpr = window.devicePixelRatio || 1, w = cv.clientWidth;
+    cv.width = w*dpr; cv.height = w*dpr; cv.style.height = w + 'px';
+    CTX[k] = cv.getContext('2d'); CTX[k].setTransform(dpr, 0, 0, dpr, 0, 0); }
+  drawAll();
+}
+window.addEventListener('resize', resize);
+resize();
+</script>
+</body>
+</html>

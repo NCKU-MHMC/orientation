@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GAN 互動教學:2D 玩具資料</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.22.0/tf.min.js"></script>
+<script src="vendor/tf.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -64,6 +64,14 @@
   .note b{color:var(--ink);font-weight:500}
   .loading{font-family:var(--mono);font-size:12px;color:var(--muted);padding:8px 0}
   @media (max-width:720px){ .readout{margin-left:0} body{padding:14px 12px 40px} }
+
+/* 課堂 iframe 嵌入時的緊湊模式:視窗高度受限,或由 DemoFrame 掛上 body.embed */
+@media (max-height: 620px) {
+  .sub, .notes { display: none; }
+  h1 { font-size: 18px; margin: 6px 0; }
+}
+body.embed .sub, body.embed .notes { display: none; }
+body.embed h1 { font-size: 18px; margin: 6px 0; }
 </style>
 </head>
 <body>

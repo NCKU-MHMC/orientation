@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Normalizing Flow 互動教學:2D 玩具資料</title>
+<script src="vendor/tf.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e1420; --panel:#151d2e; --panel-edge:#243350;
+    --grid:#20304b; --ink:#e8edf6; --muted:#8fa0bc;
+    --amber:#ffb454; --cyan:#5edfff; --violet:#b48cff; --pink:#ff6b9d;
+    --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans TC',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);padding:20px 22px 48px;
+       background-image:radial-gradient(circle at 50% -10%,#1d1a33 0%,var(--bg) 55%);}
+  header{max-width:1200px;margin:0 auto 18px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--cyan);text-transform:uppercase}
+  h1{font-size:clamp(20px,3vw,28px);font-weight:700;margin:6px 0 4px}
+  h1 .nf{color:var(--cyan)}
+  .sub{color:var(--muted);font-size:13.5px;max-width:790px;line-height:1.7}
+
+  .wrap{max-width:1200px;margin:0 auto}
+  .controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;
+    background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;
+    padding:12px 16px;margin:14px 0 16px}
+  .ctrl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+  .ctrl label{white-space:nowrap}
+  select,button{font-family:var(--sans);font-size:13px;border-radius:8px;border:1px solid var(--panel-edge);
+    background:#0f1626;color:var(--ink);padding:6px 10px;cursor:pointer}
+  button:hover{border-color:var(--cyan)}
+  button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  button.primary{background:var(--cyan);color:#062030;font-weight:700;border:none;padding:7px 16px}
+  input[type=range]{accent-color:var(--cyan);width:110px}
+  #kSlide{width:150px}
+  .val{font-family:var(--mono);color:var(--ink);min-width:3ch;text-align:right}
+  .toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+  .toggle input{accent-color:var(--amber)}
+  .readout{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:auto;display:flex;gap:16px;flex-wrap:wrap}
+  .readout b{color:var(--ink);font-weight:500}
+  .readout .r-loss b{color:var(--amber)} .readout .r-k b{color:var(--cyan)}
+
+  .panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+  .panel{background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;padding:12px 14px 14px;min-width:0}
+  .panel h2{font-size:13.5px;font-weight:700;letter-spacing:.03em;margin-bottom:2px}
+  .panel .hint{font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.5}
+  canvas{width:100%;display:block;border-radius:8px;background:#0c1220;touch-action:none}
+  #densCv{cursor:crosshair}
+  .probeInfo{font-family:var(--mono);font-size:11.5px;color:var(--pink);margin-top:6px;min-height:15px}
+
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+  .notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:16px}
+  .note{background:var(--panel);border:1px solid var(--panel-edge);border-left:3px solid var(--cyan);
+    border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.8;color:var(--muted)}
+  .note h3{font-size:13.5px;color:var(--ink);margin-bottom:6px}
+  .note.n2{border-left-color:var(--pink)} .note.n3{border-left-color:var(--violet)}
+  .note code{font-family:var(--mono);font-size:12px;color:var(--cyan);background:#0c1220;padding:1px 5px;border-radius:4px}
+  .note b{color:var(--ink);font-weight:500}
+  .loading{font-family:var(--mono);font-size:12px;color:var(--muted);padding:8px 0}
+  @media (max-width:720px){ .readout{margin-left:0} body{padding:14px 12px 40px} }
+
+/* 課堂 iframe 嵌入時的緊湊模式:視窗高度受限,或由 DemoFrame 掛上 body.embed */
+@media (max-height: 620px) {
+  .sub, .notes, .note { display: none; }
+  h1 { font-size: 18px; margin: 6px 0; }
+}
+body.embed .sub, body.embed .notes, body.embed .note { display: none; }
+body.embed h1 { font-size: 18px; margin: 6px 0; }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">生成模型入門 · 第二堂 · Lab Demo 12</div>
+  <h1><span class="nf">Normalizing Flow</span> 互動教學 — 可逆變換與精確密度</h1>
+  <p class="sub">模型是一疊 <b>coupling layer</b>(RealNVP 式):每層把座標切成兩半,一半原封不動、
+    另一半做仿射變換 <span style="font-family:var(--mono)">x_b = z_b·e^{s(z_a)} + t(z_a)</span>,兩層之間交換角色。
+    因為每層都可逆、Jacobian 是三角的,這個家族<b style="color:var(--pink)">同時擁有一步 sample 與一步精確 logprob</b>——
+    右邊的密度熱圖就是 logprob 介面的實物,GAN 與 VAE 都畫不出這張圖。
+    拖動「層」滑桿,看高斯如何被一層層折成資料分布。</p>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div class="ctrl"><label for="tgtSel">目標分布 p<sub>data</sub></label>
+      <select id="tgtSel">
+        <option value="moons" selected>雙月 Two Moons</option>
+        <option value="ring">圓環 Ring</option>
+        <option value="mixture">高斯混合 ×6</option>
+        <option value="mixtureOff">高斯混合 ×6(中心偏移)</option>
+        <option value="spiral">螺旋 Spiral</option>
+      </select>
+    </div>
+    <div class="ctrl"><label for="numL">層數</label>
+      <select id="numL">
+        <option value="2">2</option>
+        <option value="4" selected>4</option>
+        <option value="8">8</option>
+      </select>
+    </div>
+    <div class="ctrl"><label for="kSlide">層 k</label>
+      <input type="range" id="kSlide" min="0" max="4" step="0.01" value="0">
+      <span class="val" id="kVal">0.0</span>
+    </div>
+    <label class="toggle ctrl"><input type="checkbox" id="autoK" checked> 自動播放</label>
+    <div class="ctrl"><label for="speed">訓練速度</label>
+      <input type="range" id="speed" min="1" max="12" step="1" value="4">
+      <span class="val" id="speedVal">4</span>
+    </div>
+    <div class="ctrl">
+      <button class="primary" id="playBtn">▶ 開始訓練</button>
+      <button id="resetBtn">↺ 重設模型</button>
+    </div>
+    <div class="readout">
+      <span>step <b id="stepVal">0</b></span>
+      <span class="r-k">k <b id="kRead">0</b>/<span id="LRead">4</span></span>
+      <span class="r-loss">NLL <b id="lossVal">–</b> bits/dim</span>
+    </div>
+  </div>
+
+  <div class="loading" id="loading">正在初始化 TensorFlow.js…</div>
+
+  <div class="panels">
+    <div class="panel">
+      <h2>可逆變換:N(0,I) →(前 k 層)→ p<sub>data</sub></h2>
+      <p class="hint">青色網格=z 空間的規則座標網,被前 k 層變換扭曲。彩色粒子=一批 z 樣本被推到第 k 層的位置;k=L 時就是<b>生成樣本</b>(一步完成)。注意網格會拉伸、彎折,但<b>永不撕裂或重疊</b>——這就是可逆的意思。</p>
+      <canvas id="flowCv"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:linear-gradient(90deg,#5edfff,#ff6bd6)"></span>生成樣本(依 z 角度著色)</span>
+        <span><span class="dot" style="background:#3a4a68"></span>目標資料</span>
+        <span><span class="dot" style="background:#2f5f7a"></span>被扭曲的 z 網格</span>
+        <span><span class="dot" style="background:var(--pink)"></span>探測點的反推路徑</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>精確密度 log p(x)(可點擊/拖曳)</h2>
+      <p class="hint">每一格都是一次 inverse pass 算出的<b>精確</b> log p(x)(change of variable),不是判別器分數、也不是 ELBO。<b>點擊任一位置</b>呼叫 logprob 介面:讀出數值,並在左圖畫出 x 逐層反推回 z 的路徑。熱圖跟隨 k 滑桿,顯示前 k 層的 pushforward 密度。</p>
+      <canvas id="densCv"></canvas>
+      <div class="probeInfo" id="probeInfo">點擊熱圖任一位置 → 呼叫 logprob(x)</div>
+      <div class="legend">
+        <span><span class="dot" style="background:#3b2d6e"></span>低 → <span class="dot" style="background:var(--violet)"></span> → <span class="dot" style="background:#ffd27a"></span>高</span>
+        <label class="toggle"><input type="checkbox" id="showData" checked> 疊資料點</label>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>精確 NLL 損失</h2>
+      <p class="hint">直接最小化 <span style="font-family:var(--mono)">−log p<sub>θ</sub>(x)</span>(forward KL / MLE),無對抗、無下界。這條曲線的數值<b>本身有意義</b>:換算成 bits 後可跨模型比較——與 AR 的 BPB 是同一把尺,GAN 的 loss 做不到這件事。</p>
+      <canvas id="lossCv"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--amber)"></span>NLL(bits/dim)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3>① 兩個介面都精確且快 — 但錢從哪來?</h3>
+      介面矩陣中 NF 一列:logprob <b>精確</b>(change of variable)、sample <b>一步</b>。coupling layer 之所以兩向都快,
+      是因為條件變數(不動的那一半)在正向、反向都直接可得;代價是單層表達力弱,必須<b>堆深</b>(把層數調成 2 試試——蓋不住雙月)。
+      對照 MAF/IAF:它們單層強,但序列化的帳必落在 sample 或 logprob 其中一邊。
+      再對照 GAN demo:判別器地景<b>不是</b>密度、給不出數值;VAE 只有 ELBO 下界。這張熱圖是全系列 demo 裡唯一的精確密度。
+    </div>
+    <div class="note n2">
+      <h3>② 招牌病:拓撲稅</h3>
+      可逆連續變換是<b>同胚</b>:單連通的高斯不可能被「剪開」成分離的群、也不可能被「戳洞」成圓環。
+      選<b>混合(中心偏移)</b>:密度熱圖上各群之間必然留下<b>細絲</b>——模型付出的拓撲稅,細絲上會取樣出落在群外的點。
+      選<b>圓環</b>:中心必然漏出一道無法歸零的密度。左圖的網格永不撕裂,正是同一件事的另一面。
+      四家同題對照:VAE 搭橋(糊)、GAN 漏群(塌縮)、FM 多步搬運(慢)、NF 留細絲——各自是其尺與介面代價的必然結果。
+    </div>
+    <div class="note n3">
+      <h3>③ 建議實驗流程</h3>
+      1) 雙月、層數 <b>2 → 8</b>:親手驗證「表達力用深度買」。<br>
+      2) <b>混合(中心偏移)</b>與<b>圓環</b>:找出熱圖上的細絲與漏縫(病灶在密度圖上比在樣本上清楚)。<br>
+      3) 拖 k 滑桿,對照 FM demo 的 t 滑桿:NF 是<b>離散層的堆疊</b>、FM 是<b>連續時間的場</b>——機率流 ODE 正是層數趨於無窮的連續極限,兩個滑桿拖的是同一件事的兩種粒度。
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ============ 全域狀態 ============ */
+let VIEW = 3.0;
+const H = 48, BS = 256, P = 240, SCLAMP = 2.0;
+const GEXT = 2.75, GLINES = 13, GPTS = 33;      // z 網格:線數、每線點數
+const G = 44;                                    // 熱圖解析度
+let Lnum = 4;
+let layers = null, optimizer = null;
+let tgtName = 'moons', tgtData = null;
+let baseZ = null, partC = null;                  // 固定一批 z 粒子與著色
+let gridPts = null, gridN = 0, NPTS = 0;
+let cache = null;                                // (Lnum+1)×NPTS×2 各層位置
+let kf = 0, autoK = true, playing = false, stepsPerFrame = 4;
+let step = 0, lossHist = [], frame = 0;
+let probe = null, probePath = null, probeLogp = null, probeK = -1;
+let hmCv = null, htx = null, hmK = -1, hmDirty = true;
+
+/* ============ 資料集(與前三個 demo 相同) ============ */
+const gauss = () => {
+  const u = Math.random()||1e-9, v = Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+};
+function makeDataset(name, n = 1500){
+  const pts = new Float32Array(n*2), c = new Float32Array(n);
+  for(let i=0;i<n;i++){
+    let x=0,y=0,ci=0;
+    if(name==='gauss'){
+      x=gauss(); y=gauss(); ci=Math.atan2(y,x)/(2*Math.PI)+0.5;
+    }else if(name==='moons'){
+      const t = Math.random()*Math.PI, up = i%2===0;
+      if(up){ x=Math.cos(t); y=Math.sin(t); ci=t/Math.PI*0.5; }
+      else  { x=1-Math.cos(t); y=0.5-Math.sin(t); ci=0.5+t/Math.PI*0.5; }
+      x=(x-0.5)*1.7; y=(y-0.25)*1.7; x+=gauss()*0.07; y+=gauss()*0.07;
+    }else if(name==='ring'){
+      const th = Math.random()*2*Math.PI, r = 1.9+gauss()*0.09;
+      x=r*Math.cos(th); y=r*Math.sin(th); ci=th/(2*Math.PI);
+    }else if(name==='mixture'){
+      const k = i%6, th = k/6*2*Math.PI;
+      x=1.9*Math.cos(th)+gauss()*0.17; y=1.9*Math.sin(th)+gauss()*0.17; ci=k/6;
+    }else if(name==='mixtureOff'){
+      const r = 3.0, k = i%6, th = k/6*2*Math.PI;
+      x=r*Math.cos(th)-r+gauss()*0.12; y=r*Math.sin(th)+gauss()*0.12; ci=k/6;
+    }else{ // spiral
+      const t = Math.random();
+      const th = 1.9*2*Math.PI*t, r = 0.25+2.0*t;
+      x=r*Math.cos(th)+gauss()*0.05; y=r*Math.sin(th)+gauss()*0.05; ci=t;
+    }
+    pts[2*i]=x; pts[2*i+1]=y; c[i]=ci;
+  }
+  return {pts, c, n};
+}
+
+function setDistributions(){
+  VIEW = tgtName==='mixtureOff' ? 6.6 : 3.0;
+  tgtData = makeDataset(tgtName);
+  const base = makeDataset('gauss', P);
+  baseZ = base.pts; partC = base.c;
+  buildGridPoints();
+  probe = null; probePath = null; probeK = -1;
+  document.getElementById('probeInfo').textContent = '點擊熱圖任一位置 → 呼叫 logprob(x)';
+}
+
+/* z 空間規則網格:GLINES 條直線 × 2 方向,每條 GPTS 個點 */
+function buildGridPoints(){
+  gridN = 2*GLINES*GPTS;
+  NPTS = gridN + P;
+  gridPts = new Float32Array(gridN*2);
+  let o = 0;
+  for(let l=0;l<GLINES;l++){                       // 垂直線 x=const
+    const gx = -GEXT + 2*GEXT*l/(GLINES-1);
+    for(let p=0;p<GPTS;p++){
+      gridPts[o++] = gx;
+      gridPts[o++] = -GEXT + 2*GEXT*p/(GPTS-1);
+    }
+  }
+  for(let l=0;l<GLINES;l++){                       // 水平線 y=const
+    const gy = -GEXT + 2*GEXT*l/(GLINES-1);
+    for(let p=0;p<GPTS;p++){
+      gridPts[o++] = -GEXT + 2*GEXT*p/(GPTS-1);
+      gridPts[o++] = gy;
+    }
+  }
+}
+
+/* ============ 模型:coupling layers ============ */
+const dense = (ni,no,std)=>({ W: tf.variable(tf.randomNormal([ni,no],0,std!==undefined?std:Math.sqrt(1.4/ni))), b: tf.variable(tf.zeros([no])) });
+const fw = (l,x)=> x.matMul(l.W).add(l.b);
+function buildModel(){
+  disposeModel();
+  layers = [];
+  for(let i=0;i<Lnum;i++){
+    layers.push({ l1:dense(1,H), l2:dense(H,H), out:dense(H,2,0) });  // out 零初始化 → 初始為恆等變換
+  }
+  optimizer = tf.train.adam(3e-3);
+  step = 0; lossHist = [];
+  hmK = -1; hmDirty = true; probeK = -1;
+}
+function disposeModel(){
+  if(!layers) return;
+  for(const L of layers) for(const k in L){ L[k].W.dispose(); L[k].b.dispose(); }
+  layers = null;
+}
+const varList = ()=> layers.flatMap(L=>Object.values(L)).flatMap(l=>[l.W,l.b]);
+
+function couplingNet(i, a){                       // a:[n,1] 條件座標 → [s,t] 各 [n,1]
+  const L = layers[i];
+  let h = tf.tanh(fw(L.l1, a)); h = tf.tanh(fw(L.l2, h));
+  const o = fw(L.out, h);
+  const s = tf.tanh(o.slice([0,0],[-1,1])).mul(SCLAMP);
+  const t = o.slice([0,1],[-1,1]);
+  return [s,t];
+}
+/* 第 i 層:i 為偶數時 x 座標不動、變 y;奇數時反之 */
+function fwdLayer(u, i){                          // z→x 方向
+  const pIdx = i%2;
+  const p = u.slice([0,pIdx],[-1,1]), a = u.slice([0,1-pIdx],[-1,1]);
+  const [s,t] = couplingNet(i, p);
+  const a2 = a.mul(tf.exp(s)).add(t);
+  return [ pIdx===0 ? tf.concat([p,a2],1) : tf.concat([a2,p],1), s ];
+}
+function invLayer(v, i){                          // x→z 方向
+  const pIdx = i%2;
+  const p = v.slice([0,pIdx],[-1,1]), a = v.slice([0,1-pIdx],[-1,1]);
+  const [s,t] = couplingNet(i, p);
+  const a0 = a.sub(t).mul(tf.exp(s.neg()));
+  return [ pIdx===0 ? tf.concat([p,a0],1) : tf.concat([a0,p],1), s ];
+}
+
+/* ============ 訓練:精確 NLL(forward KL / MLE) ============ */
+function sampleRows(D, bs){
+  const b = new Float32Array(bs*2);
+  for(let i=0;i<bs;i++){ const j=(Math.random()*D.n)|0; b[2*i]=D.pts[2*j]; b[2*i+1]=D.pts[2*j+1]; }
+  return b;
+}
+function trainStep(){
+  const xb = tf.tensor2d(sampleRows(tgtData,BS),[BS,2]);
+  const cost = optimizer.minimize(()=>{
+    let u = xb, sum = tf.zeros([BS,1]);
+    for(let i=Lnum-1;i>=0;i--){ const r = invLayer(u,i); u = r[0]; sum = sum.add(r[1]); }
+    const logN = u.square().sum(-1,true).mul(-0.5).sub(Math.log(2*Math.PI));
+    return logN.sub(sum).neg().mean();            // NLL in nats
+  }, true, varList());
+  const L = cost.dataSync()[0];
+  cost.dispose(); xb.dispose();
+  step++;
+  return L / (2*Math.LN2);                        // → bits/dim
+}
+
+/* ============ 各層位置快取(網格 + 粒子) ============ */
+function recomputeCache(){
+  cache = cache && cache.length===(Lnum+1)*NPTS*2 ? cache : new Float32Array((Lnum+1)*NPTS*2);
+  let pos = new Float32Array(NPTS*2);
+  pos.set(gridPts, 0); pos.set(baseZ, gridN*2);
+  cache.set(pos, 0);
+  for(let i=0;i<Lnum;i++){
+    pos = tf.tidy(()=>{
+      const u = tf.tensor2d(pos,[NPTS,2]);
+      return fwdLayer(u,i)[0].dataSync();
+    });
+    cache.set(pos, (i+1)*NPTS*2);
+  }
+}
+
+/* ============ 熱圖:前 k 層 pushforward 的精確密度 ============ */
+const cmapStops = [
+  [0.00, 12, 18, 32],
+  [0.32, 59, 45, 110],
+  [0.62, 180,140,255],
+  [0.84, 255,107,157],
+  [1.00, 255,210,122]
+];
+function cmap(v){
+  v = Math.min(1, Math.max(0, v));
+  for(let i=1;i<cmapStops.length;i++){
+    if(v <= cmapStops[i][0]){
+      const a=cmapStops[i-1], b=cmapStops[i], t=(v-a[0])/(b[0]-a[0]);
+      return [ a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t, a[3]+(b[3]-a[3])*t ];
+    }
+  }
+  return [255,210,122];
+}
+function recomputeHeatmap(kcur){
+  const xs = new Float32Array(G*G*2), ext = VIEW*0.98;
+  for(let j=0;j<G;j++)for(let i=0;i<G;i++){
+    xs[2*(j*G+i)]   = -ext + 2*ext*i/(G-1);
+    xs[2*(j*G+i)+1] =  ext - 2*ext*j/(G-1);       // 畫布列 0 = 上方 = +y
+  }
+  const lp = tf.tidy(()=>{
+    let u = tf.tensor2d(xs,[G*G,2]), sum = tf.zeros([G*G,1]);
+    for(let i=kcur-1;i>=0;i--){ const r = invLayer(u,i); u = r[0]; sum = sum.add(r[1]); }
+    const logN = u.square().sum(-1,true).mul(-0.5).sub(Math.log(2*Math.PI));
+    return logN.sub(sum).dataSync();
+  });
+  let mx = -1e9; for(let i=0;i<G*G;i++) mx = Math.max(mx, lp[i]);
+  const img = htx.createImageData(G,G), RNG = 7.5;
+  for(let i=0;i<G*G;i++){
+    const v = (lp[i]-(mx-RNG))/RNG;
+    const [r,g,b] = cmap(v);
+    img.data[4*i]=r; img.data[4*i+1]=g; img.data[4*i+2]=b; img.data[4*i+3]=255;
+  }
+  htx.putImageData(img,0,0);
+  hmK = kcur; hmDirty = false;
+}
+
+/* ============ 探測:呼叫 logprob 介面,記錄逐層反推路徑 ============ */
+function recomputeProbe(kcur){
+  if(!probe){ probePath=null; return; }
+  const path = new Float32Array((kcur+1)*2);
+  let px=probe[0], py=probe[1], sumS=0;
+  path[0]=px; path[1]=py;
+  for(let i=kcur-1;i>=0;i--){
+    const r = tf.tidy(()=>{
+      const u = tf.tensor2d([px,py],[1,2]);
+      const [v,s] = invLayer(u,i);
+      return [v.dataSync(), s.dataSync()];
+    });
+    px=r[0][0]; py=r[0][1]; sumS+=r[1][0];
+    const o = 2*(kcur-i);
+    path[o]=px; path[o+1]=py;
+  }
+  probeLogp = -0.5*(px*px+py*py) - Math.log(2*Math.PI) - sumS;
+  probePath = path; probeK = kcur;
+  document.getElementById('probeInfo').textContent =
+    `log p(x) = ${probeLogp.toFixed(3)} nats · 反推 z = (${px.toFixed(2)}, ${py.toFixed(2)}) · 經過 ${kcur} 層 inverse`;
+}
+
+/* ============ 畫布工具 ============ */
+function setupCanvas(cv, square=true){
+  const dpr = window.devicePixelRatio||1;
+  const w = cv.clientWidth, h = square? w : Math.round(w*0.62);
+  cv.width = w*dpr; cv.height = h*dpr;
+  cv.style.height = h+'px';
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  return ctx;
+}
+const flowCv = document.getElementById('flowCv');
+const densCv = document.getElementById('densCv');
+const lossCv = document.getElementById('lossCv');
+let ftx, dtx, xtx;
+function resizeAll(){ ftx=setupCanvas(flowCv); dtx=setupCanvas(densCv); xtx=setupCanvas(lossCv,false); draw(); }
+window.addEventListener('resize', ()=>resizeAll());
+
+const toPx = (cv,x,y)=>[ (x/VIEW*0.5+0.5)*cv.clientWidth, (0.5-y/VIEW*0.5)*cv.clientWidth ];
+const toXY = (cv,px,py)=>[ (px/cv.clientWidth-0.5)*2*VIEW, (0.5-py/cv.clientWidth)*2*VIEW ];
+const hue = c => `hsl(${190+c*150},85%,65%)`;
+
+function drawAxes(ctx,cv){
+  const w=cv.clientWidth;
+  ctx.strokeStyle='#1a2740'; ctx.lineWidth=1;
+  const vmax = Math.ceil(VIEW)-1;
+  for(let v=-vmax;v<=vmax;v++){
+    const [px]=toPx(cv,v,0), [,py]=toPx(cv,0,v);
+    ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,w);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(w,py);ctx.stroke();
+  }
+  ctx.strokeStyle='#2b3d5e';
+  const [cx]=toPx(cv,0,0), [,cy]=toPx(cv,0,0);
+  ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,w);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(w,cy);ctx.stroke();
+}
+
+/* ============ 主繪圖 ============ */
+function posAt(sIdx, i){ const o=(sIdx*NPTS+i)*2; return [cache[o], cache[o+1]]; }
+function draw(){
+  if(!layers||!cache) return;
+  const kcl = Math.min(Lnum, Math.max(0, kf));
+  const s0 = Math.floor(kcl), s1 = Math.min(Lnum, s0+1), a = kcl-s0;
+  const kcur = Math.round(kcl);
+
+  /* ---- 可逆變換面板 ---- */
+  const w = flowCv.clientWidth;
+  ftx.clearRect(0,0,w,w);
+  drawAxes(ftx, flowCv);
+  // 目標資料(暗色錨點)
+  ftx.fillStyle='#3a4a68';
+  for(let i=0;i<600;i++){
+    const [px,py]=toPx(flowCv,tgtData.pts[2*i],tgtData.pts[2*i+1]);
+    ftx.beginPath();ftx.arc(px,py,1.6,0,7);ftx.fill();
+  }
+  // 被扭曲的 z 網格(兩個快取層之間線性內插)
+  ftx.strokeStyle='#2f6f8f'; ftx.lineWidth=1; ftx.globalAlpha=0.5;
+  for(let l=0;l<2*GLINES;l++){
+    ftx.beginPath();
+    for(let p=0;p<GPTS;p++){
+      const idx = l*GPTS+p;
+      const [xA,yA]=posAt(s0,idx), [xB,yB]=posAt(s1,idx);
+      const [px,py]=toPx(flowCv, xA+(xB-xA)*a, yA+(yB-yA)*a);
+      p?ftx.lineTo(px,py):ftx.moveTo(px,py);
+    }
+    ftx.stroke();
+  }
+  ftx.globalAlpha=1;
+  // 粒子(生成樣本)
+  for(let i=0;i<P;i++){
+    const idx = gridN+i;
+    const [xA,yA]=posAt(s0,idx), [xB,yB]=posAt(s1,idx);
+    const [px,py]=toPx(flowCv, xA+(xB-xA)*a, yA+(yB-yA)*a);
+    ftx.fillStyle=hue(partC[i]); ftx.globalAlpha=0.9;
+    ftx.beginPath();ftx.arc(px,py,2.3,0,7);ftx.fill();
+  }
+  ftx.globalAlpha=1;
+  // 探測點的反推路徑:x →(inverse)→ z
+  if(probePath){
+    ftx.strokeStyle='#ff6b9d'; ftx.lineWidth=2;
+    ftx.beginPath();
+    for(let s=0;s<probePath.length/2;s++){
+      const [px,py]=toPx(flowCv,probePath[2*s],probePath[2*s+1]);
+      s?ftx.lineTo(px,py):ftx.moveTo(px,py);
+    }
+    ftx.stroke();
+    const n=probePath.length/2-1;
+    const [qx,qy]=toPx(flowCv,probePath[2*n],probePath[2*n+1]);
+    ftx.strokeStyle='#fff'; ftx.lineWidth=1.5;
+    ftx.beginPath();ftx.arc(qx,qy,5,0,7);ftx.stroke();          // 空心圓 = ẑ
+    const [sx,sy]=toPx(flowCv,probePath[0],probePath[1]);
+    ftx.fillStyle='#ff6b9d';
+    ftx.beginPath();ftx.arc(sx,sy,4,0,7);ftx.fill();            // 實心 = x
+  }
+
+  /* ---- 密度面板 ---- */
+  const dw = densCv.clientWidth;
+  dtx.clearRect(0,0,dw,dw);
+  if(hmK !== kcur || hmDirty) recomputeHeatmap(kcur);
+  dtx.imageSmoothingEnabled = true;
+  dtx.drawImage(hmCv, 0,0,G,G, 0,0,dw,dw);
+  // 淡軸線
+  dtx.globalAlpha=0.35; drawAxes(dtx, densCv); dtx.globalAlpha=1;
+  // 疊資料點
+  if(document.getElementById('showData').checked){
+    dtx.fillStyle='rgba(255,255,255,0.22)';
+    for(let i=0;i<500;i++){
+      const [px,py]=toPx(densCv,tgtData.pts[2*i],tgtData.pts[2*i+1]);
+      dtx.beginPath();dtx.arc(px,py,1.2,0,7);dtx.fill();
+    }
+  }
+  // 探測十字
+  if(probe){
+    if(probeK !== kcur) recomputeProbe(kcur);
+    const [px,py]=toPx(densCv,probe[0],probe[1]);
+    dtx.strokeStyle='#ff6b9d'; dtx.lineWidth=2;
+    dtx.beginPath();dtx.arc(px,py,6,0,7);dtx.stroke();
+    dtx.beginPath();dtx.moveTo(px-10,py);dtx.lineTo(px+10,py);dtx.moveTo(px,py-10);dtx.lineTo(px,py+10);dtx.stroke();
+  }
+
+  /* ---- 損失曲線 ---- */
+  const lw=lossCv.clientWidth, lh=lossCv.clientHeight;
+  xtx.clearRect(0,0,lw,lh);
+  const win = lossHist.slice(-240);
+  if(win.length>1){
+    let ymin=1e9, ymax=-1e9;
+    for(const p of win){ ymin=Math.min(ymin,p); ymax=Math.max(ymax,p); }
+    const pad=(ymax-ymin)*0.12+1e-3; ymin-=pad; ymax+=pad;
+    xtx.strokeStyle='#1a2740';
+    for(let k=1;k<4;k++){ const y=lh*k/4; xtx.beginPath();xtx.moveTo(0,y);xtx.lineTo(lw,y);xtx.stroke(); }
+    xtx.strokeStyle='#ffb454'; xtx.lineWidth=1.8; xtx.beginPath();
+    win.forEach((p,i)=>{ const x=i/(win.length-1)*lw, y=lh-(p-ymin)/(ymax-ymin)*(lh-8)-4; i?xtx.lineTo(x,y):xtx.moveTo(x,y); });
+    xtx.stroke();
+    xtx.fillStyle='#8fa0bc'; xtx.font='10px IBM Plex Mono';
+    xtx.fillText(ymax.toFixed(2), 4, 11);
+    xtx.fillText(ymin.toFixed(2), 4, lh-4);
+  }
+}
+
+/* ============ 互動 ============ */
+function pickProbe(ev){
+  const r = densCv.getBoundingClientRect();
+  const px = (ev.touches? ev.touches[0].clientX:ev.clientX)-r.left;
+  const py = (ev.touches? ev.touches[0].clientY:ev.clientY)-r.top;
+  probe = toXY(densCv,px,py);
+  probeK = -1;
+  if(!playing) draw();
+}
+let dragging=false;
+densCv.addEventListener('pointerdown',e=>{dragging=true;densCv.setPointerCapture(e.pointerId);pickProbe(e);});
+densCv.addEventListener('pointermove',e=>{ if(dragging) pickProbe(e); });
+densCv.addEventListener('pointerup',()=>dragging=false);
+
+const kSlide=document.getElementById('kSlide');
+kSlide.addEventListener('input',e=>{
+  kf=+e.target.value; document.getElementById('autoK').checked=false; autoK=false;
+  document.getElementById('kVal').textContent=kf.toFixed(1);
+  document.getElementById('kRead').textContent=Math.round(kf);
+  if(!playing) draw();
+});
+document.getElementById('autoK').addEventListener('change',e=>{ autoK=e.target.checked; });
+document.getElementById('speed').addEventListener('input',e=>{
+  stepsPerFrame=+e.target.value; document.getElementById('speedVal').textContent=stepsPerFrame;
+});
+document.getElementById('tgtSel').addEventListener('change',e=>{
+  tgtName=e.target.value;
+  setDistributions(); buildModel(); recomputeCache();
+});
+document.getElementById('numL').addEventListener('change',e=>{
+  Lnum=+e.target.value;
+  kSlide.max=Lnum; kf=Math.min(kf,Lnum);
+  document.getElementById('LRead').textContent=Lnum;
+  buildModel(); recomputeCache();
+});
+document.getElementById('resetBtn').addEventListener('click',()=>{ buildModel(); recomputeCache(); });
+document.getElementById('showData').addEventListener('change',()=>{ if(!playing) draw(); });
+const playBtn=document.getElementById('playBtn');
+playBtn.addEventListener('click',()=>{
+  playing=!playing; playBtn.textContent = playing? '⏸ 暫停訓練':'▶ 繼續訓練';
+  if(!playing){ recomputeCache(); hmDirty=true; probeK=-1; draw(); }
+});
+
+/* ============ 主迴圈 ============ */
+function loop(){
+  if(layers){
+    if(playing){
+      let L=null;
+      for(let i=0;i<stepsPerFrame;i++) L=trainStep();
+      if(step%10<stepsPerFrame && L!==null){
+        lossHist.push(L);
+        document.getElementById('stepVal').textContent=step;
+        document.getElementById('lossVal').textContent=L.toFixed(3);
+      }
+      if(frame%6===0) recomputeCache();            // 模型在變,定期重算各層位置
+      if(frame%14===0){ hmDirty=true; probeK=-1; } // 熱圖與探測值也要跟上
+    }
+    if(autoK){
+      kf += Lnum/300;                              // 約 5 秒走完 0→L,停一下再重來
+      if(kf>Lnum*1.25) kf=-Lnum*0.15;
+      const kc=Math.min(Lnum,Math.max(0,kf));
+      kSlide.value=kc;
+      document.getElementById('kVal').textContent=kc.toFixed(1);
+      document.getElementById('kRead').textContent=Math.round(kc);
+    }
+    if(frame%2===0) draw();
+  }
+  frame++;
+  requestAnimationFrame(loop);
+}
+
+/* ============ 啟動 ============ */
+(async function init(){
+  try{ await tf.setBackend('webgl'); }catch(e){ await tf.setBackend('cpu'); }
+  await tf.ready();
+  hmCv = document.createElement('canvas'); hmCv.width=G; hmCv.height=G;
+  htx = hmCv.getContext('2d');
+  setDistributions();
+  buildModel();
+  recomputeCache();
+  document.getElementById('loading').style.display='none';
+  resizeAll();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
