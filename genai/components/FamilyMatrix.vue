@@ -1,94 +1,54 @@
 <script setup>
-// 家族的體質對照。刻意用三格量表取代形容詞:
-// 「偏糊」「銳利」「極高」這種詞放在同一張表裡沒有可比性,點數有。
-//
-// 值可以是 0–2 的定值,也可以是 [lo, hi] 區間。用區間是因為有些欄位的高低
-// 取決於框架內的設計選擇(路徑、取樣器、步數),不是家族本身的體質。
-// 把這種欄位畫成定值等於誤導。
-const COLS = ['密度', '樣本品質', '取樣速度', '訓練穩定', 'mode 覆蓋']
+// 圖 B-4:家族介面能力矩陣。focus 指定家族時高亮該列(節標頁定位用)。
+const props = defineProps({
+  focus: { type: String, default: '' }, // 'AR' | 'NF' | 'VAE' | 'DPM' | 'GAN'
+  compact: { type: Boolean, default: false },
+})
 
-const ROWS = [
-  { n: 'Autoregressive', c: '#5edfff', v: [2, 2, 0, 2, 2], note: '逐 token,慢在取樣', tag: '第 ④ 段' },
-  { n: 'Normalizing Flow', c: '#5edfff', v: [2, 1, 2, 2, 2], note: '可逆變換 + Jacobian', tag: '' },
-  { n: 'VAE', c: '#5edfff', v: [1, 0, 2, 2, 2], note: '只有下界', tag: '第 ④ 段', hi: true },
-  { n: 'GAN', c: '#ff6b9d', v: [0, 2, 2, 0, 0], note: '寫不出密度', tag: '第 ④ 段', hi: true },
-  {
-    n: 'Diffusion / Flow Matching', c: '#b48cff', v: [1, 2, [0, 2], 2, 2],
-    note: '步數是路徑與取樣器的選擇,不是體質', tag: '下堂課',
-  },
+const rows = [
+  { key: 'AR', name: 'AR', logprob: '精確(chain rule)', lp: 'ok', sample: '逐 token 序列(慢)', obj: 'forward KL / MLE' },
+  { key: 'NF', name: 'Normalizing Flow', logprob: '精確(變數變換,需可逆 + Jacobian)', lp: 'ok', sample: '一步', obj: 'forward KL / MLE' },
+  { key: 'VAE', name: 'VAE', logprob: '僅下界(ELBO)', lp: 'bound', sample: '一步', obj: 'forward KL 的下界' },
+  { key: 'EBM', name: 'EBM', logprob: '未正規化(差 log Z)', lp: 'bound', sample: 'MCMC 多步(慢)', obj: 'forward KL(MCMC 梯度)/ score matching' },
+  { key: 'DPM', name: 'DPM / FM', logprob: '下界;經 probability flow ODE 精確', lp: 'bound', sample: '多步迭代(慢)', obj: 'forward KL 的另一種分解' },
+  { key: 'GAN', name: 'GAN', logprob: '無', lp: 'none', sample: '一步', obj: 'JSD(理論)/ non-saturating(實務)' },
 ]
-
-// 定值 → 實心到該格;區間 → lo 以下實心,lo..hi 之間畫成空心,表示「可移動」
-const cell = (v) => {
-  const [lo, hi] = Array.isArray(v) ? v : [v, v]
-  return [0, 1, 2].map((k) => (k <= lo ? 'on' : k <= hi ? 'range' : ''))
-}
 </script>
 
 <template>
-  <div class="mx">
-    <div class="head">
-      <span />
-      <span v-for="c in COLS" :key="c">{{ c }}</span>
-      <span>備註</span>
+  <div class="fm" :class="{ compact }">
+    <div class="fm-head">
+      <div>家族</div><div><code>logprob</code></div><div><code>sample</code></div><div>訓練目標</div>
     </div>
-    <div v-for="r in ROWS" :key="r.n" class="row" :class="{ hi: r.hi }" :style="{ '--c': r.c }">
-      <span class="name">
-        {{ r.n }}<i v-if="r.tag">{{ r.tag }}</i>
-      </span>
-      <span v-for="(v, i) in r.v" :key="i" class="meter">
-        <i v-for="(cls, k) in cell(v)" :key="k" :class="cls" />
-      </span>
-      <span class="note">{{ r.note }}</span>
+    <div v-for="r in rows" :key="r.key" class="fm-row"
+      :class="{ hot: focus === r.key, dim: focus && focus !== r.key }">
+      <div class="fm-name">{{ r.name }}</div>
+      <div class="fm-lp" :class="r.lp">{{ r.logprob }}</div>
+      <div>{{ r.sample }}</div>
+      <div class="fm-obj">{{ r.obj }}</div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.mx { font-size: 0.875rem; }
-.head, .row {
-  display: grid;
-  grid-template-columns: 13em repeat(5, 1fr) 10.5em;
-  gap: 8px;
-  align-items: center;
+.fm { max-width: 58rem; margin: 0 auto; }
+.fm-head, .fm-row {
+  display: grid; grid-template-columns: 9.5rem 1.35fr 1fr 1.1fr;
+  gap: 0.55rem; align-items: center;
 }
-.head {
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  padding: 0 4px 5px;
-  text-align: center;
+.fm-head { font-size: 0.8rem; color: #64748b; padding: 0 0.6rem 0.3rem; }
+.fm-head code { font-size: 0.8rem; }
+.fm-row {
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+  padding: 0.45rem 0.6rem; margin-bottom: 0.35rem; font-size: 0.85rem; color: #0f172a;
 }
-.head span:first-child, .head span:last-child { text-align: left; }
-.row {
-  background: var(--panel);
-  border-left: 4px solid var(--c);
-  border-radius: 6px;
-  padding: 6px 8px;
-  margin-bottom: 5px;
-}
-.row.hi { background: color-mix(in srgb, var(--c) 12%, var(--panel)); }
-.name { font-family: var(--mono); color: var(--c); font-size: 0.78rem; }
-.name i {
-  display: block;
-  font-style: normal;
-  font-size: 0.68rem;
-  color: var(--muted);
-  opacity: 0.7;
-}
-.meter { display: flex; gap: 3px; justify-content: center; }
-.meter i {
-  width: 15px;
-  height: 7px;
-  border-radius: 2px;
-  background: var(--edge);
-}
-.meter i.on { background: var(--c); }
-.meter i.range {
-  background: transparent;
-  border: 1.5px dashed var(--c);
-  opacity: 0.75;
-}
-.note { font-size: 0.72rem; color: var(--muted); }
+.fm-row.hot { background: #fef9c3; border-color: #eab308; }
+.fm-row.dim { opacity: 0.45; }
+.fm-name { font-weight: 600; }
+.fm-lp.ok { color: #047857; }
+.fm-lp.bound { color: #b45309; }
+.fm-lp.none { color: #dc2626; font-weight: 700; }
+.fm-obj { color: #334155; }
+.compact .fm-row { padding: 0.28rem 0.5rem; font-size: 0.72rem; margin-bottom: 0.22rem; }
+.compact .fm-head { display: none; }
 </style>

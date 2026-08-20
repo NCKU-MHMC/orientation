@@ -1,19 +1,14 @@
 {
-  "name": "genai-lecture1-slides",
+  "name": "genai-orientation-slides",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "slidev lecture-01-choose-a-ruler.md --open",
-    "dev:gan-vae": "slidev lecture-gan-vae.md --open",
-    "check": "node components/divergence-math.check.mjs && node components/chart-style.check.mjs && node components/md-render.check.mjs lecture-01-choose-a-ruler-v2.md lecture-02-sliding-on-the-axis.md",
-    "build": "slidev build lecture-01-choose-a-ruler.md",
-    "export": "slidev export lecture-01-choose-a-ruler.md",
-    "dev:v2": "slidev lecture-01-choose-a-ruler-v2.md --open",
-    "build:v2": "slidev build lecture-01-choose-a-ruler-v2.md",
-    "export:v2": "slidev export lecture-01-choose-a-ruler-v2.md",
-    "dev:l2": "slidev lecture-02-sliding-on-the-axis.md --open",
-    "build:l2": "slidev build lecture-02-sliding-on-the-axis.md",
-    "export:l2": "slidev export lecture-02-sliding-on-the-axis.md"
+    "dev": "slidev lecture-01.md --open",
+    "dev:2": "slidev lecture-02.md --open",
+    "build": "slidev build lecture-01.md --base /genai/l1/ --out dist/l1 && slidev build lecture-02.md --base /genai/l2/ --out dist/l2",
+    "export": "slidev export lecture-01.md && slidev export lecture-02.md",
+    "check": "node scripts/deck-lint.mjs lecture-01.md lecture-02.md && node scripts/svg-fontsize.check.mjs && node components/divergence-math.check.mjs && npm run check:demos",
+    "check:demos": "for f in public/demos/*.check.mjs; do node \"$f\" || exit 1; done"
   },
   "dependencies": {
     "@slidev/cli": "^52.1.0",
@@ -21,5 +16,8 @@
     "@slidev/theme-seriph": "latest",
     "katex": "^0.16.11",
     "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "playwright-chromium": "^1.62.1"
   }
 }
