@@ -6,72 +6,19 @@
 <title>GAN 互動教學:2D 玩具資料</title>
 <script src="vendor/tf.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
 <style>
-  :root{
-    --bg:#0e1420; --panel:#151d2e; --panel-edge:#243350;
-    --grid:#20304b; --ink:#e8edf6; --muted:#8fa0bc;
-    --amber:#ffb454; --cyan:#5edfff; --violet:#b48cff; --pink:#ff6b9d;
-    --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans TC',sans-serif;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--ink);font-family:var(--sans);padding:20px 22px 48px;
-       background-image:radial-gradient(circle at 80% -10%,#231a30 0%,var(--bg) 55%);}
-  header{max-width:1200px;margin:0 auto 18px}
-  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--pink);text-transform:uppercase}
-  h1{font-size:clamp(20px,3vw,28px);font-weight:700;margin:6px 0 4px}
-  h1 .vs{color:var(--amber)}
-  .sub{color:var(--muted);font-size:13.5px;max-width:780px;line-height:1.7}
-
-  .wrap{max-width:1200px;margin:0 auto}
-  .controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;
-    background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;
-    padding:12px 16px;margin:14px 0 16px}
-  .ctrl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
-  .ctrl label{white-space:nowrap}
-  select,button{font-family:var(--sans);font-size:13px;border-radius:8px;border:1px solid var(--panel-edge);
-    background:#0f1626;color:var(--ink);padding:6px 10px;cursor:pointer}
-  button:hover{border-color:var(--pink)}
-  button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
-  button.primary{background:var(--pink);color:#1c0410;font-weight:700;border:none;padding:7px 16px}
-  input[type=range]{accent-color:var(--pink);width:110px}
-  .val{font-family:var(--mono);color:var(--ink);min-width:3ch;text-align:right}
-  .toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
-  .toggle input{accent-color:var(--amber)}
-  .readout{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:auto;display:flex;gap:16px;flex-wrap:wrap}
-  .readout b{color:var(--ink);font-weight:500}
-  .readout .r-dr b{color:var(--amber)} .readout .r-df b{color:var(--cyan)}
-
-  .panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
-  .panel{background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;padding:12px 14px 14px;min-width:0}
-  .panel h2{font-size:13.5px;font-weight:700;letter-spacing:.03em;margin-bottom:2px}
-  .panel .hint{font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.5}
-  canvas{width:100%;display:block;border-radius:8px;background:#0c1220;touch-action:none}
+  /* 這支 demo 專屬的樣式;通用外殼在 theme.css */
   #discCv{cursor:crosshair}
-
-  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}
-  .legend span{display:inline-flex;align-items:center;gap:5px}
-  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-  .swatch{width:34px;height:8px;border-radius:4px;display:inline-block;
-    background:linear-gradient(90deg,#1e2e54,#7a5a4a,#ffb454)}
-
-  .notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:16px}
-  .note{background:var(--panel);border:1px solid var(--panel-edge);border-left:3px solid var(--pink);
-    border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.8;color:var(--muted)}
-  .note h3{font-size:13.5px;color:var(--ink);margin-bottom:6px}
-  .note.n2{border-left-color:var(--amber)} .note.n3{border-left-color:var(--cyan)}
-  .note code{font-family:var(--mono);font-size:12px;color:var(--cyan);background:#0c1220;padding:1px 5px;border-radius:4px}
-  .note b{color:var(--ink);font-weight:500}
-  .loading{font-family:var(--mono);font-size:12px;color:var(--muted);padding:8px 0}
-  @media (max-width:720px){ .readout{margin-left:0} body{padding:14px 12px 40px} }
-
-/* 課堂 iframe 嵌入時的緊湊模式:視窗高度受限,或由 DemoFrame 掛上 body.embed */
-@media (max-height: 620px) {
-  .sub, .notes { display: none; }
-  h1 { font-size: 18px; margin: 6px 0; }
-}
-body.embed .sub, body.embed .notes { display: none; }
-body.embed h1 { font-size: 18px; margin: 6px 0; }
+  .readout .r-dr b{color:var(--data)}
+  .readout .r-df b{color:var(--accent-ink)}
+  .swatch{
+    width:34px;height:8px;border-radius:4px;display:inline-block;
+    background:linear-gradient(90deg,var(--model),var(--paper-3),var(--data));
+  }
 </style>
 </head>
 <body>
@@ -79,7 +26,7 @@ body.embed h1 { font-size: 18px; margin: 6px 0; }
   <div class="eyebrow">生成模型入門 · 第一堂 · Lab Demo 02</div>
   <h1>GAN 互動教學 — Generator <span class="vs">vs.</span> Discriminator 的對抗訓練</h1>
   <p class="sub">一個 2D GAN 正在你的瀏覽器裡即時對抗訓練(TensorFlow.js)。左圖是資料空間,中間是<b>判別器的決策地景</b>:
-    亮色代表 D 認為「像真的」。注意 GAN <b>沒有 encoder、沒有重建</b>——生成器唯一的學習訊號,就是這張地景的梯度。
+    藍色代表 D 認為「像真的」。注意 GAN <b>沒有 encoder、沒有重建</b>——生成器唯一的學習訊號,就是這張地景的梯度。
     平衡時 D(real) 與 D(fake) 都會逼近 <span style="font-family:var(--mono)">0.5</span>。</p>
 </header>
 
@@ -121,20 +68,20 @@ body.embed h1 { font-size: 18px; margin: 6px 0; }
   <div class="panels">
     <div class="panel">
       <h2>資料空間 x ∈ ℝ²</h2>
-      <p class="hint">彩色點=真實資料。白點=G(z), z~N(0,I) 的生成樣本。網格=生成器把潛在空間的方格映射進資料空間的樣子——<b>mode collapse 發生時,整張網格會塌縮到少數幾個點</b>。</p>
+      <p class="hint">藍綠色點=真實資料。橘紅點=G(z), z~N(0,I) 的生成樣本。網格=生成器把潛在空間的方格映射進資料空間的樣子——<b>mode collapse 發生時,整張網格會塌縮到少數幾個點</b>。</p>
       <canvas id="dataCv"></canvas>
       <div class="legend">
-        <span><span class="dot" style="background:linear-gradient(90deg,#5edfff,#ff6bd6)"></span>真實資料</span>
-        <span><span class="dot" style="background:#fff"></span>生成樣本 G(z)</span>
+        <span><span class="dot" style="background:linear-gradient(90deg,var(--data),var(--third))"></span>真實資料</span>
+        <span><span class="dot" style="background:var(--model)"></span>生成樣本 G(z)</span>
       </div>
     </div>
     <div class="panel">
       <h2>判別器地景 D(x)(可點擊查詢)</h2>
-      <p class="hint">整個平面上 D 的輸出:亮=判為真、暗=判為假。生成器會被推往亮的地方;D 又會把生成點附近「壓暗」。點擊任一位置查詢 D(x) 的數值。</p>
+      <p class="hint">整個平面上 D 的輸出:藍=判為真、橘紅=判為假。生成器會被推往藍的地方;D 又會把生成點附近「壓成橘紅」。點擊任一位置查詢 D(x) 的數值。</p>
       <canvas id="discCv"></canvas>
       <div class="legend">
-        <span><span class="swatch"></span>D(x): 0(假)→ 1(真)</span>
-        <span><span class="dot" style="background:var(--pink)"></span>你查詢的點 <span id="probeVal" style="font-family:var(--mono);color:var(--ink)"></span></span>
+        <span><span class="swatch"></span>D(x): 0(橘紅,假)→ 1(藍,真)</span>
+        <span><span class="dot" style="background:var(--ink)"></span>你查詢的點 <span id="probeVal" style="font-family:var(--mono);color:var(--ink)"></span></span>
       </div>
     </div>
     <div class="panel">
@@ -142,8 +89,8 @@ body.embed h1 { font-size: 18px; margin: 6px 0; }
       <p class="hint">對抗訓練是<b>賽局</b>而非最佳化單一目標:兩條曲線互相拉扯、震盪是常態。健康的訊號不是 loss 變低,而是 D(real)、D(fake) 同時徘徊在 0.5 附近。</p>
       <canvas id="lossCv"></canvas>
       <div class="legend">
-        <span><span class="dot" style="background:var(--amber)"></span>D loss</span>
-        <span><span class="dot" style="background:var(--cyan)"></span>G loss(non-saturating)</span>
+        <span><span class="dot" style="background:var(--data)"></span>D loss</span>
+        <span><span class="dot" style="background:var(--model)"></span>G loss(non-saturating)</span>
       </div>
     </div>
   </div>
@@ -151,7 +98,7 @@ body.embed h1 { font-size: 18px; margin: 6px 0; }
   <div class="notes">
     <div class="note">
       <h3>① Mode Collapse 現場觀察</h3>
-      預設選了<b>高斯混合</b>,因為它最容易誘發 mode collapse:訓練一陣子後,白點(與生成器網格)可能只覆蓋 6 群中的 2~3 群,
+      預設選了<b>高斯混合</b>,因為它最容易誘發 mode collapse:訓練一陣子後,橘紅點(與生成器網格)可能只覆蓋 6 群中的 2~3 群,
       甚至在幾群之間<b>來回跳動</b>(mode hopping)。對比 VAE demo:VAE 會「每群都蓋到但糊糊的」,GAN 則是「蓋到的很銳利,但可能漏掉整群」。
       這就是 <b>likelihood-based vs. adversarial</b> 兩條路線的核心差異。
       另外可切到「<b>中心偏移</b>」版本:整個混合的中心不在原點,而是落在原本最左邊的高斯上。
@@ -160,13 +107,13 @@ body.embed h1 { font-size: 18px; margin: 6px 0; }
     <div class="note n2">
       <h3>② 讀懂判別器地景</h3>
       點擊中間面板查詢 D(x)。訓練初期地景對比強烈(D 輕鬆分辨真假);接近平衡時整片會趨向<b>均勻的中間色(≈0.5)</b>——D 再也分不出來了。
-      若把 <code>D 更新次數</code> 調到 5,D 會變得太強:地景在生成點附近變得又暗又陡,G 的梯度訊號劣化,常導致訓練卡死——這是 GAN 訓練不穩定的經典來源。
+      若把 <code>D 更新次數</code> 調到 5,D 會變得太強:地景在生成點附近變得又橘紅又陡,G 的梯度訊號劣化,常導致訓練卡死——這是 GAN 訓練不穩定的經典來源。
     </div>
     <div class="note n3">
       <h3>③ 建議實驗流程</h3>
       1) 高斯混合 + 預設參數,觀察是否 collapse、是否 mode hopping。<br>
       2) 切到<b>圓環</b>:GAN 沒有「連續蓋滿先驗」的壓力,常能貼出比 VAE 更乾淨的環——但也可能只貼出一段弧。<br>
-      3) 開啟「左圖疊上 D 地景」,直接看生成點如何<b>順著亮區的梯度爬坡</b>。<br>
+      3) 開啟「左圖疊上 D 地景」,直接看生成點如何<b>順著藍區的梯度爬坡</b>。<br>
       4) 與 VAE demo 並排:同一份資料,比較樣本銳利度、覆蓋度與訓練曲線的長相。
     </div>
   </div>
@@ -315,19 +262,21 @@ window.addEventListener('resize', ()=>resizeAll());
 
 const toPx = (cv,x,y)=>[ (x/VIEW*0.5+0.5)*cv.clientWidth, (0.5-y/VIEW*0.5)*cv.clientWidth ];
 const toXY = (cv,px,py)=>[ (px/cv.clientWidth-0.5)*2*VIEW, (0.5-py/cv.clientWidth)*2*VIEW ];
-const hue = c => `hsl(${190+c*150},85%,65%)`;
+// 真實資料的成分色:在 data 與 third 之間依成分編號取色,同一族但可分辨
+const hue = c => { const a=[47,93,124], b=[95,115,80];
+  return `rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*c)).join(',')})`; };
 
 function drawGrid(ctx,cv){
   const w=cv.clientWidth;
   ctx.clearRect(0,0,w,w);
-  ctx.strokeStyle='#1a2740'; ctx.lineWidth=1;
+  ctx.strokeStyle=DEMO.grid; ctx.lineWidth=1;
   const vmax = Math.ceil(VIEW)-1;
   for(let v=-vmax;v<=vmax;v++){
     const [px]=toPx(cv,v,0), [,py]=toPx(cv,0,v);
     ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,w);ctx.stroke();
     ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(w,py);ctx.stroke();
   }
-  ctx.strokeStyle='#2b3d5e';
+  ctx.strokeStyle=DEMO.rule2;
   const [cx]=toPx(cv,0,0), [,cy]=toPx(cv,0,0);
   ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,w);ctx.stroke();
   ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(w,cy);ctx.stroke();
@@ -337,12 +286,14 @@ function drawGrid(ctx,cv){
 function computeHeatmap(){
   const vals = tf.tidy(()=> tf.sigmoid(dForward(gridT)).dataSync());
   const img = new Uint8ClampedArray(HM*HM*4);
-  // 低:深藍 (20,32,66) → 高:琥珀 (255,180,84),中段自然過渡
+  // D 是有中點的量:0(判為假)=clay → 0.5=紙面 → 1(判為真)=petrol
   for(let i=0;i<HM*HM;i++){
     const v = vals[i];
-    img[4*i]   = 20 + v*(255-20);
-    img[4*i+1] = 32 + v*(180-32);
-    img[4*i+2] = 66 + v*(84-66);
+    const c0=[206,124,90], c1=[240,238,231], c2=[86,124,151];
+    const [a,b,k] = v<0.5 ? [c0,c1,v*2] : [c1,c2,(v-0.5)*2];
+    img[4*i]   = a[0]+(b[0]-a[0])*k;
+    img[4*i+1] = a[1]+(b[1]-a[1])*k;
+    img[4*i+2] = a[2]+(b[2]-a[2])*k;
     img[4*i+3] = 255;
   }
   heatCache = img;
@@ -373,7 +324,7 @@ function draw(force=false){
       zs[2*(i*Gn+j)] = -2.2+4.4*j/(Gn-1); zs[2*(i*Gn+j)+1] = -2.2+4.4*i/(Gn-1);
     }
     const out = tf.tidy(()=> gForward(tf.tensor2d(zs,[Gn*Gn,2])).dataSync());
-    dtx.strokeStyle='rgba(255,255,255,0.14)'; dtx.lineWidth=1;
+    dtx.strokeStyle=DEMO.a(DEMO.ink,0.20); dtx.lineWidth=1;
     for(let i=0;i<Gn;i++){ dtx.beginPath();
       for(let j=0;j<Gn;j++){ const k=i*Gn+j,[px,py]=toPx(dataCv,out[2*k],out[2*k+1]); j?dtx.lineTo(px,py):dtx.moveTo(px,py);} dtx.stroke(); }
     for(let j=0;j<Gn;j++){ dtx.beginPath();
@@ -390,7 +341,7 @@ function draw(force=false){
   // 生成樣本
   if(document.getElementById('showGen').checked){
     const gen = tf.tidy(()=> gForward(genZ).dataSync());
-    dtx.fillStyle='#ffffff';
+    dtx.fillStyle=DEMO.model;
     for(let i=0;i<gen.length/2;i++){
       const [px,py]=toPx(dataCv,gen[2*i],gen[2*i+1]);
       dtx.globalAlpha=0.85; dtx.beginPath();dtx.arc(px,py,1.6,0,7);dtx.fill();
@@ -404,11 +355,11 @@ function draw(force=false){
   // 疊上真假樣本的輪廓,幫助對照
   for(let i=0;i<m;i+=3){
     const [px,py]=toPx(discCv,evalSub[2*i],evalSub[2*i+1]);
-    htx.fillStyle='rgba(232,237,246,0.5)';
+    htx.fillStyle=DEMO.a(DEMO.data,0.55);
     htx.beginPath();htx.arc(px,py,1.3,0,7);htx.fill();
   }
   const genH = tf.tidy(()=> gForward(genZ).dataSync());
-  htx.fillStyle='rgba(94,223,255,0.7)';
+  htx.fillStyle=DEMO.a(DEMO.model,0.75);
   for(let i=0;i<genH.length/2;i+=2){
     const [px,py]=toPx(discCv,genH[2*i],genH[2*i+1]);
     htx.beginPath();htx.arc(px,py,1.3,0,7);htx.fill();
@@ -417,10 +368,10 @@ function draw(force=false){
   if(probe){
     const dv = tf.tidy(()=> tf.sigmoid(dForward(tf.tensor2d(probe,[1,2]))).dataSync()[0]);
     const [px,py]=toPx(discCv,probe[0],probe[1]);
-    htx.strokeStyle='#ff6b9d'; htx.lineWidth=2;
+    htx.strokeStyle=DEMO.ink; htx.lineWidth=2;
     htx.beginPath();htx.arc(px,py,7,0,7);htx.stroke();
     htx.beginPath();htx.moveTo(px-11,py);htx.lineTo(px+11,py);htx.moveTo(px,py-11);htx.lineTo(px,py+11);htx.stroke();
-    htx.font='11px IBM Plex Mono'; htx.fillStyle='#fff';
+    htx.font=`11px ${DEMO.font.mono}`; htx.fillStyle=DEMO.ink;
     htx.fillText('D='+dv.toFixed(2), px+10, py-10);
     document.getElementById('probeVal').textContent = 'D='+dv.toFixed(2);
   }
@@ -432,15 +383,15 @@ function draw(force=false){
   if(win.length>1){
     let ymax=0; for(const p of win) ymax=Math.max(ymax,p.dl,p.gl);
     ymax=Math.max(ymax,1e-3)*1.1;
-    xtx.strokeStyle='#1a2740';
+    xtx.strokeStyle=DEMO.grid;
     for(let k=1;k<4;k++){ const y=hh*k/4; xtx.beginPath();xtx.moveTo(0,y);xtx.lineTo(w,y);xtx.stroke(); }
     const line=(key,col)=>{
       xtx.strokeStyle=col; xtx.lineWidth=1.8; xtx.beginPath();
       win.forEach((p,i)=>{ const x=i/(win.length-1)*w, y=hh-(p[key]/ymax)*hh*0.94-4; i?xtx.lineTo(x,y):xtx.moveTo(x,y); });
       xtx.stroke();
     };
-    line('dl','#ffb454'); line('gl','#5edfff');
-    xtx.fillStyle='#8fa0bc'; xtx.font='10px IBM Plex Mono';
+    line('dl',DEMO.data); line('gl',DEMO.model);
+    xtx.fillStyle=DEMO.muted; xtx.font=`10px ${DEMO.font.mono}`;
     xtx.fillText(ymax.toFixed(2), 4, 11);
   }
 }

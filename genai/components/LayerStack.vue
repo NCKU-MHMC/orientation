@@ -32,15 +32,15 @@ const layers = [
   display: grid; grid-template-columns: 2.4rem 8.5rem 1fr 12rem;
   gap: 0.6rem; align-items: center;
 }
-.ls-head { font-size: 0.8rem; color: #64748b; padding: 0 0.6rem 0.3rem; }
+.ls-head { font-size: 0.8rem; color: var(--muted); padding: 0 0.6rem 0.3rem; }
 .ls-row {
-  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
-  padding: 0.5rem 0.6rem; margin-bottom: 0.4rem; font-size: 0.9rem; color: #0f172a;
+  background: var(--paper-2); border: 1px solid var(--rule); border-radius: 8px;
+  padding: 0.5rem 0.6rem; margin-bottom: 0.4rem; font-size: 0.9rem; color: var(--ink);
 }
-.ls-row.hot { background: #fef9c3; border-color: #eab308; }
-.ls-n { font-weight: 700; color: #1d4ed8; text-align: center; }
+.ls-row.hot { background: var(--accent-tint); border-color: var(--accent); }
+.ls-n { font-family: var(--mono); font-weight: 500; color: var(--muted); text-align: center; }
 .ls-point { font-weight: 600; }
-.ls-methods { color: #334155; }
-.ls-iface { font-size: 0.82rem; color: #b45309; }
-.ls-iface.nolp { color: #047857; font-weight: 600; }
+.ls-methods { color: var(--ink-2); }
+.ls-iface { font-size: 0.82rem; color: var(--accent-ink); }
+.ls-iface.nolp { color: var(--third); font-weight: 600; }
 </style>

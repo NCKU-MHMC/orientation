@@ -33,7 +33,7 @@ const toneColor = { p: palette.p, q: palette.q, bad: palette.bad, ink: palette.i
         :stroke="palette.grid" stroke-width="1.8" />
       <g v-for="n in nodes" :key="n.id">
         <rect :x="n.x" :y="n.y" :width="box.w" :height="box.h" rx="8"
-          fill="#fff" :stroke="toneColor[n.tone]" stroke-width="1.8" />
+          :fill="palette.paper" :stroke="toneColor[n.tone]" stroke-width="1.8" />
         <text :x="n.x + box.w / 2" :y="n.y + 19" text-anchor="middle" font-weight="600"
           :fill="toneColor[n.tone]" :style="{ fontSize: fs('note') }">{{ n.main }}</text>
         <text :x="n.x + box.w / 2" :y="n.y + 37" text-anchor="middle"

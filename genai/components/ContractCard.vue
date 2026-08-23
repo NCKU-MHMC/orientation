@@ -25,14 +25,15 @@ defineProps({
 .contract {
   width: fit-content;
   margin: 0 auto;
-  border: 2px solid #1e293b;
-  border-radius: 10px;
+  border: 1px solid var(--rule-2);
+  border-radius: 8px;
   padding: 1.1rem 1.8rem;
-  background: #f8fafc;
+  background: var(--paper-2);
 }
 .contract-head {
-  font-weight: 700;
-  color: #1e293b;
+  font-family: var(--serif);
+  font-weight: 600;
+  color: var(--ink);
   margin-bottom: 0.7rem;
   font-size: 1.05rem;
 }
@@ -44,14 +45,14 @@ defineProps({
   font-size: 1.05rem;
 }
 .iface code {
-  background: #e2e8f0;
+  background: var(--paper-3);
   border-radius: 5px;
   padding: 0.15rem 0.55rem;
-  color: #0f172a;
+  color: var(--ink);
   font-size: 1rem;
 }
-.arrow { color: #64748b; }
-.desc { color: #334155; }
+.arrow { color: var(--muted); }
+.desc { color: var(--ink-2); }
 .compact { padding: 0.6rem 1.1rem; }
 .compact .contract-head { font-size: 0.92rem; margin-bottom: 0.35rem; }
 .compact .iface { font-size: 0.9rem; margin: 0.25rem 0; }

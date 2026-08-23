@@ -29,7 +29,7 @@ const total = await page.evaluate(() => __slidev__?.nav?.total ?? 0)
 const pages = sel.startsWith('p:') ? sel.slice(2).split(',').map(Number) : null
 for (const n of pages ?? Array.from({ length: total }, (_, i) => i + 1)) {
   await page.goto(`http://localhost:${port}/${n}`, { waitUntil: 'networkidle' })
-  await page.waitForTimeout(300)
+  await page.waitForTimeout(900)
   if (pages || await page.locator(`.slidev-page ${sel}`).count()) {
     await page.screenshot({ path: `${out}/p${n}.png` })
     console.log(`p${n} 已截圖`)

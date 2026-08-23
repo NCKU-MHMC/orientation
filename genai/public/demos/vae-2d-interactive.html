@@ -6,70 +6,18 @@
 <title>VAE 互動教學:2D 玩具資料</title>
 <script src="vendor/tf.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
 <style>
-  :root{
-    --bg:#0e1420; --panel:#151d2e; --panel-edge:#243350;
-    --grid:#20304b; --ink:#e8edf6; --muted:#8fa0bc;
-    --amber:#ffb454; --cyan:#5edfff; --violet:#b48cff; --pink:#ff6b9d;
-    --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans TC',sans-serif;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--ink);font-family:var(--sans);padding:20px 22px 48px;
-       background-image:radial-gradient(circle at 20% -10%,#182338 0%,var(--bg) 55%);}
-  header{max-width:1200px;margin:0 auto 18px}
-  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--cyan);text-transform:uppercase}
-  h1{font-size:clamp(20px,3vw,28px);font-weight:700;margin:6px 0 4px}
-  h1 .beta{color:var(--amber)}
-  .sub{color:var(--muted);font-size:13.5px;max-width:760px;line-height:1.7}
-
-  .wrap{max-width:1200px;margin:0 auto}
-  .controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;
-    background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;
-    padding:12px 16px;margin:14px 0 16px}
-  .ctrl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
-  .ctrl label{white-space:nowrap}
-  select,button{font-family:var(--sans);font-size:13px;border-radius:8px;border:1px solid var(--panel-edge);
-    background:#0f1626;color:var(--ink);padding:6px 10px;cursor:pointer}
-  button:hover{border-color:var(--cyan)}
-  button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-  button.primary{background:var(--cyan);color:#04121a;font-weight:700;border:none;padding:7px 16px}
-  input[type=range]{accent-color:var(--cyan);width:110px}
-  .val{font-family:var(--mono);color:var(--ink);min-width:3ch;text-align:right}
-  .toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
-  .toggle input{accent-color:var(--amber)}
-  .readout{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:auto;display:flex;gap:16px;flex-wrap:wrap}
-  .readout b{color:var(--ink);font-weight:500}
-  .readout .r-recon b{color:var(--amber)} .readout .r-kl b{color:var(--violet)}
-
-  .panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
-  .panel{background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;padding:12px 14px 14px;min-width:0}
-  .panel h2{font-size:13.5px;font-weight:700;letter-spacing:.03em;margin-bottom:2px}
-  .panel .hint{font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.5}
-  canvas{width:100%;display:block;border-radius:8px;background:#0c1220;touch-action:none}
-  #latentCv{cursor:crosshair}
-
-  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}
-  .legend span{display:inline-flex;align-items:center;gap:5px}
-  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-
-  .notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:16px}
-  .note{background:var(--panel);border:1px solid var(--panel-edge);border-left:3px solid var(--amber);
-    border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.8;color:var(--muted)}
-  .note h3{font-size:13.5px;color:var(--ink);margin-bottom:6px}
-  .note.n2{border-left-color:var(--pink)} .note.n3{border-left-color:var(--cyan)}
-  .note code{font-family:var(--mono);font-size:12px;color:var(--cyan);background:#0c1220;padding:1px 5px;border-radius:4px}
-  .note b{color:var(--ink);font-weight:500}
-  .loading{font-family:var(--mono);font-size:12px;color:var(--muted);padding:8px 0}
-  @media (max-width:720px){ .readout{margin-left:0} body{padding:14px 12px 40px} }
-
-/* 課堂 iframe 嵌入時的緊湊模式:視窗高度受限,或由 DemoFrame 掛上 body.embed */
-@media (max-height: 620px) {
-  .sub, .notes { display: none; }
-  h1 { font-size: 18px; margin: 6px 0; }
-}
-body.embed .sub, body.embed .notes { display: none; }
-body.embed h1 { font-size: 18px; margin: 6px 0; }
+  /* 這支 demo 專屬的樣式;通用外殼在 theme.css */
+  h1 .beta { font-family: var(--mono); color: var(--accent-ink); }
+  #latentCv { cursor: crosshair; }
+  .readout .r-recon b { color: var(--accent-ink); }
+  .readout .r-kl b { color: var(--third); }
+  /* ① 講的是 β 兩端的失效狀態,用 warn 標記 */
+  .note.n1 { border-left-color: var(--warn); }
 </style>
 </head>
 <body>
@@ -77,7 +25,7 @@ body.embed h1 { font-size: 18px; margin: 6px 0; }
   <div class="eyebrow">生成模型入門 · 第一堂 · Lab Demo 01</div>
   <h1>VAE 互動教學 — 2D 玩具資料上的 <span class="beta">&beta;</span>-VAE</h1>
   <p class="sub">一個 2→2 維潛在空間的 VAE 正在你的瀏覽器裡即時訓練(TensorFlow.js)。左圖是資料空間、中間是潛在空間。
-    調整 &beta; 觀察「重建 vs. KL」的拉鋸,並<b style="color:var(--pink)">點擊或拖曳潛在空間</b>,看解碼器把 z 映射到哪裡。</p>
+    調整 &beta; 觀察「重建 vs. KL」的拉鋸,並<b style="color:var(--accent-ink)">點擊或拖曳潛在空間</b>,看解碼器把 z 映射到哪裡。</p>
 </header>
 
 <div class="wrap">
@@ -117,12 +65,12 @@ body.embed h1 { font-size: 18px; margin: 6px 0; }
   <div class="panels">
     <div class="panel">
       <h2>資料空間 x ∈ ℝ²</h2>
-      <p class="hint">彩色點=真實資料(顏色為資料的內在座標)。白點=從先驗 z~N(0,I) 解碼的生成樣本。網格=解碼器把潛在空間的方格「摺」進資料流形的樣子。</p>
+      <p class="hint">彩色點=真實資料(顏色為資料的內在座標)。橘紅點=從先驗 z~N(0,I) 解碼的生成樣本。網格=解碼器把潛在空間的方格「摺」進資料流形的樣子。</p>
       <canvas id="dataCv"></canvas>
       <div class="legend">
-        <span><span class="dot" style="background:linear-gradient(90deg,#5edfff,#ff6bd6)"></span>真實資料</span>
-        <span><span class="dot" style="background:#fff"></span>生成樣本</span>
-        <span><span class="dot" style="background:var(--pink)"></span>你點的 z 解碼結果</span>
+        <span><span class="dot" style="background:linear-gradient(90deg,var(--data),var(--third))"></span>真實資料</span>
+        <span><span class="dot" style="background:var(--model)"></span>生成樣本</span>
+        <span><span class="dot" style="background:var(--model);border:1.5px solid var(--ink)"></span>你點的 z 解碼結果</span>
       </div>
     </div>
     <div class="panel">
@@ -130,25 +78,25 @@ body.embed h1 { font-size: 18px; margin: 6px 0; }
       <p class="hint">每個點是資料經 encoder 得到的 μ(x),顏色與左圖對應。虛線圓=先驗 N(0,I) 的 1σ、2σ。KL 項就是在把這團點「推」進圓裡。</p>
       <canvas id="latentCv"></canvas>
       <div class="legend">
-        <span><span class="dot" style="border:1.5px dashed var(--muted);background:none"></span>先驗 N(0,I)</span>
-        <span><span class="dot" style="background:var(--pink)"></span>你選的 z</span>
+        <span><span class="dot" style="border:1.5px dashed var(--third);background:none"></span>先驗 N(0,I)</span>
+        <span><span class="dot" style="background:var(--ink)"></span>你選的 z</span>
       </div>
     </div>
     <div class="panel">
       <h2>損失曲線</h2>
-      <p class="hint">ELBO 的兩項:<b style="color:var(--amber)">重建誤差</b>(還原得像不像)與 <b style="color:var(--violet)">KL 散度</b>(潛在分布貼不貼近先驗)。調 β 立刻能看到兩者的消長。</p>
+      <p class="hint">ELBO 的兩項:<b style="color:var(--accent-ink)">重建誤差</b>(還原得像不像)與 <b style="color:var(--third)">KL 散度</b>(潛在分布貼不貼近先驗)。調 β 立刻能看到兩者的消長。</p>
       <canvas id="lossCv"></canvas>
       <div class="legend">
-        <span><span class="dot" style="background:var(--amber)"></span>重建 MSE</span>
-        <span><span class="dot" style="background:var(--violet)"></span>KL</span>
+        <span><span class="dot" style="background:var(--model)"></span>重建 MSE</span>
+        <span><span class="dot" style="background:var(--third)"></span>KL</span>
       </div>
     </div>
   </div>
 
   <div class="notes">
-    <div class="note">
+    <div class="note n1">
       <h3>① 重建 vs. KL 的拉鋸</h3>
-      把 <code>β</code> 拉到 <b>0</b>:KL 消失,模型退化成普通 Autoencoder——潛在點四散、重建很準,但從先驗取樣(白點)會落在沒學過的區域,生成品質崩壞。
+      把 <code>β</code> 拉到 <b>0</b>:KL 消失,模型退化成普通 Autoencoder——潛在點四散、重建很準,但從先驗取樣(橘紅點)會落在沒學過的區域,生成品質崩壞。
       把 <code>β</code> 拉到 <b>3~4</b>:潛在點被硬擠成一團標準常態,重建誤差上升、生成樣本糊成一片——這就是 <b>posterior collapse</b> 的前兆。
     </div>
     <div class="note n2">
@@ -302,19 +250,21 @@ window.addEventListener('resize', ()=>resizeAll());
 const viewOf = cv => cv===latentCv ? LVIEW : VIEW;
 const toPx = (cv,x,y)=>{ const v=viewOf(cv); return [ (x/v*0.5+0.5)*cv.clientWidth, (0.5-y/v*0.5)*cv.clientWidth ]; };
 const toXY = (cv,px,py)=>{ const v=viewOf(cv); return [ (px/cv.clientWidth-0.5)*2*v, (0.5-py/cv.clientWidth)*2*v ]; };
-const hue = c => `hsl(${190+c*150},85%,65%)`;
+// 真實資料與其潛在 μ:在 data 與 third 之間依內在座標取色,兩張圖對得起來
+const hue = c => { const a=[47,93,124], b=[95,115,80];
+  return `rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*c)).join(',')})`; };
 
 function drawGrid(ctx,cv){
   const w=cv.clientWidth;
   ctx.clearRect(0,0,w,w);
-  ctx.strokeStyle='#1a2740'; ctx.lineWidth=1;
+  ctx.strokeStyle=DEMO.grid; ctx.lineWidth=1;
   const vmax = Math.ceil(viewOf(cv))-1;
   for(let v=-vmax;v<=vmax;v++){
     const [px]=toPx(cv,v,0), [,py]=toPx(cv,0,v);
     ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,w);ctx.stroke();
     ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(w,py);ctx.stroke();
   }
-  ctx.strokeStyle='#2b3d5e';
+  ctx.strokeStyle=DEMO.rule2;
   const [cx]=toPx(cv,0,0), [,cy]=toPx(cv,0,0);
   ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,w);ctx.stroke();
   ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(w,cy);ctx.stroke();
@@ -332,7 +282,7 @@ function draw(force=false){
       zs[2*(i*G+j)] = -2.2+4.4*j/(G-1); zs[2*(i*G+j)+1] = -2.2+4.4*i/(G-1);
     }
     const out = tf.tidy(()=> decode(tf.tensor2d(zs,[G*G,2])).dataSync());
-    dtx.strokeStyle='rgba(255,255,255,0.14)'; dtx.lineWidth=1;
+    dtx.strokeStyle=DEMO.a(DEMO.ink2,0.55); dtx.lineWidth=1;
     for(let i=0;i<G;i++){ dtx.beginPath();
       for(let j=0;j<G;j++){ const k=i*G+j,[px,py]=toPx(dataCv,out[2*k],out[2*k+1]); j?dtx.lineTo(px,py):dtx.moveTo(px,py);} dtx.stroke(); }
     for(let j=0;j<G;j++){ dtx.beginPath();
@@ -349,17 +299,17 @@ function draw(force=false){
   // 生成樣本
   if(document.getElementById('showGen').checked){
     const gen = tf.tidy(()=> decode(genZ).dataSync());
-    dtx.fillStyle='#ffffff';
+    dtx.fillStyle=DEMO.model;
     for(let i=0;i<gen.length/2;i++){
       const [px,py]=toPx(dataCv,gen[2*i],gen[2*i+1]);
-      dtx.globalAlpha=0.85; dtx.beginPath();dtx.arc(px,py,1.6,0,7);dtx.fill();
+      dtx.globalAlpha=0.8; dtx.beginPath();dtx.arc(px,py,1.7,0,7);dtx.fill();
     }
     dtx.globalAlpha=1;
   }
   /* ---- 潛在空間 ---- */
   drawGrid(ltx,latentCv);
   // 先驗 1σ 2σ 圓
-  ltx.setLineDash([4,4]); ltx.strokeStyle='#5a6c8f'; ltx.lineWidth=1.2;
+  ltx.setLineDash([4,4]); ltx.strokeStyle=DEMO.third; ltx.lineWidth=1.2;
   for(const r of [1,2]){
     const [cx,cy]=toPx(latentCv,0,0), [rx]=toPx(latentCv,r,0);
     ltx.beginPath();ltx.arc(cx,cy,rx-cx,0,7);ltx.stroke();
@@ -375,12 +325,12 @@ function draw(force=false){
   // 使用者選的 z 與其解碼
   if(pickedZ){
     const [px,py]=toPx(latentCv,pickedZ[0],pickedZ[1]);
-    ltx.strokeStyle='#ff6b9d'; ltx.lineWidth=2;
+    ltx.strokeStyle=DEMO.ink; ltx.lineWidth=2;
     ltx.beginPath();ltx.arc(px,py,7,0,7);ltx.stroke();
     ltx.beginPath();ltx.moveTo(px-11,py);ltx.lineTo(px+11,py);ltx.moveTo(px,py-11);ltx.lineTo(px,py+11);ltx.stroke();
     const o = tf.tidy(()=> decode(tf.tensor2d(pickedZ,[1,2])).dataSync());
     const [qx,qy]=toPx(dataCv,o[0],o[1]);
-    dtx.fillStyle='#ff6b9d'; dtx.strokeStyle='#fff'; dtx.lineWidth=1.5;
+    dtx.fillStyle=DEMO.model; dtx.strokeStyle=DEMO.ink; dtx.lineWidth=1.5;
     dtx.beginPath();dtx.arc(qx,qy,6,0,7);dtx.fill();dtx.stroke();
   }
   /* ---- 損失曲線 ---- */
@@ -390,15 +340,15 @@ function draw(force=false){
   if(win.length>1){
     let ymax=0; for(const p of win) ymax=Math.max(ymax,p.recon,p.kl);
     ymax=Math.max(ymax,1e-3)*1.1;
-    xtx.strokeStyle='#1a2740';
+    xtx.strokeStyle=DEMO.grid;
     for(let k=1;k<4;k++){ const y=hh*k/4; xtx.beginPath();xtx.moveTo(0,y);xtx.lineTo(w,y);xtx.stroke(); }
     const line=(key,col)=>{
       xtx.strokeStyle=col; xtx.lineWidth=1.8; xtx.beginPath();
       win.forEach((p,i)=>{ const x=i/(win.length-1)*w, y=hh-(p[key]/ymax)*hh*0.94-4; i?xtx.lineTo(x,y):xtx.moveTo(x,y); });
       xtx.stroke();
     };
-    line('recon','#ffb454'); line('kl','#b48cff');
-    xtx.fillStyle='#8fa0bc'; xtx.font='10px IBM Plex Mono';
+    line('recon',DEMO.model); line('kl',DEMO.third);
+    xtx.fillStyle=DEMO.muted; xtx.font=`10px ${DEMO.font.mono}`;
     xtx.fillText(ymax.toFixed(2), 4, 11);
   }
 }

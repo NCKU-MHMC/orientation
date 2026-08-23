@@ -6,72 +6,26 @@
 <title>Normalizing Flow 互動教學:2D 玩具資料</title>
 <script src="vendor/tf.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
 <style>
-  :root{
-    --bg:#0e1420; --panel:#151d2e; --panel-edge:#243350;
-    --grid:#20304b; --ink:#e8edf6; --muted:#8fa0bc;
-    --amber:#ffb454; --cyan:#5edfff; --violet:#b48cff; --pink:#ff6b9d;
-    --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans TC',sans-serif;
+  /* 這支 demo 專屬的樣式;通用外殼在 theme.css */
+  #kSlide { width: 150px; }
+  #densCv { cursor: crosshair; }
+  .probeInfo {
+    font-family: var(--mono); font-size: 11.5px; color: var(--accent-ink);
+    margin-top: 6px; min-height: 15px;
   }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--ink);font-family:var(--sans);padding:20px 22px 48px;
-       background-image:radial-gradient(circle at 50% -10%,#1d1a33 0%,var(--bg) 55%);}
-  header{max-width:1200px;margin:0 auto 18px}
-  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--cyan);text-transform:uppercase}
-  h1{font-size:clamp(20px,3vw,28px);font-weight:700;margin:6px 0 4px}
-  h1 .nf{color:var(--cyan)}
-  .sub{color:var(--muted);font-size:13.5px;max-width:790px;line-height:1.7}
-
-  .wrap{max-width:1200px;margin:0 auto}
-  .controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;
-    background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;
-    padding:12px 16px;margin:14px 0 16px}
-  .ctrl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
-  .ctrl label{white-space:nowrap}
-  select,button{font-family:var(--sans);font-size:13px;border-radius:8px;border:1px solid var(--panel-edge);
-    background:#0f1626;color:var(--ink);padding:6px 10px;cursor:pointer}
-  button:hover{border-color:var(--cyan)}
-  button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-  button.primary{background:var(--cyan);color:#062030;font-weight:700;border:none;padding:7px 16px}
-  input[type=range]{accent-color:var(--cyan);width:110px}
-  #kSlide{width:150px}
-  .val{font-family:var(--mono);color:var(--ink);min-width:3ch;text-align:right}
-  .toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
-  .toggle input{accent-color:var(--amber)}
-  .readout{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:auto;display:flex;gap:16px;flex-wrap:wrap}
-  .readout b{color:var(--ink);font-weight:500}
-  .readout .r-loss b{color:var(--amber)} .readout .r-k b{color:var(--cyan)}
-
-  .panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
-  .panel{background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;padding:12px 14px 14px;min-width:0}
-  .panel h2{font-size:13.5px;font-weight:700;letter-spacing:.03em;margin-bottom:2px}
-  .panel .hint{font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.5}
-  canvas{width:100%;display:block;border-radius:8px;background:#0c1220;touch-action:none}
-  #densCv{cursor:crosshair}
-  .probeInfo{font-family:var(--mono);font-size:11.5px;color:var(--pink);margin-top:6px;min-height:15px}
-
-  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}
-  .legend span{display:inline-flex;align-items:center;gap:5px}
-  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-
-  .notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:16px}
-  .note{background:var(--panel);border:1px solid var(--panel-edge);border-left:3px solid var(--cyan);
-    border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.8;color:var(--muted)}
-  .note h3{font-size:13.5px;color:var(--ink);margin-bottom:6px}
-  .note.n2{border-left-color:var(--pink)} .note.n3{border-left-color:var(--violet)}
-  .note code{font-family:var(--mono);font-size:12px;color:var(--cyan);background:#0c1220;padding:1px 5px;border-radius:4px}
-  .note b{color:var(--ink);font-weight:500}
-  .loading{font-family:var(--mono);font-size:12px;color:var(--muted);padding:8px 0}
-  @media (max-width:720px){ .readout{margin-left:0} body{padding:14px 12px 40px} }
-
-/* 課堂 iframe 嵌入時的緊湊模式:視窗高度受限,或由 DemoFrame 掛上 body.embed */
-@media (max-height: 620px) {
-  .sub, .notes, .note { display: none; }
-  h1 { font-size: 18px; margin: 6px 0; }
-}
-body.embed .sub, body.embed .notes, body.embed .note { display: none; }
-body.embed h1 { font-size: 18px; margin: 6px 0; }
+  .readout .r-loss b { color: var(--accent-ink); }
+  .readout .r-k b { color: var(--data); }
+  /* 密度色階圖例:停點與 theme.js 的 DEMO.heat 同一組 */
+  .heatbar {
+    width: 46px; height: 8px; border-radius: 4px; display: inline-block;
+    border: 1px solid var(--rule);
+    background: linear-gradient(90deg, var(--paper-3) 0%, #d6d1c3 35%, #b0a894 62%, var(--accent) 84%, #7a2a12 100%);
+  }
 </style>
 </head>
 <body>
@@ -80,7 +34,7 @@ body.embed h1 { font-size: 18px; margin: 6px 0; }
   <h1><span class="nf">Normalizing Flow</span> 互動教學 — 可逆變換與精確密度</h1>
   <p class="sub">模型是一疊 <b>coupling layer</b>(RealNVP 式):每層把座標切成兩半,一半原封不動、
     另一半做仿射變換 <span style="font-family:var(--mono)">x_b = z_b·e^{s(z_a)} + t(z_a)</span>,兩層之間交換角色。
-    因為每層都可逆、Jacobian 是三角的,這個家族<b style="color:var(--pink)">同時擁有一步 sample 與一步精確 logprob</b>——
+    因為每層都可逆、Jacobian 是三角的,這個家族<b style="color:var(--accent-ink)">同時擁有一步 sample 與一步精確 logprob</b>——
     右邊的密度熱圖就是 logprob 介面的實物,GAN 與 VAE 都畫不出這張圖。
     拖動「層」滑桿,看高斯如何被一層層折成資料分布。</p>
 </header>
@@ -128,13 +82,13 @@ body.embed h1 { font-size: 18px; margin: 6px 0; }
   <div class="panels">
     <div class="panel">
       <h2>可逆變換:N(0,I) →(前 k 層)→ p<sub>data</sub></h2>
-      <p class="hint">青色網格=z 空間的規則座標網,被前 k 層變換扭曲。彩色粒子=一批 z 樣本被推到第 k 層的位置;k=L 時就是<b>生成樣本</b>(一步完成)。注意網格會拉伸、彎折,但<b>永不撕裂或重疊</b>——這就是可逆的意思。</p>
+      <p class="hint">灰色網格=z 空間的規則座標網,被前 k 層變換扭曲。彩色粒子=一批 z 樣本被推到第 k 層的位置;k=L 時就是<b>生成樣本</b>(一步完成)。注意網格會拉伸、彎折,但<b>永不撕裂或重疊</b>——這就是可逆的意思。</p>
       <canvas id="flowCv"></canvas>
       <div class="legend">
-        <span><span class="dot" style="background:linear-gradient(90deg,#5edfff,#ff6bd6)"></span>生成樣本(依 z 角度著色)</span>
-        <span><span class="dot" style="background:#3a4a68"></span>目標資料</span>
-        <span><span class="dot" style="background:#2f5f7a"></span>被扭曲的 z 網格</span>
-        <span><span class="dot" style="background:var(--pink)"></span>探測點的反推路徑</span>
+        <span><span class="dot" style="background:linear-gradient(90deg,var(--data),var(--third))"></span>生成樣本(依 z 角度著色)</span>
+        <span><span class="dot" style="background:var(--data)"></span>目標資料</span>
+        <span><span class="dot" style="background:var(--rule-2)"></span>被扭曲的 z 網格</span>
+        <span><span class="dot" style="background:var(--model)"></span>探測點的反推路徑</span>
       </div>
     </div>
     <div class="panel">
@@ -143,7 +97,7 @@ body.embed h1 { font-size: 18px; margin: 6px 0; }
       <canvas id="densCv"></canvas>
       <div class="probeInfo" id="probeInfo">點擊熱圖任一位置 → 呼叫 logprob(x)</div>
       <div class="legend">
-        <span><span class="dot" style="background:#3b2d6e"></span>低 → <span class="dot" style="background:var(--violet)"></span> → <span class="dot" style="background:#ffd27a"></span>高</span>
+        <span><span class="heatbar"></span>低 → 高</span>
         <label class="toggle"><input type="checkbox" id="showData" checked> 疊資料點</label>
       </div>
     </div>
@@ -152,7 +106,7 @@ body.embed h1 { font-size: 18px; margin: 6px 0; }
       <p class="hint">直接最小化 <span style="font-family:var(--mono)">−log p<sub>θ</sub>(x)</span>(forward KL / MLE),無對抗、無下界。這條曲線的數值<b>本身有意義</b>:換算成 bits 後可跨模型比較——與 AR 的 BPB 是同一把尺,GAN 的 loss 做不到這件事。</p>
       <canvas id="lossCv"></canvas>
       <div class="legend">
-        <span><span class="dot" style="background:var(--amber)"></span>NLL(bits/dim)</span>
+        <span><span class="dot" style="background:var(--model)"></span>NLL(bits/dim)</span>
       </div>
     </div>
   </div>
@@ -346,23 +300,8 @@ function recomputeCache(){
 }
 
 /* ============ 熱圖:前 k 層 pushforward 的精確密度 ============ */
-const cmapStops = [
-  [0.00, 12, 18, 32],
-  [0.32, 59, 45, 110],
-  [0.62, 180,140,255],
-  [0.84, 255,107,157],
-  [1.00, 255,210,122]
-];
-function cmap(v){
-  v = Math.min(1, Math.max(0, v));
-  for(let i=1;i<cmapStops.length;i++){
-    if(v <= cmapStops[i][0]){
-      const a=cmapStops[i-1], b=cmapStops[i], t=(v-a[0])/(b[0]-a[0]);
-      return [ a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t, a[3]+(b[3]-a[3])*t ];
-    }
-  }
-  return [255,210,122];
-}
+// 密度是非負的量,用單向色階:紙面(低)→ clay(高)
+const cmap = v => DEMO.heat(v);
 function recomputeHeatmap(kcur){
   const xs = new Float32Array(G*G*2), ext = VIEW*0.98;
   for(let j=0;j<G;j++)for(let i=0;i<G;i++){
@@ -426,18 +365,20 @@ window.addEventListener('resize', ()=>resizeAll());
 
 const toPx = (cv,x,y)=>[ (x/VIEW*0.5+0.5)*cv.clientWidth, (0.5-y/VIEW*0.5)*cv.clientWidth ];
 const toXY = (cv,px,py)=>[ (px/cv.clientWidth-0.5)*2*VIEW, (0.5-py/cv.clientWidth)*2*VIEW ];
-const hue = c => `hsl(${190+c*150},85%,65%)`;
+// 生成樣本粒子:在 data 與 third 之間依 z 角度取色,同一族但可分辨
+const hue = c => { const a=[47,93,124], b=[95,115,80];
+  return `rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*c)).join(',')})`; };
 
 function drawAxes(ctx,cv){
   const w=cv.clientWidth;
-  ctx.strokeStyle='#1a2740'; ctx.lineWidth=1;
+  ctx.strokeStyle=DEMO.grid; ctx.lineWidth=1;
   const vmax = Math.ceil(VIEW)-1;
   for(let v=-vmax;v<=vmax;v++){
     const [px]=toPx(cv,v,0), [,py]=toPx(cv,0,v);
     ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,w);ctx.stroke();
     ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(w,py);ctx.stroke();
   }
-  ctx.strokeStyle='#2b3d5e';
+  ctx.strokeStyle=DEMO.rule2;
   const [cx]=toPx(cv,0,0), [,cy]=toPx(cv,0,0);
   ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,w);ctx.stroke();
   ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(w,cy);ctx.stroke();
@@ -455,14 +396,14 @@ function draw(){
   const w = flowCv.clientWidth;
   ftx.clearRect(0,0,w,w);
   drawAxes(ftx, flowCv);
-  // 目標資料(暗色錨點)
-  ftx.fillStyle='#3a4a68';
+  // 目標資料(淡色錨點)
+  ftx.fillStyle=DEMO.a(DEMO.data,0.34);
   for(let i=0;i<600;i++){
     const [px,py]=toPx(flowCv,tgtData.pts[2*i],tgtData.pts[2*i+1]);
     ftx.beginPath();ftx.arc(px,py,1.6,0,7);ftx.fill();
   }
   // 被扭曲的 z 網格(兩個快取層之間線性內插)
-  ftx.strokeStyle='#2f6f8f'; ftx.lineWidth=1; ftx.globalAlpha=0.5;
+  ftx.strokeStyle=DEMO.rule2; ftx.lineWidth=1; ftx.globalAlpha=0.95;
   for(let l=0;l<2*GLINES;l++){
     ftx.beginPath();
     for(let p=0;p<GPTS;p++){
@@ -485,7 +426,7 @@ function draw(){
   ftx.globalAlpha=1;
   // 探測點的反推路徑:x →(inverse)→ z
   if(probePath){
-    ftx.strokeStyle='#ff6b9d'; ftx.lineWidth=2;
+    ftx.strokeStyle=DEMO.model; ftx.lineWidth=2;
     ftx.beginPath();
     for(let s=0;s<probePath.length/2;s++){
       const [px,py]=toPx(flowCv,probePath[2*s],probePath[2*s+1]);
@@ -494,10 +435,10 @@ function draw(){
     ftx.stroke();
     const n=probePath.length/2-1;
     const [qx,qy]=toPx(flowCv,probePath[2*n],probePath[2*n+1]);
-    ftx.strokeStyle='#fff'; ftx.lineWidth=1.5;
+    ftx.strokeStyle=DEMO.ink; ftx.lineWidth=1.5;
     ftx.beginPath();ftx.arc(qx,qy,5,0,7);ftx.stroke();          // 空心圓 = ẑ
     const [sx,sy]=toPx(flowCv,probePath[0],probePath[1]);
-    ftx.fillStyle='#ff6b9d';
+    ftx.fillStyle=DEMO.model;
     ftx.beginPath();ftx.arc(sx,sy,4,0,7);ftx.fill();            // 實心 = x
   }
 
@@ -511,7 +452,7 @@ function draw(){
   dtx.globalAlpha=0.35; drawAxes(dtx, densCv); dtx.globalAlpha=1;
   // 疊資料點
   if(document.getElementById('showData').checked){
-    dtx.fillStyle='rgba(255,255,255,0.22)';
+    dtx.fillStyle=DEMO.a(DEMO.ink,0.5);
     for(let i=0;i<500;i++){
       const [px,py]=toPx(densCv,tgtData.pts[2*i],tgtData.pts[2*i+1]);
       dtx.beginPath();dtx.arc(px,py,1.2,0,7);dtx.fill();
@@ -521,9 +462,11 @@ function draw(){
   if(probe){
     if(probeK !== kcur) recomputeProbe(kcur);
     const [px,py]=toPx(densCv,probe[0],probe[1]);
-    dtx.strokeStyle='#ff6b9d'; dtx.lineWidth=2;
-    dtx.beginPath();dtx.arc(px,py,6,0,7);dtx.stroke();
-    dtx.beginPath();dtx.moveTo(px-10,py);dtx.lineTo(px+10,py);dtx.moveTo(px,py-10);dtx.lineTo(px,py+10);dtx.stroke();
+    for(const [col,lw] of [[DEMO.a(DEMO.paper,0.85),4],[DEMO.ink,2]]){
+      dtx.strokeStyle=col; dtx.lineWidth=lw;
+      dtx.beginPath();dtx.arc(px,py,6,0,7);dtx.stroke();
+      dtx.beginPath();dtx.moveTo(px-10,py);dtx.lineTo(px+10,py);dtx.moveTo(px,py-10);dtx.lineTo(px,py+10);dtx.stroke();
+    }
   }
 
   /* ---- 損失曲線 ---- */
@@ -534,12 +477,12 @@ function draw(){
     let ymin=1e9, ymax=-1e9;
     for(const p of win){ ymin=Math.min(ymin,p); ymax=Math.max(ymax,p); }
     const pad=(ymax-ymin)*0.12+1e-3; ymin-=pad; ymax+=pad;
-    xtx.strokeStyle='#1a2740';
+    xtx.strokeStyle=DEMO.grid;
     for(let k=1;k<4;k++){ const y=lh*k/4; xtx.beginPath();xtx.moveTo(0,y);xtx.lineTo(lw,y);xtx.stroke(); }
-    xtx.strokeStyle='#ffb454'; xtx.lineWidth=1.8; xtx.beginPath();
+    xtx.strokeStyle=DEMO.model; xtx.lineWidth=1.8; xtx.beginPath();
     win.forEach((p,i)=>{ const x=i/(win.length-1)*lw, y=lh-(p-ymin)/(ymax-ymin)*(lh-8)-4; i?xtx.lineTo(x,y):xtx.moveTo(x,y); });
     xtx.stroke();
-    xtx.fillStyle='#8fa0bc'; xtx.font='10px IBM Plex Mono';
+    xtx.fillStyle=DEMO.muted; xtx.font=`10px ${DEMO.font.mono}`;
     xtx.fillText(ymax.toFixed(2), 4, 11);
     xtx.fillText(ymin.toFixed(2), 4, lh-4);
   }

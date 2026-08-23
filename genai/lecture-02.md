@@ -6,14 +6,21 @@ transition: fade
 lineNumbers: false
 drawings:
   persist: false
+fonts:
+  sans: 'Source Sans 3,Noto Sans TC'
+  serif: 'Source Serif 4,Noto Serif TC'
+  mono: 'IBM Plex Mono'
+  weights: '400,500,600,700'
 class: text-left
 ---
+
+<div class="rule-accent" />
 
 # 生成模型導論(二)
 
 ## 建構滿足介面的分布
 
-<div class="mt-10 text-slate-500">
+<div class="mt-10 tone-faint">
 
 新進成員訓練・第二堂(120 分鐘)
 
@@ -215,7 +222,7 @@ NF 證明了密度與一步生成可以共存;代價是每一層都必須可逆�
 
 <FamilyTree />
 
-<div class="mt-2 text-sm text-slate-600 text-center">
+<div class="mt-2 text-sm tone-muted text-center">
 
 分支的每一層都是介面問題:訓練散度可不可計算、logprob 以什麼形式提供、sample 要幾步。
 
@@ -410,7 +417,7 @@ $T$ 為 token 數、$N_{\text{bytes}}$ 為位元組數:把「每 token 的困惑
 
 </div>
 
-<div class="mt-4 text-slate-600">
+<div class="mt-4 tone-muted">
 
 比較不同詞表的模型、或同模型換 tokenizer 前後,以 BPB 為準。
 
@@ -478,14 +485,14 @@ layout: none
 <!--
 [3 分鐘] 這頁的模型是現場訓練的(TensorFlow.js):一個小 MLP 讀最近 k 個點回歸下一步位移,
 訓練批次只從真實軌跡上取樣,即 teacher forcing;「訓練」核取方塊預設關閉,示範時先勾起來。
-左圖同時畫兩條軌道:青色箭頭是每個真實點上的一步預測(前綴取自資料),
-琥珀線是模型自己餵自己的 rollout(前綴取自模型)。第三個面板把兩者畫在同一單位下——
+左圖同時畫兩條軌道:藍色箭頭是每個真實點上的一步預測(前綴取自資料),
+橘紅線是模型自己餵自己的 rollout(前綴取自模型)。第三個面板把兩者畫在同一單位下——
 一步 RMSE 一路下降,rollout 平均偏離卻卡在高處,兩線的落差就是 exposure bias,
-因為訓練損失從來沒有在琥珀那條軌道上取過期望。
-中間面板是誤差複利的直接證據:離流形距離隨 rollout 步數上升,遠離青色虛線(一步 RMSE)。
+因為訓練損失從來沒有在橘紅那條軌道上取過期望。
+中間面板是誤差複利的直接證據:離流形距離隨 rollout 步數上升,遠離藍色虛線(一步 RMSE)。
 示範順序:① 圓 + k=1 訓到 step≈2000,rollout 貼合,建立正常樣態。
 ② 切 8 字 + k=1:交叉點上單看位置有兩個方向,條件分布雙峰而 MSE 只輸出平均,
-青色箭頭在交叉點直指中間、rollout 在那裡出軌;k 拉到 2(等於知道速度)當場痊癒——
+藍色箭頭在交叉點直指中間、rollout 在那裡出軌;k 拉到 2(等於知道速度)當場痊癒——
 這是資訊不足,還不是 exposure bias,和換什麼架構無關。
 ③ 切三圈一岔:岔口的位置與速度都相同,該續圈或出岔取決於已繞第幾圈,依賴長度約 25–56 步。
 這個病不反映在離流形距離上(每步都貼著某條圓),要看左上角的圈數計數:
@@ -602,7 +609,7 @@ $$\log p_x(x)=\log p_z\big(f^{-1}(x)\big)+\log\big|\det J_{f^{-1}}(x)\big|$$
 
 </div>
 
-<div class="mt-3 border-l-4 border-blue-400 pl-4 text-sm text-slate-700">
+<div class="mt-3 aside aside-data text-sm tone-muted">
 
 任意 $D\times D$ 行列式要 $O(D^3)$;NF 以架構設計讓 Jacobian 呈三角形,行列式退化為對角線連乘,降為 $O(D)$。離散 NF 的架構史,大半是三角結構的設計史。
 
@@ -769,7 +776,7 @@ MSE 的最優解是**條件均值**:多個可能輸出的平均,而非其中任�
 
 </div>
 
-<div class="mt-4 text-slate-600">
+<div class="mt-4 tone-muted">
 
 這是失效型態由訓練目標決定的又一例:模糊寫在 Gaussian × forward KL 這個組合裡,調架構調不掉。
 
@@ -878,7 +885,7 @@ $$\mathrm{KL}\big(p_g\,\|\,p_{\text{data}}\big)-2\,\mathrm{JSD}\big(p_g\,\|\,p_{
 | 對應散度 | JSD | reverse KL $-\ 2\cdot$JSD |
 | 病理 | 梯度消失 | mode-seeking、易塌縮 |
 
-<div class="mt-3 text-sm text-slate-600">
+<div class="mt-3 text-sm tone-muted">
 
 換損失治好了梯度消失,也一併換掉了 mode-covering:每種損失各配一種失效。
 
@@ -905,13 +912,13 @@ generator 的損失裡**沒有資料項**:$G$ 只從 $D$ 的評分獲得訊號,�
 
 </div>
 
-<div class="mt-4 border-l-4 border-amber-400 pl-4">
+<div class="mt-4 aside aside-model">
 
 與 reward model 的結構極限同構:兩個逐點代理,同一個盲區。第一堂裡防線只剩 β;這裡連 β 都沒有。
 
 </div>
 
-<div class="mt-3 text-sm text-slate-600">
+<div class="mt-3 text-sm tone-muted">
 
 對症的修補是給介面加欄位:minibatch discrimination 把 batch 內樣本相似度的總和直接接進判別器的輸入,塌縮批次立即被抓(Salimans et al., 2016)。
 
@@ -1064,9 +1071,9 @@ $$\nabla_\theta\log p(x)=\underbrace{-\nabla_\theta E(x)}_{\text{壓低真實資
 
 | 方法 | 手法 | 對應的差異度量 |
 |---|---|---|
-| Contrastive Divergence<br><span class="text-xs text-slate-400">Hinton, 2002</span> | 鏈從資料點起跑只走 $k$ 步;$\log Z$ 梯度對消 | $\mathrm{KL}(p_{\text{data}}\|p_\theta)-\mathrm{KL}(p_k\|p_\theta)$ |
-| Score matching<br><span class="text-xs text-slate-400">Hyvärinen, 2005</span> | 改對 $x$ 微分:$\nabla_x\log Z=0$,$Z$ 直接消失 | Fisher divergence |
-| NCE<br><span class="text-xs text-slate-400">Gutmann & Hyvärinen, 2010</span> | 與已知雜訊分布做二元分類,$Z$ 當可學純量 | BCE(漸近 KL) |
+| Contrastive Divergence<br><span class="fine">Hinton, 2002</span> | 鏈從資料點起跑只走 $k$ 步;$\log Z$ 梯度對消 | $\mathrm{KL}(p_{\text{data}}\|p_\theta)-\mathrm{KL}(p_k\|p_\theta)$ |
+| Score matching<br><span class="fine">Hyvärinen, 2005</span> | 改對 $x$ 微分:$\nabla_x\log Z=0$,$Z$ 直接消失 | Fisher divergence |
+| NCE<br><span class="fine">Gutmann & Hyvärinen, 2010</span> | 與已知雜訊分布做二元分類,$Z$ 當可學純量 | BCE(漸近 KL) |
 
 <!--
 negative phase 需要模型自己的樣本:每次參數更新都得跑 MCMC;
@@ -1154,7 +1161,7 @@ AR 沿**序列**分解 forward KL;DPM 沿**雜訊尺度**分解同一個散度:
 
 </div>
 
-<div class="mt-4 text-slate-600">
+<div class="mt-4 tone-muted">
 
 同一個 forward KL,兩種切法:AR 切在維度之間,DPM 切在訊噪比之間。
 
@@ -1221,7 +1228,7 @@ $$\log p_w = \log p(x\mid c) + w\big(\log p(x\mid c)-\log p(x)\big)$$
 
 </div>
 
-<div class="mt-3 text-slate-600 text-sm">
+<div class="mt-3 tone-muted text-sm">
 
 不需重訓、不需配對資料:同一個係數,在影像家族裡調的是「聽指令的程度」。
 
@@ -1246,7 +1253,7 @@ latent 空間、速度場、一步蒸餾
   { name: 'Consistency Models / 對抗式蒸餾', year: '2023', note: '多步 ODE 積分蒸餾成一步(Song et al.);對抗式蒸餾另見 ADD(Sauer et al.)', tag: '速度' },
 ]" />
 
-<div class="mt-3 text-sm text-slate-600">
+<div class="mt-3 text-sm tone-muted">
 
 Latent Diffusion 的壓縮層即 VAE 段的收尾;一步蒸餾的對抗損失即 GAN 段的今日角色:三個家族在這條時間軸上會合。
 
@@ -1291,7 +1298,7 @@ layout: none
 
 <DemoFrame src="flow-matching-2d-interactive.html" title="Flow Matching:同一個散度的另一種分解" :maxH="440" />
 
-<div class="px-6 pt-2 text-sm text-slate-600">
+<div class="px-6 pt-2 text-sm tone-muted">
 
 應用:影像、影片與音訊生成、分子設計、動作生成。
 
@@ -1369,7 +1376,7 @@ layout: statement
 
 </div>
 
-<div class="mt-8 text-base text-slate-500">
+<div class="mt-8 text-base tone-faint">
 
 訓練目標、解碼設定、權重微調,三個層次各有一個可移動的座標;
 六個家族,各以自己的介面決定哪些移動可行。
@@ -1477,13 +1484,13 @@ class: text-center
 
 # 兩堂課結束
 
-<div class="mt-6 text-slate-500">
+<div class="mt-6 tone-faint">
 
 作業:為自己的題目選一個 AR 以外的家族,寫出它兩個介面的實作形式與特徵性失效,並指出第一堂哪些方法因此適用、哪些失效;一頁,下次 lab meeting 前交。
 
 </div>
 
-<div class="mt-8 text-sm text-slate-400">
+<div class="mt-8 text-sm tone-faint">
 
 自學資源:MIT 6.S184(diffusion.csail.mit.edu)・李宏毅《生成式 AI》系列・Jurafsky & Martin, *Speech and Language Processing* 3rd ed. draft
 

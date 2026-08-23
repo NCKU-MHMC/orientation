@@ -15,8 +15,9 @@ const panels = [
   { name: 'JSD', mu: 1.1, s: 1.25, note: '介於兩者之間的折衷' },
   { name: 'reverse KL', mu: 2, s: 0.6, note: '鎖定單一眾數,放棄另一峰' },
 ]
-const W = 300, H = 190, PAD = 10
-const yMax = 0.45
+const W = 300, H = 225, PAD = 10
+// 三個面板共用上緣才可比較;取 p 與各 q 的峰值(高斯峰在 mu 處)加留白,免得最窄的 q 被裁掉
+const yMax = Math.max(...pYs, ...panels.map((pn) => gauss(pn.mu, pn.mu, pn.s))) * 1.18
 const pPath = pathOf(xs, pYs, -5, 5, 0, yMax, W, H, PAD)
 const qPath = (mu, s) => pathOf(xs, xs.map((x) => gauss(x, mu, s)), -5, 5, 0, yMax, W, H, PAD)
 </script>
@@ -45,7 +46,7 @@ const qPath = (mu, s) => pathOf(xs, xs.map((x) => gauss(x, mu, s)), -5, 5, 0, yM
 .fit-row { display: flex; gap: 0.6rem; justify-content: center; }
 .fit-panel { text-align: center; }
 .fit-panel svg { margin: 0 auto; }
-.fit-note { font-size: 0.8rem; color: #64748b; margin-top: 0.1rem; }
-.fit-legend { display: flex; gap: 1.6rem; justify-content: center; margin-top: 0.7rem; font-size: 0.85rem; color: #1e293b; }
+.fit-note { font-size: 0.8rem; color: var(--muted); margin-top: 0.1rem; }
+.fit-legend { display: flex; gap: 1.6rem; justify-content: center; margin-top: 0.7rem; font-size: 0.85rem; color: var(--ink); }
 .fit-legend i { display: inline-block; width: 0.9em; height: 0.35em; border-radius: 2px; margin-right: 0.35em; vertical-align: middle; }
 </style>

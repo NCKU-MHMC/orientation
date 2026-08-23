@@ -37,5 +37,5 @@ const sx = (x) => PAD + (x / 10) * (W - 2 * PAD)
 <style scoped>
 .jsd-sat { text-align: center; }
 .jsd-sat svg { margin: 0 auto; }
-.jsd-cap { font-size: 0.85rem; color: #475569; margin-top: 0.25rem; }
+.jsd-cap { font-size: 0.85rem; color: var(--ink-2); margin-top: 0.25rem; }
 </style>

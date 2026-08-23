@@ -4,28 +4,76 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AR 互動教學:2D 軌跡</title>
-<script src="vendor/tf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.22.0/tf.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="theme.css">
-<script src="theme.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  /* 這支 demo 專屬的樣式；通用外殼在 theme.css */
-  button.zap{border-color:var(--warn);color:var(--warn)}
-  button.zap:hover{background:var(--paper-3);border-color:var(--warn)}
-  .readout .r-one b{color:var(--data)}
-  .readout .r-roll b{color:var(--accent-ink)}
+  :root{
+    --bg:#0e1420; --panel:#151d2e; --panel-edge:#243350;
+    --grid:#20304b; --ink:#e8edf6; --muted:#8fa0bc;
+    --amber:#ffb454; --cyan:#5edfff; --violet:#b48cff; --pink:#ff6b9d;
+    --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans TC',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);padding:20px 22px 48px;
+       background-image:radial-gradient(circle at 20% -10%,#182338 0%,var(--bg) 55%);}
+  header{max-width:1200px;margin:0 auto 18px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--cyan);text-transform:uppercase}
+  h1{font-size:clamp(20px,3vw,28px);font-weight:700;margin:6px 0 4px}
+  h1 .k{color:var(--violet)} h1 .eb{color:var(--amber)}
+  .sub{color:var(--muted);font-size:13.5px;max-width:780px;line-height:1.7}
+
+  .wrap{max-width:1200px;margin:0 auto}
+  .controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;
+    background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;
+    padding:12px 16px;margin:14px 0 16px}
+  .ctrl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+  .ctrl label{white-space:nowrap}
+  select,button{font-family:var(--sans);font-size:13px;border-radius:8px;border:1px solid var(--panel-edge);
+    background:#0f1626;color:var(--ink);padding:6px 10px;cursor:pointer}
+  button:hover{border-color:var(--cyan)}
+  button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  button.primary{background:var(--cyan);color:#04121a;font-weight:700;border:none;padding:7px 16px}
+  button.zap{border-color:var(--pink);color:var(--pink)}
+  button.zap:hover{background:#2a1420}
+  input[type=range]{accent-color:var(--cyan);width:110px}
+  #kSlider{accent-color:var(--violet)} #epsSlider{accent-color:var(--pink)} #sigSlider{accent-color:var(--amber)}
+  .toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+  .toggle input{accent-color:var(--cyan)}
+  .val{font-family:var(--mono);color:var(--ink);min-width:3ch;text-align:right}
+  .readout{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:auto;display:flex;gap:16px;flex-wrap:wrap}
+  .readout b{color:var(--ink);font-weight:500}
+  .readout .r-one b{color:var(--cyan)} .readout .r-roll b{color:var(--amber)}
+
+  .panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+  .panel{background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;padding:12px 14px 14px;min-width:0}
+  .panel h2{font-size:13.5px;font-weight:700;letter-spacing:.03em;margin-bottom:2px}
+  .panel .hint{font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.5}
+  canvas{width:100%;display:block;border-radius:8px;background:#0c1220;touch-action:none}
   #dataCv{cursor:crosshair}
+
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+  .notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:16px}
+  .note{background:var(--panel);border:1px solid var(--panel-edge);border-left:3px solid var(--amber);
+    border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.8;color:var(--muted)}
+  .note h3{font-size:13.5px;color:var(--ink);margin-bottom:6px}
+  .note.n2{border-left-color:var(--violet)} .note.n3{border-left-color:var(--pink)} .note.n4{border-left-color:var(--cyan)}
+  .note code{font-family:var(--mono);font-size:12px;color:var(--cyan);background:#0c1220;padding:1px 5px;border-radius:4px}
+  .note b{color:var(--ink);font-weight:500}
+  .loading{font-family:var(--mono);font-size:12px;color:var(--muted);padding:8px 0}
+  @media (max-width:720px){ .readout{margin-left:0} body{padding:14px 12px 40px} }
 </style>
 </head>
 <body>
 <header>
-  <div class="eyebrow">生成模型入門 · 第二堂 · Lab Demo 05</div>
+  <div class="eyebrow">生成模型入門 · 第二堂 · Lab Demo 04</div>
   <h1>AR 互動教學 — 2D 軌跡上的自迴歸:<span class="k">context window</span> 與 <span class="eb">exposure bias</span></h1>
-  <p class="sub">一個小 MLP 正在瀏覽器裡即時學 <code style="font-family:var(--mono)">x<sub>t+1</sub> = f(x<sub>t−k+1</sub>, …, x<sub>t</sub>)</code>:吃最後 <b style="color:var(--ink)">k</b> 個點、以 MSE(高斯 likelihood 的 forward KL)teacher forcing 訓練。
-    左圖同時畫出<b style="color:var(--data)">teacher-forced 一步預測</b>與<b style="color:var(--accent-ink)">自由 rollout</b> 兩條軌道;
-    調 <b style="color:var(--ink)">k</b> 看 context 不足的病,按<b style="color:var(--warn)">擾動</b>看 exposure bias 的病。</p>
+  <p class="sub">一個小 MLP 正在瀏覽器裡即時學 <code style="font-family:var(--mono);color:var(--ink)">x<sub>t+1</sub> = f(x<sub>t−k+1</sub>, …, x<sub>t</sub>)</code>:吃最後 <b style="color:var(--violet)">k</b> 個點、以 MSE(高斯 likelihood 的 forward KL)teacher forcing 訓練。
+    左圖同時畫出<b style="color:var(--cyan)">teacher-forced 一步預測</b>與<b style="color:var(--amber)">自由 rollout</b> 兩條軌道;
+    調 <b style="color:var(--violet)">k</b> 看 context 不足的病,按<b style="color:var(--pink)">擾動</b>看 exposure bias 的病。</p>
 </header>
 
 <div class="wrap">
@@ -49,7 +97,7 @@
       <input type="range" id="speed" min="1" max="12" step="1" value="5">
       <span class="val" id="speedVal">5</span>
     </div>
-    <label class="toggle ctrl"><input type="checkbox" id="trainChk"> 訓練</label>
+    <label class="toggle ctrl"><input type="checkbox" id="trainChk" checked> 訓練</label>
     <div class="ctrl"><label for="sigSlider">&sigma;(rollout 每步微擾)</label>
       <input type="range" id="sigSlider" min="0" max="0.12" step="0.005" value="0">
       <span class="val" id="sigVal">0.000</span>
@@ -71,33 +119,33 @@
   <div class="panels">
     <div class="panel">
       <h2>資料空間 x ∈ ℝ²(可點擊重啟 rollout)</h2>
-      <p class="hint">藍點=真實軌跡(深淺為時間相位)。<b style="color:var(--data)">深藍箭頭</b>=每個真實點上的一步預測(前綴取自資料=訓練軌道)。<b style="color:var(--accent-ink)">橘紅軌跡</b>=模型自己餵自己的 rollout(前綴取自模型=推論軌道)。<b style="color:var(--third)">◎</b>=歧義點。</p>
+      <p class="hint">灰藍點=真實軌跡(顏色為時間相位)。<b style="color:var(--cyan)">青色箭頭</b>=每個真實點上的一步預測(前綴取自資料=訓練軌道)。<b style="color:var(--amber)">琥珀軌跡</b>=模型自己餵自己的 rollout(前綴取自模型=推論軌道)。<b style="color:var(--violet)">◎</b>=歧義點。</p>
       <canvas id="dataCv"></canvas>
       <div class="legend">
-        <span><span class="dot" style="background:linear-gradient(90deg,var(--paper-3),var(--data))"></span>真實軌跡</span>
-        <span><span class="dot" style="background:var(--data)"></span>一步預測</span>
-        <span><span class="dot" style="background:var(--model)"></span>rollout</span>
-        <span><span class="dot" style="border:1.5px dashed var(--third);background:none"></span>歧義點</span>
-        <span><span class="dot" style="background:var(--warn)"></span>擾動</span>
+        <span><span class="dot" style="background:linear-gradient(90deg,#3d5a86,#6b4d7a)"></span>真實軌跡</span>
+        <span><span class="dot" style="background:var(--cyan)"></span>一步預測</span>
+        <span><span class="dot" style="background:var(--amber)"></span>rollout</span>
+        <span><span class="dot" style="border:1.5px dashed var(--violet);background:none"></span>歧義點</span>
+        <span><span class="dot" style="background:var(--pink)"></span>擾動</span>
       </div>
     </div>
     <div class="panel">
       <h2>偏離 vs. rollout 步數(誤差複利)</h2>
-      <p class="hint">每回合 rollout 的離流形距離,隨步數畫成一條線;淡線=之前幾回合。<b style="color:var(--data)">藍色虛線</b>=一步 RMSE:若誤差不複利,曲線應停在虛線附近。</p>
+      <p class="hint">每回合 rollout 的離流形距離,隨步數畫成一條線;淡線=之前幾回合。<b style="color:var(--cyan)">青色虛線</b>=一步 RMSE:若誤差不複利,曲線應停在虛線附近。</p>
       <canvas id="horizonCv"></canvas>
       <div class="legend">
-        <span><span class="dot" style="background:var(--model)"></span>本回合</span>
-        <span><span class="dot" style="background:var(--model);opacity:.35"></span>先前回合</span>
-        <span><span class="dot" style="border-top:1.5px dashed var(--data);border-radius:0;height:0"></span>一步 RMSE</span>
+        <span><span class="dot" style="background:var(--amber)"></span>本回合</span>
+        <span><span class="dot" style="background:#6b5230"></span>先前回合</span>
+        <span><span class="dot" style="border-top:1.5px dashed var(--cyan);border-radius:0;height:0"></span>一步 RMSE</span>
       </div>
     </div>
     <div class="panel">
       <h2>訓練曲線(同單位可比,log 尺度)</h2>
-      <p class="hint"><b style="color:var(--data)">一步 RMSE</b>(teacher-forced,訓練 loss 實際測的量)與<b style="color:var(--accent-ink)">rollout 平均偏離</b>(推論實際發生的量)。兩線的落差就是 exposure bias。</p>
+      <p class="hint"><b style="color:var(--cyan)">一步 RMSE</b>(teacher-forced,訓練 loss 實際測的量)與<b style="color:var(--amber)">rollout 平均偏離</b>(推論實際發生的量)。兩線的落差就是 exposure bias。</p>
       <canvas id="lossCv"></canvas>
       <div class="legend">
-        <span><span class="dot" style="background:var(--data)"></span>一步 RMSE</span>
-        <span><span class="dot" style="background:var(--model)"></span>rollout 平均偏離</span>
+        <span><span class="dot" style="background:var(--cyan)"></span>一步 RMSE</span>
+        <span><span class="dot" style="background:var(--amber)"></span>rollout 平均偏離</span>
       </div>
     </div>
   </div>
@@ -105,13 +153,13 @@
   <div class="notes">
     <div class="note">
       <h3>① 兩條軌道的分岔(B-2 板書的可執行版)</h3>
-      藍色箭頭全程貼著流形:因為它們的前綴永遠來自真實資料,這正是 teacher forcing 測量的世界。
-      橘紅 rollout 的前綴來自模型自己,每步小誤差被下一步當成輸入,<b>複利成軌跡級的漂移</b>。
+      青色箭頭全程貼著流形:因為它們的前綴永遠來自真實資料,這正是 teacher forcing 測量的世界。
+      琥珀 rollout 的前綴來自模型自己,每步小誤差被下一步當成輸入,<b>複利成軌跡級的漂移</b>。
       訓練曲線面板中兩線同單位:一步 RMSE 一路下降,rollout 偏離卻卡在高處——<b>loss 從未測量過下面那條軌道</b>。
     </div>
     <div class="note n2">
       <h3>② context window:k 是能治什麼病的?</h3>
-      <b>圓</b>:位置唯一決定下一步,<code>k=1</code> 就收斂。<b>8 字</b>:交叉點上單看位置有兩個方向,條件分布雙峰,MSE 模型輸出兩峰的<b>平均</b>——藍色箭頭在交叉點直直指向中間、rollout 在那裡出軌;拉到 <code>k=2</code>(等於知道速度)立刻痊癒。
+      <b>圓</b>:位置唯一決定下一步,<code>k=1</code> 就收斂。<b>8 字</b>:交叉點上單看位置有兩個方向,條件分布雙峰,MSE 模型輸出兩峰的<b>平均</b>——青色箭頭在交叉點直直指向中間、rollout 在那裡出軌;拉到 <code>k=2</code>(等於知道速度)立刻痊癒。
       <b>三圈一岔</b>:岔口的位置<b>與速度都相同</b>,該續圈還是出岔取決於「已繞第幾圈」,判斷這件事需要回看到上一次出岔,依賴長度約 25–56 步。注意這個病<b>不會反映在離流形距離上</b>(每一步都貼著某條圓),要看左圖左上角的圈數計數:<code>k≤8</code> 連一圈(24 步)都蓋不住,圈數失控(常見是永遠不出岔、一路往上加);<code>k=64</code> 蓋過兩圈半,圈數穩定在 3。<b>加 context 有用,且只在依賴長度落進窗內的那一刻生效</b>——這就是長對話漂移與 lost-in-the-middle 的 2D 版本。
     </div>
     <div class="note n3">
@@ -123,8 +171,8 @@
     </div>
     <div class="note n4">
       <h3>④ 建議實驗流程</h3>
-      1) <b>圓 + k=1</b>,勾選<b>「訓練」</b>(預設關閉)訓到 step ≈ 2000:rollout 貼合,建立正常樣態。<br>
-      2) 切 <b>8 字 + k=1</b>:盯著交叉點的藍色箭頭與 rollout 出軌;拉 <b>k=2</b> 看痊癒。<br>
+      1) <b>圓 + k=1</b> 訓練到 step ≈ 2000:rollout 貼合,建立正常樣態。<br>
+      2) 切 <b>8 字 + k=1</b>:盯著交叉點的青色箭頭與 rollout 出軌;拉 <b>k=2</b> 看痊癒。<br>
       3) 切 <b>三圈一岔</b>:先用 <b>k=8</b> 訓一陣,盯左上角圈數計數(常見是永遠不出岔);再拉 <b>k=64</b> 重訓,圈數穩定回到 3。<br>
       4) 回到 8 字 + k=2,訓練收斂後<b>取消勾選「訓練」</b>凍結模型,把 <b>&sigma;</b> 拉到 0.06 看誤差複利發散;再勾回「訓練」、<b>&epsilon;</b> 拉到 0.5(&sigma; 保持 0.06)重訓 2000 步,重新凍結量測——同樣的雜訊下 rollout 穩住了。
     </div>
@@ -139,7 +187,7 @@ const S_ABS = 3.0, S_OFF = 4.0;          // 輸入特徵縮放:絕對座標 /3�
 let EP_LEN = 240;                         // rollout 每回合步數(三圈一岔加長以觀察計數)
 let VIEW = 3.0;
 let K = 1, eps = 0.0, stepsPerFrame = 5;
-let training = false, sigma = 0.0;        // 訓練開關(預設關閉)、rollout 每步微擾
+let training = true, sigma = 0.0;         // 訓練開關、rollout 每步微擾
 let params = null, optimizer = null;
 let data = null;                          // {arr, N, period, ambig, view}
 let refPts = null;                        // 離流形距離用的參考點
@@ -210,8 +258,6 @@ function resetModel(){
   optimizer = tf.train.adam(2e-3);
   step = 0; evalHist = []; rollHist = []; evalPreds = null; evalRMSE = null; lastRollMean = null;
   pastEps = []; restartRollout();
-  evalOneStep();                          // 未訓練也先畫一次箭頭(隨機狀態)
-  evalHist = [];                          // 但不讓它汙染訓練曲線
 }
 function forward(x){ // x:[B,2K] → delta*DS:[B,2]
   return tf.tidy(()=>{
@@ -384,7 +430,7 @@ function drawData(){
   const w = dataCv.clientWidth, h = parseFloat(dataCv.style.height);
   dtx.clearRect(0,0,w,h);
   // 網格
-  dtx.strokeStyle = DEMO.grid; dtx.lineWidth = 1;
+  dtx.strokeStyle = '#16223a'; dtx.lineWidth = 1;
   for(let g=-3;g<=3;g++){
     const [gx,] = toPx(dataCv,g,0), [,gy] = toPx(dataCv,0,g);
     dtx.beginPath(); dtx.moveTo(gx,0); dtx.lineTo(gx,h); dtx.stroke();
@@ -394,13 +440,13 @@ function drawData(){
   const P = data.period;
   for(let j=0;j<data.N;j+=2){
     const [px,py] = toPx(dataCv,data.arr[2*j],data.arr[2*j+1]);
-    const ph = (j%P)/P;                       // 週期內相位以 data 的深淺表示
-    dtx.fillStyle = DEMO.a(DEMO.data, 0.22+0.38*ph);
+    const hue = 215 + 65*((j%P)/P);
+    dtx.fillStyle = `hsla(${hue},42%,52%,0.35)`;
     dtx.fillRect(px-1,py-1,2,2);
   }
   // 歧義點
   if(data.ambig){
-    dtx.strokeStyle = DEMO.a(DEMO.third,0.9); dtx.lineWidth = 1.5;
+    dtx.strokeStyle = 'rgba(180,140,255,0.9)'; dtx.lineWidth = 1.5;
     dtx.setLineDash([4,3]);
     for(const a of data.ambig){
       const [px,py] = toPx(dataCv,a[0],a[1]);
@@ -410,7 +456,7 @@ function drawData(){
   }
   // teacher-forced 一步預測箭頭(每 2 點畫一支)
   if(evalPreds){
-    dtx.strokeStyle = DEMO.a(DEMO.data,0.95); dtx.lineWidth = 1.3;
+    dtx.strokeStyle = 'rgba(94,223,255,0.85)'; dtx.lineWidth = 1.3;
     for(let i=0;i<P;i+=2){
       const t = evalStart+i;
       const [ax,ay] = toPx(dataCv,data.arr[2*t],data.arr[2*t+1]);
@@ -430,7 +476,7 @@ function drawData(){
   for(let i=1;i<n;i++){
     const a = rollTrail[i-1], b = rollTrail[i];
     const age = i/n;
-    dtx.strokeStyle = DEMO.a(DEMO.model, 0.08+0.72*age);
+    dtx.strokeStyle = `rgba(255,180,84,${0.08+0.72*age})`;
     dtx.lineWidth = 1+1.4*age;
     const [ax,ay] = toPx(dataCv,a[0],a[1]);
     const [bx,by] = toPx(dataCv,b[0],b[1]);
@@ -439,17 +485,17 @@ function drawData(){
   if(n){
     const c = rollTrail[n-1];
     const [px,py] = toPx(dataCv,c[0],c[1]);
-    dtx.fillStyle = DEMO.model;
+    dtx.fillStyle = '#ffb454';
     dtx.beginPath(); dtx.arc(px,py,4,0,7); dtx.fill();
-    dtx.strokeStyle = DEMO.a(DEMO.model,0.5);
+    dtx.strokeStyle = 'rgba(255,180,84,0.5)';
     dtx.beginPath(); dtx.arc(px,py,7,0,7); dtx.stroke();
   }
   // 圈數計數讀出(僅三圈一岔)
   if(dsName==='loops'){
-    dtx.font = `11px ${DEMO.font.mono}`;
-    dtx.fillStyle = DEMO.muted;
+    dtx.font = '11px IBM Plex Mono';
+    dtx.fillStyle = '#8fa0bc';
     dtx.fillText('岔前圈數 · 真實 = 3', 10, 18);
-    dtx.fillStyle = DEMO.model;
+    dtx.fillStyle = '#ffb454';
     const txt = loopCounts.length? loopCounts.join(', ')+(loopCnt?` (+${loopCnt}…)`:'')
                                   : (loopCnt?`(+${loopCnt}…)`:'–');
     dtx.fillText('rollout = '+txt, 10, 33);
@@ -457,7 +503,7 @@ function drawData(){
   // 擾動標記
   if(zapMark && zapMark.ttl>0){
     const [px,py] = toPx(dataCv,zapMark.x,zapMark.y);
-    dtx.strokeStyle = DEMO.a(DEMO.warn, zapMark.ttl/70);
+    dtx.strokeStyle = `rgba(255,107,157,${zapMark.ttl/70})`;
     dtx.lineWidth = 2;
     dtx.beginPath(); dtx.arc(px,py,9+(70-zapMark.ttl)*0.15,0,7); dtx.stroke();
     zapMark.ttl--;
@@ -471,7 +517,7 @@ function drawHorizon(){
   for(const ep of pastEps) for(const v of ep) if(v>ymax) ymax = v;
   for(const v of epDist) if(v>ymax) ymax = v;
   ymax *= 1.1;
-  htx.strokeStyle = DEMO.grid;
+  htx.strokeStyle = '#1a2740';
   for(let k=1;k<4;k++){ const y = h*k/4;
     htx.beginPath(); htx.moveTo(0,y); htx.lineTo(w,y); htx.stroke(); }
   const plot = (arr, style, lw)=>{
@@ -485,16 +531,16 @@ function drawHorizon(){
     htx.stroke();
   };
   for(let e=0;e<pastEps.length;e++)
-    plot(pastEps[e], DEMO.a(DEMO.model, 0.14+0.07*e), 1);
-  plot(epDist, DEMO.model, 1.8);
+    plot(pastEps[e], `rgba(255,180,84,${0.10+0.06*e})`, 1);
+  plot(epDist, '#ffb454', 1.8);
   if(evalRMSE!=null){
     const y = h-4-(evalRMSE/ymax)*(h-14);
-    htx.strokeStyle = DEMO.a(DEMO.data,0.9); htx.lineWidth = 1.2;
+    htx.strokeStyle = 'rgba(94,223,255,0.8)'; htx.lineWidth = 1.2;
     htx.setLineDash([5,4]);
     htx.beginPath(); htx.moveTo(0,y); htx.lineTo(w,y); htx.stroke();
     htx.setLineDash([]);
   }
-  htx.fillStyle = DEMO.muted; htx.font = `10px ${DEMO.font.mono}`;
+  htx.fillStyle = '#8fa0bc'; htx.font = '10px IBM Plex Mono';
   htx.fillText(ymax.toFixed(2), 4, 11);
   htx.fillText('0', 4, h-6);
 }
@@ -511,7 +557,7 @@ function drawLoss(){
     if(p.s>smax) smax = p.s;
   }
   lo -= 0.15; hi += 0.15;
-  xtx.strokeStyle = DEMO.grid;
+  xtx.strokeStyle = '#1a2740';
   for(let k=1;k<4;k++){ const y = h*k/4;
     xtx.beginPath(); xtx.moveTo(0,y); xtx.lineTo(w,y); xtx.stroke(); }
   const plot = (hist, style)=>{
@@ -525,9 +571,9 @@ function drawLoss(){
     });
     xtx.stroke();
   };
-  plot(evalHist, DEMO.data);
-  plot(rollHist, DEMO.model);
-  xtx.fillStyle = DEMO.muted; xtx.font = `10px ${DEMO.font.mono}`;
+  plot(evalHist, '#5edfff');
+  plot(rollHist, '#ffb454');
+  xtx.fillStyle = '#8fa0bc'; xtx.font = '10px IBM Plex Mono';
   xtx.fillText(Math.pow(10,hi).toFixed(2), 4, 11);
   xtx.fillText(Math.pow(10,lo).toFixed(3), 4, h-6);
 }

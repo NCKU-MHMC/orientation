@@ -35,21 +35,21 @@
 .gf svg { margin: 0 auto; }
 .gf-eq {
   font-size: 1.7rem; font-family: 'KaTeX_Math', 'Times New Roman', serif;
-  color: #0f172a; display: flex; justify-content: center; align-items: baseline; gap: 0.55rem;
+  color: var(--ink); display: flex; justify-content: center; align-items: baseline; gap: 0.55rem;
 }
 .term { padding: 0.1rem 0.35rem; border-radius: 6px; }
-.term.base { background: #dbeafe; }
-.term.coef { background: #fef3c7; }
-.term.ratio { background: #d1fae5; }
-.op { color: #64748b; }
+.term.base { background: rgba(47, 93, 124, 0.12); }
+.term.coef { background: var(--accent-tint); }
+.term.ratio { background: rgba(95, 115, 80, 0.14); }
+.op { color: var(--muted); }
 .gf-notes { display: flex; justify-content: center; gap: 1.1rem; margin-top: 1.1rem; }
-.note { max-width: 14rem; font-size: 0.85rem; color: #334155; }
+.note { max-width: 14rem; font-size: 0.85rem; color: var(--ink-2); }
 .note .tag {
-  font-weight: 700; font-size: 0.8rem; width: fit-content; margin: 0 auto 0.25rem;
+  font-weight: 600; font-size: 0.8rem; width: fit-content; margin: 0 auto 0.25rem;
   padding: 0.06rem 0.5rem; border-radius: 999px;
 }
-.base-n .tag { background: #dbeafe; color: #1d4ed8; }
-.coef-n .tag { background: #fef3c7; color: #b45309; }
-.ratio-n .tag { background: #d1fae5; color: #047857; }
-.gf-tail { margin-top: 0.9rem; font-size: 0.85rem; color: #64748b; }
+.base-n .tag { background: rgba(47, 93, 124, 0.12); color: var(--data); }
+.coef-n .tag { background: var(--accent-tint); color: var(--accent-ink); }
+.ratio-n .tag { background: rgba(95, 115, 80, 0.14); color: var(--third); }
+.gf-tail { margin-top: 0.9rem; font-size: 0.85rem; color: var(--muted); }
 </style>

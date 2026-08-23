@@ -6,18 +6,19 @@ transition: fade
 lineNumbers: false
 drawings:
   persist: false
+fonts:
+  sans: 'Source Sans 3,Noto Sans TC'
+  serif: 'Source Serif 4,Noto Serif TC'
+  mono: 'IBM Plex Mono'
+  weights: '400,500,600,700'
 class: text-left
 ---
+
+<div class="rule-accent" />
 
 # 生成模型導論(一)
 
 ## 分布的度量與調控
-
-<div class="mt-10 text-slate-500">
-
-新進成員訓練・第一堂(120 分鐘)
-
-</div>
 
 <!--
 開場前發放課前自檢 handout(docs/課前自檢.md),六題若有不熟,提醒課後補齊。
@@ -28,32 +29,32 @@ class: text-left
 
 # 兩種常見的輸出
 
-同一段開頭:「我最近壓力很大,一直睡不好。」
+同一段開頭:「我最近壓力很大，一直睡不好。」
 
 <div class="grid grid-cols-2 gap-6 mt-6">
-<div class="border border-blue-300 rounded-lg p-4 bg-blue-50/50">
+<div class="card card-data">
 
 **base model 續寫三次**(示意樣本)
 
-- 「…一直睡不好,而且早上起來頭很脹。上禮拜去看了醫生,醫生說」
-- 「…一直睡不好。 回覆 #2:我也是,從去年換工作就開始這樣 回覆 #3:+1」
-- 「…一直睡不好。睡眠品質與壓力的關係是雙向的,長期壓力會」
+- 「...一直睡不好，而且早上起來頭很脹。上禮拜去看了醫生，醫生說...」
+- 「...一直睡不好。 回覆 #2：我也是，從去年換工作就開始這樣。 回覆 #3：+1」
+- 「...一直睡不好。睡眠品質與壓力的關係是雙向的，長期壓力會...」
 
 </div>
-<div class="border border-amber-300 rounded-lg p-4 bg-amber-50/50">
+<div class="card card-model">
 
 **aligned model 回覆三次**(示意樣本)
 
-- 「聽起來這段時間辛苦了。以下三個建議:1. 固定作息…」
-- 「聽到這些感到很心疼。以下幾個方向:1. 建立睡前儀式…」
-- 「這段時間辛苦了。可以試試:1. 規律作息…」
+- 「聽起來這段時間辛苦了。以下三個建議：1. 固定作息...」
+- 「聽到這些感到很心疼。以下幾個方向：1. 建立睡前儀式...」
+- 「這段時間辛苦了。可以試試：1. 規律作息...」
 
 </div>
 </div>
 
-<div class="mt-5 text-slate-600">
+<div class="mt-5 tone-muted">
 
-左側把開頭當文本接下去:替說話者把話說完、跑成論壇串、轉進衛教文章,各次分歧而不對話。右側每次都在回答,而且幾乎同一個模板。這兩種行為有共同的來源。
+左側把開頭當文本接下去：替說話者把話說完、跑成論壇串、轉進衛教文章，各次分歧而不對話。右側每次都在回答，而且幾乎同一個模板。這兩種行為有共同的來源。
 
 </div>
 
@@ -67,16 +68,16 @@ class: text-left
 layout: statement
 ---
 
-# 課程主張
+# 課程重點
 
 <div class="text-xl leading-relaxed mt-8">
 
-base model 的含糊迴避與 aligned model 的千篇一律,
-位於同一條 mode-covering–mode-seeking 光譜的兩端。
+<span class="underset">base model 的含糊迴避<div class="underset-lg">---mode-covering---</div></span>與<span class="underset">aligned model 的千篇一律<div class="underset-lg">---mode-seeking---</div></span><br/>
+位於同一條光譜的兩端。
 
 </div>
 
-<div class="mt-8 text-slate-500 text-base">
+<div class="mt-8 tone-faint text-base">
 
 本堂課給出這個主張的論證,並指出這個位置可以在哪些層次上移動。
 
@@ -102,7 +103,7 @@ base model 的含糊迴避與 aligned model 的千篇一律,
 | 信心與正確率 | 模型報出的機率能不能被信任(校準) |
 | LLM-ASR | $p(\text{text}\mid\text{audio})\propto p(\text{audio}\mid\text{text})\,p(\text{text})$ |
 
-<div class="mt-4 text-slate-500 text-sm">
+<div class="mt-4 tone-faint text-sm">
 
 兩堂課處理的正是:分布如何度量、如何調控、如何建造。
 
@@ -119,7 +120,7 @@ base model 的含糊迴避與 aligned model 的千篇一律,
 一個學標籤的條件分布,一個學資料分布本身
 
 <div class="grid grid-cols-2 gap-6 mt-4">
-<div class="border rounded-lg p-4">
+<div class="card">
 
 **判別式模型**
 
@@ -128,7 +129,7 @@ base model 的含糊迴避與 aligned model 的千篇一律,
 輸出空間小而封閉:類別、分數、標籤
 
 </div>
-<div class="border rounded-lg p-4">
+<div class="card">
 
 **生成式模型**
 
@@ -174,7 +175,7 @@ $$2^{256\times256} = 2^{65536} \approx 10^{19728}$$
 
 </div>
 
-<div class="mt-6 border-l-4 border-blue-400 pl-4 text-slate-700">
+<div class="mt-6 aside aside-data tone-muted">
 
 因此分布只能以「函數 + 參數」的形式存在,而能對它做的事,取決於這個函數形式願意回答哪些問題。
 
@@ -195,7 +196,7 @@ $$2^{256\times256} = 2^{65536} \approx 10^{19728}$$
 <ContractCard />
 </div>
 
-<div class="mt-6 text-slate-600 text-center">
+<div class="mt-6 tone-muted text-center">
 
 本堂所有操作都只透過這兩個介面進行。每引入一個方法,先問它呼叫了哪個介面。
 
@@ -204,6 +205,21 @@ $$2^{256\times256} = 2^{65536} \approx 10^{19728}$$
 <!--
 [約 2 分鐘] 這是整門課的分析工具;頁面右下角常駐這兩個介面的徽章。
 sample() 對應「給我一個樣本」;logprob(x) 對應「這個樣本在此分布下的對數密度是多少」。
+-->
+
+---
+
+# 兩個介面的動作
+
+sample() 交出一個樣本,logprob(x) 交出指定點的對數密度
+
+<div class="mt-4">
+<ContractAnim />
+</div>
+
+<!--
+[約 1 分鐘] 抽樣時落點的疏密由密度決定,但過程不回報任何數值;
+查密度時 x 由外部給定,曲線高度取對數後回報。兩件事互不蘊含。
 -->
 
 ---
@@ -219,7 +235,7 @@ sample() 對應「給我一個樣本」;logprob(x) 對應「這個樣本在此�
 
 <div class="mt-6">
 
-資料給的是樣本,沒有密度;凡是需要 $p_{\text{data}}$ 密度的量,都卡在這一格。
+資料給的是樣本，沒有密度 <!--凡是需要 $p_{\text{data}}$ 密度的量,都卡在這一格。-->
 
 </div>
 
@@ -246,8 +262,8 @@ $$\mathrm{KL}(p\,\|\,q)=\int p(x)\,\log\frac{p(x)}{q(x)}\,dx$$
 
 <div class="mt-6">
 
-積分由 $p$ 加權:**只在 $p$ 有質量的地方量測差異**。
-$p$ 幾乎為零的區域,無論 $q$ 在那裡放了多少機率,都幾乎不進入積分。
+積分由 $p$ 加權：**只在 $p$ 有質量的地方量測差異**。
+$p$ 幾乎為零的區域，無論 $q$ 在那裡放了多少機率，都幾乎不進入積分。
 
 </div>
 
@@ -255,8 +271,8 @@ $p$ 幾乎為零的區域,無論 $q$ 在那裡放了多少機率,都幾乎不進
 
 把 $p_{\text{data}}$ 和 $p_\theta$ 分別放進兩個位置,得到兩個不同的目標:
 
-- $\mathrm{KL}(p_{\text{data}}\,\|\,p_\theta)$:forward KL
-- $\mathrm{KL}(p_\theta\,\|\,p_{\text{data}})$:reverse KL
+- $\mathrm{KL}(p_{\text{data}}\,\|\,p_\theta)$: Forward KL
+- $\mathrm{KL}(p_\theta\,\|\,p_{\text{data}})$: Reverse KL
 
 </div>
 
@@ -280,7 +296,7 @@ $$\mathrm{KL}(p_{\text{data}}\,\|\,p_\theta)=\int p_{\text{data}}\log\frac{p_{\t
 
 </div>
 
-<div class="mt-2 border-l-4 border-blue-400 pl-3 text-sm text-slate-700">
+<div class="mt-2 aside aside-data text-sm tone-muted">
 
 以 forward KL 訓練的語言模型寧可對每種說法都給一點機率,也不敢漏掉任何一種:開場看到的含糊、發散的續寫,就是這個目標下的合理行為。
 
@@ -307,7 +323,7 @@ $p_\theta$ 不去的地方不進積分,整個丟掉 $p_{\text{data}}$ 的一個�
 
 </div>
 
-<div class="mt-2 border-l-4 border-amber-400 pl-3 text-sm text-slate-700">
+<div class="mt-2 aside aside-model text-sm tone-muted">
 
 對齊後的模型回答收斂到少數幾種安全模板、多樣性下降,是 mode-seeking 目標的行為特徵。
 
@@ -413,7 +429,7 @@ $$D^*(x)=\frac{p(x)}{p(x)+q(x)}$$
 
 </div>
 
-<div class="mt-4 border rounded-lg p-3 bg-slate-50">
+<div class="mt-4 card">
 
 同一個式子的等價寫法:
 
@@ -465,7 +481,7 @@ $p=\tfrac12\mathcal N(-2,0.6^2)+\tfrac12\mathcal N(2,0.6^2)$,
 <DivergenceFit />
 </div>
 
-<div class="mt-3 text-sm text-slate-500">
+<div class="mt-3 text-sm tone-faint">
 
 預期結果如上圖。動手做一遍,三種行為就不再只是形容詞。
 
@@ -507,9 +523,9 @@ base 項、比值項、係數,三個欄位
 | 方法 | base | 比值項 | 係數 | 需要的介面 |
 |---|---|---|---|---|
 | temperature | $\log p$ | 無 | $1/T$ | logprob(逐 token) |
-| CFG for LLM<br><span class="text-xs text-slate-400">Sanchez et al., 2023</span> | $\log p(x\mid c)$ | $\log p(x\mid c)-\log p(x)$ | $w$ | 兩種條件下的 logprob |
-| contrastive decoding<br><span class="text-xs text-slate-400">Li et al., 2023</span> | $\log p_{\text{strong}}$ | $\log p_{\text{strong}}-\log p_{\text{weak}}$ | $\lambda$ | 兩個模型的 logprob |
-| DoLa<br><span class="text-xs text-slate-400">Chuang et al., 2024</span> | $\log p_{\text{final}}$ | 末層與淺層 logits 之差 | $\lambda$ | 中間層 logits |
+| CFG for LLM<br><span class="fine">Sanchez et al., 2023</span> | $\log p(x\mid c)$ | $\log p(x\mid c)-\log p(x)$ | $w$ | 兩種條件下的 logprob |
+| contrastive decoding<br><span class="fine">Li et al., 2023</span> | $\log p_{\text{strong}}$ | $\log p_{\text{strong}}-\log p_{\text{weak}}$ | $\lambda$ | 兩個模型的 logprob |
+| DoLa<br><span class="fine">Chuang et al., 2024</span> | $\log p_{\text{final}}$ | 末層與淺層 logits 之差 | $\lambda$ | 中間層 logits |
 
 <!--
 temperature 可以視為比值項退化(把 log p 自己當比值項:(1/T)·log p = log p + (1/T − 1)·log p)。
@@ -526,9 +542,9 @@ DoLa:同一模型內部,末層減淺層。
 
 | 方法 | base | 比值項 | 係數 | 需要的介面 |
 |---|---|---|---|---|
-| Autoguidance<br><span class="text-xs text-slate-400">Karras et al., 2024</span> | $\log p_\theta$ | $\log p_\theta-\log p_\phi$(劣化版模型) | $w$ | 兩個模型的 logprob |
-| RLHF 最優解<br><span class="text-xs text-slate-400">Ouyang et al., 2022;推導見 Rafailov et al., 2023</span> | $\log \pi_{\text{ref}}$ | $r(y)$ | $1/\beta$ | ref 的 logprob + reward |
-| DDO 最優解<br><span class="text-xs text-slate-400">Zheng et al., 2025</span> | $\log p_{\text{ref}}$ | $\log p_{\text{data}}-\log p_{\text{ref}}$ | $1/\beta$ | 兩者的 logprob |
+| Autoguidance<br><span class="fine">Karras et al., 2024</span> | $\log p_\theta$ | $\log p_\theta-\log p_\phi$(劣化版模型) | $w$ | 兩個模型的 logprob |
+| RLHF 最優解<br><span class="fine">Ouyang et al., 2022;推導見 Rafailov et al., 2023</span> | $\log \pi_{\text{ref}}$ | $r(y)$ | $1/\beta$ | ref 的 logprob + reward |
+| DDO 最優解<br><span class="fine">Zheng et al., 2025</span> | $\log p_{\text{ref}}$ | $\log p_{\text{data}}-\log p_{\text{ref}}$ | $1/\beta$ | 兩者的 logprob |
 
 <div class="mt-4 text-sm">
 
@@ -588,15 +604,15 @@ $$\log p_{\text{guided}}=\underbrace{\log p_{\text{base}}}_{\text{prompt 置換�
 
 <div class="mt-5">
 
-prompt engineering 改變條件 $c$,等於整個換掉 base 項;係數 $w$ 與比值項完全不動。
+prompt engineering 改變條件 $c$，等於整個換掉 base 項；係數 $w$ 與比值項完全不動。
 
-因此:輸出太單調、太發散、過度銳化這類**係數層次的問題,無法靠改寫 prompt 解決**,提示詞不在那個位置上。
+因此：輸出太單調、太發散、過度銳化這類**係數層次的問題，無法靠改寫 prompt 解決**，提示詞不在那個位置上。
 
 </div>
 
-<div class="mt-5 text-slate-600">
+<div class="mt-5 tone-muted">
 
-討論:各自的題目裡,有沒有一個「調了很久 prompt 都沒用」的問題,其實住在係數的位置?
+討論：各自的題目裡，有沒有一個「調了很久 prompt 都沒用」的問題，其實住在係數的位置？
 
 </div>
 
@@ -634,7 +650,7 @@ layout: section
 
 <LayerStack />
 
-<div class="mt-4 text-sm text-slate-600">
+<div class="mt-4 text-sm tone-muted">
 
 第 1 層與第 4 層只需要 sample:任何黑箱 API 都能做。這正是 prompt engineering 與多數投票類方法對任何服務都可行的原因。
 
@@ -661,7 +677,7 @@ In-context learning 可讀成隱式貝氏推論(Xie et al., 2022):prompt 裡的�
 
 </div>
 
-<div class="mt-4 border-l-4 border-blue-400 pl-4">
+<div class="mt-4 aside aside-data">
 
 memory agent 的機率語意:記憶系統的工作是**挑選哪些證據進入後驗**;存放只是實作手段。
 
@@ -851,7 +867,7 @@ $$\pi^*(y)\;\propto\;\pi_{\text{ref}}(y)\,\exp\!\big(r(y)/\beta\big)$$
 
 $$\min_\pi\;\mathrm{KL}\big(\pi\,\|\,\pi^*\big)$$
 
-<div class="text-slate-600">
+<div class="tone-muted">
 
 KL 的第一個位置放的是 $\pi$,這正是 reverse KL:對齊訓練住在 mode-seeking 端。
 
@@ -942,7 +958,7 @@ reverse KL 缺的那一個介面
 
 </div>
 
-<div class="mt-4 border-l-4 border-amber-400 pl-4">
+<div class="mt-4 aside aside-model">
 
 情感支持系統的安全與多樣共用同一個 $\beta$:調鬆帶來變化也帶來風險,調緊帶來安全也帶來模板。這是一個旋鈕,兩個願望。
 
@@ -976,7 +992,7 @@ LLM-as-judge 同樣逐點評審,同樣的極限;把 judge 換強並不補上這�
 
 </div>
 
-<div class="mt-4 text-slate-600">
+<div class="mt-4 tone-muted">
 
 因此塌縮的防線只剩 β 項對參考模型距離的約束。
 
@@ -995,7 +1011,7 @@ LLM-as-judge 同樣逐點評審,同樣的極限;把 judge 換強並不補上這�
 
 <div class="mt-4 grid grid-cols-1 gap-5">
 
-<div class="border rounded-lg p-4">
+<div class="card">
 
 **事實一(第①節)** 分辨兩個分布的最優判別器是
 
@@ -1003,7 +1019,7 @@ $$d^*(x)=\sigma\!\left(\log\frac{p_{\text{data}}(x)}{q(x)}\right)$$
 
 </div>
 
-<div class="border rounded-lg p-4">
+<div class="card">
 
 **事實二(第②節)** 統一引導式方法表的末列:
 
@@ -1013,7 +1029,7 @@ $$\log p_{\text{guided}}=\log p_{\text{ref}}+\tfrac1\beta\big(\log p_{\text{data
 
 </div>
 
-<div class="mt-5 text-slate-600">
+<div class="mt-5 tone-muted">
 
 接下來的方法只用這兩件事,不引入任何新原理。
 
@@ -1042,7 +1058,7 @@ $$d_\theta(x)\;=\;\sigma\!\left(\beta\,\log\frac{p_\theta(x)}{p_{\text{ref}}(x)}
 
 </div>
 
-<div class="mt-4 border-l-4 border-emerald-500 pl-4 text-slate-700">
+<div class="mt-4 aside aside-third tone-muted">
 
 DPO 把 reward 參數化成 log ratio;DDO 把**判別器**參數化成 log ratio。同一著棋,下在不同的棋盤。
 
@@ -1061,7 +1077,7 @@ DPO 把 reward 參數化成 log ratio;DDO 把**判別器**參數化成 log ratio
 
 <DdoMechanism />
 
-<div class="mt-2 text-sm text-slate-600 text-center">
+<div class="mt-2 text-sm tone-muted text-center">
 
 無需額外判別器網路、無需交替訓練、無需對抽樣過程反向傳播。
 
@@ -1242,7 +1258,7 @@ Zheng et al. (2025) 微調多個提供 logprob 的生成模型,兩則觀察與�
 2. **光譜位置**:目前的方法把分布往哪端推?被什麼參數控制?
 3. **介面清單**:用到的每個方法,各呼叫了 `sample()` 還是 `logprob(x)`?
 
-<div class="mt-6 text-slate-500">
+<div class="mt-6 tone-faint">
 
 下次課前交一頁。第三題若有方法兩個介面都不需要,重看第③節的四層總表。
 完整書目見課程 repo 的文獻頁。

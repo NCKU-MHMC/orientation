@@ -67,7 +67,7 @@ const dim = (key) => props.focus && !key.split(' / ').includes(props.focus)
           :style="{ fontSize: fs('tick') }">{{ e.give }}</text>
         <g v-for="m in e.members" :key="m.key" :style="{ opacity: dim(m.key) ? 0.28 : 1 }">
           <circle :cx="at(e, m.t).x" :cy="at(e, m.t).y" r="6.5" :fill="e.color"
-            stroke="#fff" stroke-width="1.5" />
+            :stroke="palette.paper" stroke-width="1.5" />
           <text :x="labelPos(e, at(e, m.t)).x" :y="labelPos(e, at(e, m.t)).y"
             :text-anchor="labelPos(e, at(e, m.t)).anchor" font-weight="700" :fill="palette.ink"
             :style="{ fontSize: fs('label') }">{{ m.key }}</text>

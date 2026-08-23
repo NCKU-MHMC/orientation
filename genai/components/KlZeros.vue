@@ -11,11 +11,14 @@ const P = [[0.5, -2, 0.6], [0.5, 2, 0.6]]
 const xs = []
 for (let x = -5; x <= 5.001; x += 0.05) xs.push(x)
 const W = 620, H = 230, PAD = 14
-const yMax = 0.45
-const pPath = pathOf(xs, xs.map((x) => mix(x, P)), -5, 5, 0, yMax, W, H, PAD)
+const pYs = xs.map((x) => mix(x, P))
 // forward:q 只蓋右峰 → 左峰處 p>0, q≈0,懲罰無界
 // reverse:同一個 q → 左峰被忽略,無懲罰
-const qPath = pathOf(xs, xs.map((x) => gauss(x, 2, 0.7)), -5, 5, 0, yMax, W, H, PAD)
+const qYs = xs.map((x) => gauss(x, 2, 0.7))
+// 上緣取兩條曲線的最大值加一成半留白,免得較窄的 q 峰頂被裁掉
+const yMax = Math.max(...pYs, ...qYs) * 1.15
+const pPath = pathOf(xs, pYs, -5, 5, 0, yMax, W, H, PAD)
+const qPath = pathOf(xs, qYs, -5, 5, 0, yMax, W, H, PAD)
 const sx = (x) => PAD + ((x + 5) / 10) * (W - 2 * PAD)
 const isFwd = props.mode === 'forward'
 </script>
@@ -45,5 +48,5 @@ const isFwd = props.mode === 'forward'
 <style scoped>
 .klz { text-align: center; }
 .klz svg { margin: 0 auto; }
-.klz-cap { font-size: 0.88rem; color: #475569; margin-top: 0.3rem; }
+.klz-cap { font-size: 0.88rem; color: var(--ink-2); margin-top: 0.3rem; }
 </style>

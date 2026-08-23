@@ -63,16 +63,17 @@ onBeforeUnmount(() => clearInterval(timer))
   padding: 0.75rem 1.25rem 0;
 }
 .demo-title {
-  font-size: 1.05rem;
+  font-family: var(--sans);
+  font-size: 1rem;
   font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 0.4rem;
+  color: var(--ink);
+  margin-bottom: 0.45rem;
 }
 .demo-box {
   overflow: hidden;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper-2);
   margin: 0 auto;
 }
 .demo-title {

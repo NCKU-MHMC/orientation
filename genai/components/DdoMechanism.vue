@@ -5,7 +5,7 @@ import { fs, palette } from './chart-style.js'
 
 <template>
   <div class="ddo">
-    <svg width="860" height="300" viewBox="0 0 860 300">
+    <svg width="860" height="312" viewBox="0 0 860 312">
       <defs>
         <marker id="ddo-arr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
           <path d="M0,0L8,4.5L0,9Z" :fill="palette.muted" />
@@ -29,7 +29,7 @@ import { fs, palette } from './chart-style.js'
         :style="{ fontSize: fs('tick') }">x ~ p_ref(標記 0)</text>
 
       <!-- 中:隱式判別器 -->
-      <rect x="330" y="102" width="250" height="80" rx="9" fill="#fff" :stroke="palette.ink" stroke-width="2" />
+      <rect x="330" y="102" width="250" height="80" rx="8" :fill="palette.paper" :stroke="palette.ink" stroke-width="2" />
       <text x="455" y="132" text-anchor="middle" :fill="palette.ink" font-weight="600"
         :style="{ fontSize: fs('label') }">隱式判別器</text>
       <text x="455" y="158" text-anchor="middle" :fill="palette.ink"
@@ -42,14 +42,17 @@ import { fs, palette } from './chart-style.js'
       <text x="747" y="158" text-anchor="middle" :fill="palette.muted"
         :style="{ fontSize: fs('tick') }">標準 BCE</text>
 
-      <line x1="245" y1="72" x2="322" y2="118" :stroke="palette.muted" stroke-width="1.8" marker-end="url(#ddo-arr)" />
-      <line x1="245" y1="212" x2="322" y2="166" :stroke="palette.muted" stroke-width="1.8" marker-end="url(#ddo-arr)" />
+      <!-- 連接線一律走直角轉折(圓角 r=8),不用斜線 -->
+      <path d="M245,72 H282 A8,8 0 0 1 290,80 V114 A8,8 0 0 0 298,122 H322" fill="none"
+        :stroke="palette.muted" stroke-width="1.8" marker-end="url(#ddo-arr)" />
+      <path d="M245,212 H282 A8,8 0 0 0 290,204 V170 A8,8 0 0 1 298,162 H322" fill="none"
+        :stroke="palette.muted" stroke-width="1.8" marker-end="url(#ddo-arr)" />
       <line x1="580" y1="142" x2="657" y2="142" :stroke="palette.muted" stroke-width="1.8" marker-end="url(#ddo-arr)" />
 
       <!-- 虛線:self-play 回饋(pθ 定期成為新的 p_ref) -->
-      <path d="M455,182 C455,268 240,268 160,248" fill="none" :stroke="palette.bad" stroke-width="1.8"
-        stroke-dasharray="7 5" marker-end="url(#ddo-arr-b)" />
-      <text x="430" y="284" text-anchor="middle" :fill="palette.bad"
+      <path d="M455,182 V260 A8,8 0 0 1 447,268 H168 A8,8 0 0 1 160,260 V252" fill="none"
+        :stroke="palette.bad" stroke-width="1.8" stroke-dasharray="7 5" marker-end="url(#ddo-arr-b)" />
+      <text x="455" y="292" text-anchor="middle" :fill="palette.bad"
         :style="{ fontSize: fs('note') }">self-play:訓練後的 pθ 成為下一輪的 p_ref</text>
 
       <text x="455" y="86" text-anchor="middle" :fill="palette.muted"

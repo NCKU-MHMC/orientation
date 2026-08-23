@@ -45,5 +45,5 @@ const infer = 'M60,140 C220,150 420,196 720,236'
 <style scoped>
 .eb { text-align: center; }
 .eb svg { margin: 0 auto; }
-.eb-cap { font-size: 0.85rem; color: #475569; margin-top: 0.2rem; }
+.eb-cap { font-size: 0.85rem; color: var(--ink-2); margin-top: 0.2rem; }
 </style>

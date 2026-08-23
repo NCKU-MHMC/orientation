@@ -53,5 +53,5 @@ const bw = (W - 2 * PAD) / logits.length
 
 <style scoped>
 .ttp-row { display: flex; gap: 0.4rem; justify-content: center; }
-.ttp-cap { text-align: center; font-size: 0.85rem; color: #475569; margin-top: 0.3rem; }
+.ttp-cap { text-align: center; font-size: 0.85rem; color: var(--ink-2); margin-top: 0.3rem; }
 </style>

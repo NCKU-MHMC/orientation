@@ -6,71 +6,16 @@
 <title>Flow Matching 互動教學:2D 玩具資料</title>
 <script src="vendor/tf.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
 <style>
-  :root{
-    --bg:#0e1420; --panel:#151d2e; --panel-edge:#243350;
-    --grid:#20304b; --ink:#e8edf6; --muted:#8fa0bc;
-    --amber:#ffb454; --cyan:#5edfff; --violet:#b48cff; --pink:#ff6b9d;
-    --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans TC',sans-serif;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--ink);font-family:var(--sans);padding:20px 22px 48px;
-       background-image:radial-gradient(circle at 50% -10%,#1d1a33 0%,var(--bg) 55%);}
-  header{max-width:1200px;margin:0 auto 18px}
-  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--violet);text-transform:uppercase}
-  h1{font-size:clamp(20px,3vw,28px);font-weight:700;margin:6px 0 4px}
-  h1 .fm{color:var(--violet)}
-  .sub{color:var(--muted);font-size:13.5px;max-width:790px;line-height:1.7}
-
-  .wrap{max-width:1200px;margin:0 auto}
-  .controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;
-    background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;
-    padding:12px 16px;margin:14px 0 16px}
-  .ctrl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
-  .ctrl label{white-space:nowrap}
-  select,button{font-family:var(--sans);font-size:13px;border-radius:8px;border:1px solid var(--panel-edge);
-    background:#0f1626;color:var(--ink);padding:6px 10px;cursor:pointer}
-  button:hover{border-color:var(--violet)}
-  button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
-  button.primary{background:var(--violet);color:#160b2a;font-weight:700;border:none;padding:7px 16px}
-  input[type=range]{accent-color:var(--violet);width:110px}
+  /* 這支 demo 專屬的樣式;通用外殼在 theme.css */
+  h1 .fm{color:var(--accent-ink)}
   #tSlide{width:150px}
-  .val{font-family:var(--mono);color:var(--ink);min-width:3ch;text-align:right}
-  .toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
-  .toggle input{accent-color:var(--amber)}
-  .readout{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:auto;display:flex;gap:16px;flex-wrap:wrap}
-  .readout b{color:var(--ink);font-weight:500}
-  .readout .r-loss b{color:var(--amber)} .readout .r-t b{color:var(--violet)}
-
-  .panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
-  .panel{background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;padding:12px 14px 14px;min-width:0}
-  .panel h2{font-size:13.5px;font-weight:700;letter-spacing:.03em;margin-bottom:2px}
-  .panel .hint{font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.5}
-  canvas{width:100%;display:block;border-radius:8px;background:#0c1220;touch-action:none}
   #fieldCv{cursor:crosshair}
-
-  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}
-  .legend span{display:inline-flex;align-items:center;gap:5px}
-  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-
-  .notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:16px}
-  .note{background:var(--panel);border:1px solid var(--panel-edge);border-left:3px solid var(--violet);
-    border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.8;color:var(--muted)}
-  .note h3{font-size:13.5px;color:var(--ink);margin-bottom:6px}
-  .note.n2{border-left-color:var(--pink)} .note.n3{border-left-color:var(--cyan)}
-  .note code{font-family:var(--mono);font-size:12px;color:var(--cyan);background:#0c1220;padding:1px 5px;border-radius:4px}
-  .note b{color:var(--ink);font-weight:500}
-  .loading{font-family:var(--mono);font-size:12px;color:var(--muted);padding:8px 0}
-  @media (max-width:720px){ .readout{margin-left:0} body{padding:14px 12px 40px} }
-
-/* 課堂 iframe 嵌入時的緊湊模式:視窗高度受限,或由 DemoFrame 掛上 body.embed */
-@media (max-height: 620px) {
-  .sub, .notes { display: none; }
-  h1 { font-size: 18px; margin: 6px 0; }
-}
-body.embed .sub, body.embed .notes { display: none; }
-body.embed h1 { font-size: 18px; margin: 6px 0; }
+  .readout .r-loss b{color:var(--accent-ink)}
 </style>
 </head>
 <body>
@@ -80,7 +25,7 @@ body.embed h1 { font-size: 18px; margin: 6px 0; }
   <p class="sub">模型只學一件事:速度場 <span style="font-family:var(--mono)">v<sub>θ</sub>(x, t)</span>。
     訓練時把來源點 x₀ 與目標點 x₁ 用直線 <span style="font-family:var(--mono)">x_t=(1−t)x₀+t·x₁</span> 連起來,回歸目標速度 <span style="font-family:var(--mono)">x₁−x₀</span>;
     取樣時從來源分布出發,沿速度場積分 ODE 到 t=1。這是 DDPM 的近親(SD3、Flux 都用這套 rectified flow),
-    而它的招牌是:<b style="color:var(--pink)">來源不必是高斯——任意兩個分布都能相連</b>。拖動 t 滑桿,就是在親手做取樣積分。</p>
+    而它的招牌是:<b style="color:var(--accent-ink)">來源不必是高斯——任意兩個分布都能相連</b>。拖動 t 滑桿,就是在親手做取樣積分。</p>
 </header>
 
 <div class="wrap">
@@ -130,21 +75,21 @@ body.embed h1 { font-size: 18px; margin: 6px 0; }
   <div class="panels">
     <div class="panel">
       <h2>傳輸過程:p₀ →(t)→ p₁</h2>
-      <p class="hint">彩色粒子=一批來源樣本,沿學到的速度場積分到目前時間 t。灰點=它們的出發位置,暗色點=目標資料。t=1 時的粒子就是<b>生成樣本</b>。粒子顏色只用來追蹤「誰被搬到哪」。</p>
+      <p class="hint">橘紅粒子=一批來源樣本,沿學到的速度場積分到目前時間 t。綠點=它們的出發位置,藍點=目標資料。t=1 時的粒子就是<b>生成樣本</b>。粒子一律用橘紅色,與來源、目標的顏色區分開。</p>
       <canvas id="flowCv"></canvas>
       <div class="legend">
-        <span><span class="dot" style="background:linear-gradient(90deg,#5edfff,#ff6bd6)"></span>傳輸中的粒子</span>
-        <span><span class="dot" style="background:#3a4a68"></span>目標資料 p₁</span>
-        <span><span class="dot" style="background:#55617e"></span>出發位置 p₀</span>
+        <span><span class="dot" style="background:var(--model)"></span>傳輸中的粒子</span>
+        <span><span class="dot" style="background:var(--data)"></span>目標資料 p₁</span>
+        <span><span class="dot" style="background:var(--third)"></span>出發位置 p₀</span>
       </div>
     </div>
     <div class="panel">
       <h2>速度場 v(x, t)(可點擊/拖曳)</h2>
-      <p class="hint">箭頭=目前時間 t 的速度場,越亮代表速度越大。<b>點擊任一位置</b>:粉紅路徑顯示「一顆此刻在這裡的粒子」會被場帶去哪(積分到 t=1)。拖動 t 滑桿,看整個場如何隨時間變形。</p>
+      <p class="hint">箭頭=目前時間 t 的速度場,越深代表速度越大。<b>點擊任一位置</b>:深色路徑顯示「一顆此刻在這裡的粒子」會被場帶去哪(積分到 t=1)。拖動 t 滑桿,看整個場如何隨時間變形。</p>
       <canvas id="fieldCv"></canvas>
       <div class="legend">
-        <span><span class="dot" style="background:var(--cyan)"></span>慢 → <span class="dot" style="background:var(--amber)"></span>快</span>
-        <span><span class="dot" style="background:var(--pink)"></span>你選的起點與它的路徑</span>
+        <span><span class="dot" style="background:var(--rule-2)"></span>慢 → <span class="dot" style="background:var(--model)"></span>快</span>
+        <span><span class="dot" style="background:var(--ink)"></span>你選的起點與它的路徑</span>
       </div>
     </div>
     <div class="panel">
@@ -152,7 +97,7 @@ body.embed h1 { font-size: 18px; margin: 6px 0; }
       <p class="hint">單純的回歸 MSE:<span style="font-family:var(--mono)">‖v<sub>θ</sub>(x_t,t) − (x₁−x₀)‖²</span>。沒有對抗、沒有 KL——注意它像一般監督學習一樣<b>平穩下降</b>,對比 GAN 的震盪。</p>
       <canvas id="lossCv"></canvas>
       <div class="legend">
-        <span><span class="dot" style="background:var(--amber)"></span>FM MSE</span>
+        <span><span class="dot" style="background:var(--model)"></span>FM MSE</span>
       </div>
     </div>
   </div>
@@ -336,19 +281,20 @@ window.addEventListener('resize', ()=>resizeAll());
 
 const toPx = (cv,x,y)=>[ (x/VIEW*0.5+0.5)*cv.clientWidth, (0.5-y/VIEW*0.5)*cv.clientWidth ];
 const toXY = (cv,px,py)=>[ (px/cv.clientWidth-0.5)*2*VIEW, (0.5-py/cv.clientWidth)*2*VIEW ];
-const hue = c => `hsl(${190+c*150},85%,65%)`;
+// 被搬運中的粒子與其軌跡一律用 model(clay)
+const hue = () => DEMO.model;
 
 function drawGrid(ctx,cv){
   const w=cv.clientWidth;
   ctx.clearRect(0,0,w,w);
-  ctx.strokeStyle='#1a2740'; ctx.lineWidth=1;
+  ctx.strokeStyle=DEMO.grid; ctx.lineWidth=1;
   const vmax = Math.ceil(VIEW)-1;
   for(let v=-vmax;v<=vmax;v++){
     const [px]=toPx(cv,v,0), [,py]=toPx(cv,0,v);
     ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,w);ctx.stroke();
     ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(w,py);ctx.stroke();
   }
-  ctx.strokeStyle='#2b3d5e';
+  ctx.strokeStyle=DEMO.rule2;
   const [cx]=toPx(cv,0,0), [,cy]=toPx(cv,0,0);
   ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,w);ctx.stroke();
   ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(w,cy);ctx.stroke();
@@ -363,14 +309,14 @@ function draw(){
 
   /* ---- 傳輸面板 ---- */
   drawGrid(ftx, flowCv);
-  // 目標資料(暗色錨點)
-  ftx.fillStyle='#3a4a68';
+  // 目標資料(藍色錨點)
+  ftx.fillStyle=DEMO.a(DEMO.data,0.5);
   for(let i=0;i<600;i++){
     const [px,py]=toPx(flowCv,tgtData.pts[2*i],tgtData.pts[2*i+1]);
     ftx.beginPath();ftx.arc(px,py,1.6,0,7);ftx.fill();
   }
-  // 出發位置(灰殘影)
-  ftx.fillStyle='#55617e'; ftx.globalAlpha=0.45;
+  // 出發位置(來源分布的殘影)
+  ftx.fillStyle=DEMO.third; ftx.globalAlpha=0.7;
   for(let i=0;i<P;i++){
     const [px,py]=toPx(flowCv,particles[2*i],particles[2*i+1]);
     ftx.beginPath();ftx.arc(px,py,1.4,0,7);ftx.fill();
@@ -405,14 +351,14 @@ function draw(){
   if(probePath){
     const n=probePath.length/2-1;
     const [qx,qy]=toPx(flowCv,probePath[2*n],probePath[2*n+1]);
-    ftx.fillStyle='#ff6b9d'; ftx.strokeStyle='#fff'; ftx.lineWidth=1.5;
+    ftx.fillStyle=DEMO.ink; ftx.strokeStyle=DEMO.paper2; ftx.lineWidth=1.5;
     ftx.beginPath();ftx.arc(qx,qy,5.5,0,7);ftx.fill();ftx.stroke();
   }
 
   /* ---- 速度場面板 ---- */
   drawGrid(vtx, fieldCv);
   // 目標資料淡淡鋪底,幫助對位
-  vtx.fillStyle='#2c3a58';
+  vtx.fillStyle=DEMO.a(DEMO.data,0.32);
   for(let i=0;i<500;i++){
     const [px,py]=toPx(fieldCv,tgtData.pts[2*i],tgtData.pts[2*i+1]);
     vtx.beginPath();vtx.arc(px,py,1.3,0,7);vtx.fill();
@@ -436,8 +382,9 @@ function draw(){
     const [px,py]=toPx(fieldCv,gp[2*i],gp[2*i+1]);
     const ux=vs[2*i]/(mag||1), uy=-vs[2*i+1]/(mag||1);          // 畫布 y 向下
     const L=alen*(0.25+0.75*r);
-    vtx.strokeStyle=`hsl(${190-150*r},85%,${45+25*r}%)`;        // 慢=青、快=琥珀
-    vtx.lineWidth=1.4; vtx.globalAlpha=0.4+0.6*r;
+    const [hr,hg,hb]=DEMO.heat(0.3+0.7*r);                      // 速度大小是非負的量:慢=淡、快=深 clay
+    vtx.strokeStyle=`rgb(${hr|0},${hg|0},${hb|0})`;
+    vtx.lineWidth=1.4; vtx.globalAlpha=0.55+0.45*r;
     vtx.beginPath();vtx.moveTo(px,py);vtx.lineTo(px+ux*L,py+uy*L);vtx.stroke();
     vtx.beginPath();                                             // 箭頭
     vtx.moveTo(px+ux*L,py+uy*L);
@@ -449,7 +396,7 @@ function draw(){
   vtx.globalAlpha=1;
   // 探測路徑
   if(probe && probePath){
-    vtx.strokeStyle='#ff6b9d'; vtx.lineWidth=2;
+    vtx.strokeStyle=DEMO.ink; vtx.lineWidth=2;
     vtx.beginPath();
     for(let s=0;s<probePath.length/2;s++){
       const [px,py]=toPx(fieldCv,probePath[2*s],probePath[2*s+1]);
@@ -468,12 +415,12 @@ function draw(){
   if(win.length>1){
     let ymax=0; for(const p of win) ymax=Math.max(ymax,p);
     ymax=Math.max(ymax,1e-3)*1.1;
-    xtx.strokeStyle='#1a2740';
+    xtx.strokeStyle=DEMO.grid;
     for(let k=1;k<4;k++){ const y=hh*k/4; xtx.beginPath();xtx.moveTo(0,y);xtx.lineTo(w,y);xtx.stroke(); }
-    xtx.strokeStyle='#ffb454'; xtx.lineWidth=1.8; xtx.beginPath();
+    xtx.strokeStyle=DEMO.model; xtx.lineWidth=1.8; xtx.beginPath();
     win.forEach((p,i)=>{ const x=i/(win.length-1)*w, y=hh-(p/ymax)*hh*0.94-4; i?xtx.lineTo(x,y):xtx.moveTo(x,y); });
     xtx.stroke();
-    xtx.fillStyle='#8fa0bc'; xtx.font='10px IBM Plex Mono';
+    xtx.fillStyle=DEMO.muted; xtx.font=`10px ${DEMO.font.mono}`;
     xtx.fillText(ymax.toFixed(2), 4, 11);
   }
 }

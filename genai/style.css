@@ -1,0 +1,207 @@
+/* 簡報全域樣式:人文主義編輯式極簡。
+   配色與字體的單一來源;元件內請取用此處的 CSS 變數,SVG 元件另取 components/chart-style.js。
+   語意 class 清單(投影片 md 只使用這些,不要再寫 Tailwind 顏色工具類):
+     .tone-muted / .tone-faint   次要、再次要文字
+     .card / .card-data / .card-model  帶框說明卡(中性 / 資料側 / 模型側)
+     .aside / .aside-data / .aside-model / .aside-third  左側細線的重點段
+     .fine                        小字附註(文獻年份等) */
+
+:root {
+  --paper: #f4f2ed;
+  --paper-2: #fbfaf7;
+  --paper-3: #edeae2;
+  --ink: #191817;
+  --ink-2: #4a453d;
+  --muted: #7a736a;
+  --rule: #ddd8ce;
+  --rule-2: #c9c2b5;
+
+  --accent: #c05a32;
+  --accent-ink: #9c4620;
+  --accent-tint: #f0e2d8;
+
+  --data: #2f5d7c;
+  --model: #c05a32;
+  --third: #5f7350;
+  --warn: #a03a2e;
+
+  --serif: 'Source Serif 4', 'Noto Serif TC', 'Songti TC', Georgia, serif;
+  --sans: 'Source Sans 3', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'DejaVu Sans Mono', monospace;
+}
+
+.slidev-layout {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 1rem;
+  line-height: 1.62;
+  padding: 1.9rem 3rem;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- 標題與導言 ---- */
+.slidev-layout h1 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.95rem;
+  line-height: 1.22;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+  margin-bottom: 0.15rem;
+}
+/* 每頁標題下的那一行導言。預設主題會給它 opacity-50,對比不足,這裡取消 */
+.slidev-layout h1 + p {
+  opacity: 1;
+  color: var(--muted);
+  font-size: 0.98rem;
+  line-height: 1.6;
+  margin-bottom: 0.95rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid var(--rule);
+}
+.slidev-layout h2 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.45rem;
+  color: var(--ink);
+}
+.slidev-layout h3 {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+.slidev-layout h4, .slidev-layout h5 { color: var(--ink); }
+.slidev-layout h6 { color: var(--muted); font-family: var(--mono); }
+
+/* 封面標題上方的短線 */
+.rule-accent {
+  width: 3rem;
+  height: 2px;
+  background: var(--accent);
+  margin-bottom: 1.4rem;
+}
+
+.slidev-layout p { margin: 0.45rem 0; }
+.slidev-layout strong { font-weight: 600; color: var(--ink); }
+.slidev-layout a { color: var(--accent-ink); text-decoration: none; border-bottom: 1px solid var(--rule-2); }
+
+/* ---- 清單 ---- */
+.slidev-layout ul, .slidev-layout ol { margin: 0.5rem 0; padding-left: 1.15rem; }
+.slidev-layout li { margin: 0.35rem 0; }
+.slidev-layout ul > li { list-style: none; position: relative; }
+.slidev-layout ul > li::before {
+  content: '';
+  position: absolute;
+  left: -0.85rem;
+  top: 0.72em;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--rule-2);
+}
+
+/* ---- 表格:編輯式,只留橫向細線 ---- */
+.slidev-layout table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin: 0.7rem 0;
+  font-variant-numeric: tabular-nums;
+}
+.slidev-layout th {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-align: left;
+  padding: 0.35rem 0.7rem 0.42rem;
+  border: none;
+  border-bottom: 1px solid var(--rule-2);
+  background: none;
+}
+.slidev-layout td {
+  padding: 0.42rem 0.7rem;
+  border: none;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-2);
+  vertical-align: top;
+}
+.slidev-layout tr:last-child td { border-bottom: none; }
+.slidev-layout td:first-child { color: var(--ink); font-weight: 600; }
+.slidev-layout td strong { color: var(--ink); }
+
+/* ---- 程式碼與行內術語 ---- */
+.slidev-layout code {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  color: var(--accent-ink);
+  background: var(--accent-tint);
+  padding: 0.06em 0.34em;
+  border-radius: 4px;
+}
+.slidev-layout pre code { background: none; color: inherit; padding: 0; }
+
+/* ---- 數學 ---- */
+.slidev-layout .katex { color: var(--ink); font-size: 1.02em; }
+.slidev-layout .katex-display { margin: 0.9rem 0; }
+
+/* ---- 語意 class ---- */
+.tone-muted { color: var(--ink-2); }
+.tone-faint { color: var(--muted); }
+.fine { font-size: 0.72rem; color: var(--muted); }
+
+.card {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 0.9rem 1.1rem;
+  background: var(--paper-2);
+}
+.card-data { border-top: 2px solid var(--data); }
+.card-model { border-top: 2px solid var(--model); }
+.card > p:first-child { margin-top: 0; }
+.card > p:last-child { margin-bottom: 0; }
+
+/* 行內 underset:術語貼在詞組正下方,不切斷句子。
+   inline-grid 的基線取自第一列,所以主句仍與周圍文字對齊 */
+.underset { display: inline-grid; justify-items: center; margin-bottom: 0.35em; }
+.underset > .underset-s {
+  font-family: var(--mono);
+  font-size: 0.62em;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  color: var(--muted);
+}
+/* 大字版:術語本身要被讀成內容而不是註記時用 */
+.underset > .underset-lg {
+  font-family: var(--mono);
+  font-size: 0.8em;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  color: var(--muted);
+}
+
+.aside {
+  border-left: 2px solid var(--rule-2);
+  padding-left: 0.95rem;
+  color: var(--ink-2);
+}
+.aside-data { border-left-color: var(--data); }
+.aside-model { border-left-color: var(--model); }
+.aside-third { border-left-color: var(--third); }
+
+/* ---- section / statement 版面 ---- */
+.slidev-layout.section, .slidev-layout.statement { background: var(--paper-2); }
+.slidev-layout.section h1, .slidev-layout.statement h1 { font-size: 2.5rem; }
+.slidev-layout.section h1 + p, .slidev-layout.statement h1 + p {
+  border-bottom: none;
+  font-size: 1.05rem;
+  padding-bottom: 0;
+}
+.slidev-layout.cover h1, .slidev-layout.intro h1 { font-size: 2.9rem; }
+.slidev-layout.center { text-align: center; }
+
+/* ---- 頁碼等 chrome ---- */
+.slidev-page ::selection { background: var(--accent-tint); }

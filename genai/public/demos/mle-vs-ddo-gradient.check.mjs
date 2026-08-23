@@ -14,7 +14,7 @@ const B = CORE.BETA, EPS = 1e-12
 assert.ok(Math.abs(p.reduce((a, b) => a + b) - 1) < 1e-12, 'p_data 未正規化')
 assert.ok(Math.abs(q0.reduce((a, b) => a + b) - 1) < 1e-12, 'q_init 未正規化')
 assert.ok(p.every(v => v > 0), 'p_data 必須處處 > 0,否則 reverse KL 發散')
-// 初始 q 必須在雙峰之間放多餘質量,否則第一幀看不到 cyan 箭頭
+// 初始 q 必須在雙峰之間放多餘質量,否則第一幀看不到紅色壓低箭頭
 assert.ok(CORE.valley(q0) > 3 * CORE.valley(p), `初始 q 峰間質量不足:${CORE.valley(q0)} vs p ${CORE.valley(p)}`)
 
 // ---- (a) MLE 梯度在所有 bin 上恆為推高,永遠不產生向下分量 ----
@@ -36,10 +36,10 @@ for (const h of CORE.run('ddo', 500, 1, B, 0)) {
 }
 assert.ok(down > 1000 && up > 1000, '樣本數不足,符號測試沒有真的測到')
 console.log(`(b) DDO:q>p 的 ${down} 個 bin 全部壓低、q<p 的 ${up} 個 bin 全部推高 ✓`)
-// 第 0 幀就要有 cyan 箭頭
+// 第 0 幀就要有紅色壓低箭頭
 const c0 = CORE.run('ddo', 0, 1, B, 0)[0].c
-assert.ok(c0.filter(v => v < 0).length > 8, '第 0 步的 cyan 壓低箭頭太少')
-console.log(`    第 0 步即有 ${c0.filter(v => v < 0).length} 支 cyan 箭頭 ✓`)
+assert.ok(c0.filter(v => v < 0).length > 8, '第 0 步的紅色壓低箭頭太少')
+console.log(`    第 0 步即有 ${c0.filter(v => v < 0).length} 支紅色壓低箭頭 ✓`)
 
 // ---- (c)(d) 500 步後的 KL 行為 ----
 const mle = CORE.run('mle', 500, 1, B, 0), ddo = CORE.run('ddo', 500, 1, B, 0)

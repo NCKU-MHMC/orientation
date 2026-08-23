@@ -58,20 +58,20 @@ const shown = allRows.slice(0, props.rows)
 .spec-axis { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.7rem; }
 .bar {
   flex: 1; height: 0.55rem; border-radius: 999px;
-  background: linear-gradient(90deg, #2563eb, #94a3b8, #d97706);
+  background: linear-gradient(90deg, var(--data), var(--rule-2), var(--model));
 }
 .pole { text-align: center; min-width: 9rem; }
-.pole-name { font-weight: 700; color: #1e293b; font-size: 0.95rem; }
-.pole-desc { font-size: 0.78rem; color: #64748b; }
+.pole-name { font-weight: 600; color: var(--ink); font-size: 0.95rem; }
+.pole-desc { font-size: 0.78rem; color: var(--muted); }
 .spec-row {
   display: grid; grid-template-columns: 6.2rem 1fr 1fr 1fr;
   align-items: center; gap: 0.4rem;
   padding: 0.32rem 0.2rem; border-radius: 8px;
 }
-.spec-row.hot { background: #fef9c3; }
-.row-name { font-weight: 600; color: #334155; font-size: 0.88rem; }
-.cell { font-size: 0.85rem; color: #0f172a; text-align: center; }
-.cell.left { color: #1d4ed8; }
-.cell.right { color: #b45309; text-align: right; padding-right: 0.4rem; }
-.cell.mid { color: #475569; }
+.spec-row.hot { background: var(--accent-tint); }
+.row-name { font-weight: 600; color: var(--ink-2); font-size: 0.88rem; }
+.cell { font-size: 0.85rem; color: var(--ink); text-align: center; }
+.cell.left { color: var(--data); }
+.cell.right { color: var(--accent-ink); text-align: right; padding-right: 0.4rem; }
+.cell.mid { color: var(--muted); }
 </style>
