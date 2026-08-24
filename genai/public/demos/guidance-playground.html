@@ -34,7 +34,8 @@
   <h1>Guidance 統一式操場</h1>
   <div class="formula">log p_guided = log p_base + w · (log p_A − log p_B)　(再 renormalize)</div>
   <p class="sub">temperature、CFG、contrastive decoding 都只是同一個係數 <b>w</b> 取不同大小、
-    搭配不同的 (A,B);唯獨 prompt engineering 動的是 base 本身,不在係數這一欄。切換下方四個預設,拉動同一根滑桿。</p>
+    搭配不同的 (A,B) — temperature 這一格的 w 就是 <b>1/T</b>,往左拉 T 升高、分布攤平,往右拉 T 降低、分布尖化;
+    唯獨 prompt engineering 動的是 base 本身,不在係數這一欄。切換下方四個預設,拉動同一根滑桿。</p>
 </header>
 
 <div class="wrap">
@@ -54,6 +55,7 @@
       <span>H(guided) <b id="hVal">–</b> bits</span>
       <span>top-1 <b id="t1Val">–</b></span>
       <span>被截斷質量 <b id="tmVal">–</b></span>
+      <span id="unitVal"></span>
     </div>
   </div>
 
@@ -99,13 +101,17 @@ const CORE = (function(){
   const PE_BASE   = bumps(20,[[1,1,4],[6,1.2,3]]);
 
   const presets = {
-    temperature: { label:'Temperature', base:TEMP_BASE, A:TEMP_BASE.map(v=>v/4), B:ZERO, locked:false,
-      note:'base=一般 next-token logits。A=base/4、B=0,所以 w·(A−B)=w·base/4,w 只是在放大或縮小 base 自身的落差 — 這正是 1/T 的角色。拉到極端會整個尖化,拉到 0 附近會趨近均勻。' },
+    temperature: { label:'Temperature', base:ZERO, ref:TEMP_BASE, A:TEMP_BASE, B:ZERO, locked:false,
+      wMin:0, wMax:3, w0:1, wLabel:'w = 1/T', unit: w => w>0.001 ? `T = ${(1/w).toFixed(2)}` : 'T → ∞',
+      note:'base=均勻分布(全零 logits),A=一般 next-token logits、B=0,於是 w 就字面上等於 1/T:guided logits = log p / T。w=1 是原始分布(灰色參考長條);w 往右 → T 變小 → 分布變尖;w 往左 → T 變大 → 分布往均勻攤平,w=0 時完全均勻。' },
     cfg: { label:'CFG', base:CFG_BASE, A:CFG_BASE, B:CFG_B, locked:false,
+      wMin:-3, wMax:3, w0:0,
       note:'base=條件分布 log p(x|c)(已偏向主題 token)。A=條件、B=無條件 log p(x)(較平)。w 越大,越往「條件−無條件」方向推,條件被強化,對應 classifier-free guidance 的 scale。' },
     contrastive: { label:'Contrastive Decoding', base:CD_BASE, A:CD_BASE, B:CD_B, locked:false,
+      wMin:-3, wMax:3, w0:0,
       note:'base=強模型 log p_strong。A=強模型、B=弱模型 log p_weak。w 越大,越壓低「弱模型也會給高機率」的 token,只留下強模型獨有的信心 — 對應 contrastive decoding / DoLa 的對比強度 λ。' },
     promptEng: { label:'Prompt Engineering', base:PE_BASE, A:ZERO, B:ZERO, locked:true,
+      wMin:-3, wMax:3, w0:0,
       note:'按下後只換了 base 的 logits(相當於換了 prompt / 條件變數 c),A=B=0,(A−B) 恆為零向量 — w 這根桿子完全動不了輸出。這就是「prompt 不在係數的位置上」的字面意思。' }
   };
   return { TOKENS, softmax, guidedLogits, entropy, top1, truncatedMass, presets };
@@ -128,6 +134,7 @@ let presetKey = 'temperature', wVal = 0, logView = false;
 const wSlider = document.getElementById('w'), wValEl = document.getElementById('wVal');
 const lockNote = document.getElementById('lockNote'), hintText = document.getElementById('hintText');
 const legend = document.getElementById('legend');
+const wLabelEl = document.querySelector('label[for=w]'), unitEl = document.getElementById('unitVal');
 
 function current(){ return CORE.presets[presetKey]; }
 
@@ -161,7 +168,8 @@ function drawLines(base,A,B){
   ctx.clearRect(0,0,W,H);
   const n = CORE.TOKENS.length;
   const g = w => CORE.guidedLogits(base,A,B,w);
-  const lo = g(-3), hi = g(3), cur = g(wVal);
+  const p = current();
+  const lo = g(p.wMin), hi = g(p.wMax), cur = g(wVal);
   const all = [...lo,...hi,...cur];
   const ymin = Math.min(...all), ymax = Math.max(...all), pad=20;
   const yOf = v => H-pad - (v-ymin)/(ymax-ymin+1e-9)*(H-2*pad);
@@ -177,13 +185,15 @@ function drawLines(base,A,B){
 function render(){
   const p = current();
   const guided = CORE.guidedLogits(p.base,p.A,p.B,wVal);
-  const baseP = CORE.softmax(p.base), guidedP = CORE.softmax(guided);
+  // 參考長條畫的是「未 guide 前」的分布:temperature 情境下 base 是均勻的,
+  // 真正該拿來對照的是 T=1 的原始分布(preset.ref)。
+  const baseP = CORE.softmax(p.ref || p.base), guidedP = CORE.softmax(guided);
   if(logView){ drawLines(p.base,p.A,p.B); legend.innerHTML =
-    `<span><span class="dot" style="background:${DEMO.third}"></span>w=−3(虛線)</span>`+
-    `<span><span class="dot" style="background:${DEMO.data}"></span>w=+3(虛線)</span>`+
+    `<span><span class="dot" style="background:${DEMO.third}"></span>w=${p.wMin}(虛線)</span>`+
+    `<span><span class="dot" style="background:${DEMO.data}"></span>w=${p.wMax}(虛線)</span>`+
     `<span><span class="dot" style="background:${DEMO.model}"></span>目前 w(實線,應嚴格落在兩虛線之間的線性內插位置)</span>`;
   } else { drawBars(baseP,guidedP,CORE.softmax(p.A),CORE.softmax(p.B)); legend.innerHTML =
-    `<span><span class="dot" style="background:${DEMO.a(DEMO.data,0.55)}"></span>base 機率(guide 前)</span>`+
+    `<span><span class="dot" style="background:${DEMO.a(DEMO.data,0.55)}"></span>參考分布(未 guide)</span>`+
     `<span><span class="dot" style="background:${DEMO.model}"></span>guided 機率(renormalize 後)</span>`+
     `<span><span class="dot" style="background:${DEMO.third}"></span>p<sub>A</sub>(拉向這裡)</span>`+
     `<span><span class="dot" style="background:${DEMO.ink2}"></span>p<sub>B</sub>(推離這裡,虛線)</span>`;
@@ -191,6 +201,8 @@ function render(){
   document.getElementById('hVal').textContent = CORE.entropy(guidedP).toFixed(3);
   document.getElementById('t1Val').textContent = (CORE.top1(guidedP)*100).toFixed(1)+'%';
   document.getElementById('tmVal').textContent = (CORE.truncatedMass(baseP,guidedP)*100).toFixed(1)+'%';
+  unitEl.textContent = p.unit ? p.unit(wVal) : '';
+  unitEl.style.display = p.unit ? '' : 'none';
   hintText.textContent = p.note;
 }
 
@@ -199,6 +211,9 @@ function setPreset(key){
   const p = current();
   document.querySelectorAll('.presets button').forEach(b=> b.classList.toggle('active', b.dataset.preset===key));
   wSlider.disabled = p.locked;
+  wSlider.min = p.wMin; wSlider.max = p.wMax;
+  wVal = p.w0; wSlider.value = wVal; wValEl.textContent = wVal.toFixed(1);
+  wLabelEl.textContent = p.wLabel || 'w';
   lockNote.style.display = p.locked ? 'block' : 'none';
   render();
 }
