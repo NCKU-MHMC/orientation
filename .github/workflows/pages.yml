@@ -33,8 +33,8 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: genai/package-lock.json
-      # ponytail: --omit=dev skips the playwright-chromium download; only needed by npm run check
-      - run: npm ci --omit=dev
+      # 需要 devDependencies 的 playwright-chromium:build 會順帶匯出 PDF
+      - run: npm ci
         working-directory: genai
       - run: npm run build
         working-directory: genai

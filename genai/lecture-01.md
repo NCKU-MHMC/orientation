@@ -6,6 +6,8 @@ transition: fade
 lineNumbers: false
 drawings:
   persist: false
+download: true
+exportFilename: genai-lecture-01
 fonts:
   sans: 'Source Sans 3,Noto Sans TC'
   serif: 'Source Serif 4,Noto Serif TC'

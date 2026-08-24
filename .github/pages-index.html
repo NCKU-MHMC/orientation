@@ -5,21 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>新進成員訓練簡報</title>
 <style>
-  body { font-family: system-ui, "Noto Sans TC", sans-serif; max-width: 34rem; margin: 4rem auto; padding: 0 1.5rem; line-height: 1.8; color: #191817; }
+  body { font-family: system-ui, "Noto Sans TC", sans-serif; max-width: 36rem; margin: 4rem auto; padding: 0 1.5rem; line-height: 1.8; color: #191817; }
   h1 { font-size: 1.5rem; margin-bottom: 1.5rem; }
   h2 { font-size: 1rem; font-weight: 600; color: #7a736a; margin: 2rem 0 .25rem; }
-  a { display: block; padding: .6rem 0; color: #9c4620; }
+  .item { display: flex; align-items: baseline; gap: .75rem; padding: .5rem 0; }
+  .item a { color: #9c4620; text-decoration: none; border-bottom: 1px solid #ddd8ce; }
+  .item a:hover { border-bottom-color: #9c4620; }
+  .item .title { flex: 1; }
+  .item .pdf { font-size: .8rem; color: #7a736a; border-bottom: none; }
+  .item .pdf:hover { color: #9c4620; }
 </style>
 </head>
 <body>
 <h1>新進成員訓練簡報</h1>
 
 <h2>生成模型導論</h2>
-<a href="genai/l1/">第一堂:分布的度量與調控</a>
-<a href="genai/l2/">第二堂:建構滿足介面的分布</a>
+<div class="item">
+  <a class="title" href="genai/l1/">第一堂:分布的度量與調控</a>
+  <a class="pdf" href="genai/l1/genai-lecture-01.pdf" download>下載 PDF</a>
+</div>
+<div class="item">
+  <a class="title" href="genai/l2/">第二堂:建構滿足介面的分布</a>
+  <a class="pdf" href="genai/l2/genai-lecture-02.pdf" download>下載 PDF</a>
+</div>
 
 <h2>深度學習</h2>
-<a href="deep_learning/1st/">第一堂:Deep Learning 1</a>
-<a href="deep_learning/2nd/">第二堂:Deep Learning 2</a>
+<div class="item">
+  <a class="title" href="deep_learning/1st/">第一堂:Deep Learning 1</a>
+  <a class="pdf" href="deep_learning/1st/slidev-exported.pdf" download>下載 PDF</a>
+</div>
+<div class="item">
+  <a class="title" href="deep_learning/2nd/">第二堂:Deep Learning 2</a>
+  <a class="pdf" href="deep_learning/2nd/slidev-exported.pdf" download>下載 PDF</a>
+</div>
 </body>
 </html>
