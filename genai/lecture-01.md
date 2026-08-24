@@ -116,14 +116,14 @@ layout: statement
 
 # 實驗室題目背後的機率問題
 
-實驗室正在跑的六個題目，六個關於分布的陳述
+實驗室相關的六個題目，六個關於分布的陳述
 
 | 題目 | 背後的機率問題 |
 |---|---|
 | prompt engineering | 選擇條件變數 $c$，操縱 $p(y \mid c)$ |
 | memory agent | 建構條件集合；長脈絡下 $p(\text{task} \mid \text{context})$ 被稀釋 |
 | 情感支持對話 | 泛泛安慰語與對齊後的多樣性塌縮 |
-| false premise 偵測 | $p(y\mid x)$ 永遠良定義，即使 $p(x)\approx 0$ |
+| false assumptions 偵測 | $p(y\mid x)$ 永遠良定義，即使 $p(x)\approx 0$ |
 | 信心與正確率 | 模型報出的機率能不能被信任(校準) |
 | ASR | 嘗試解構出 $p(\text{feature}\mid\text{audio})$ 來降低 ASR 建模難度：<br/>$p(\text{text}\mid\text{audio} )=\int_{\text{feature}}p(\text{text}\mid\text{feature},\text{audio})p(\text{feature}\mid\text{audio})$；|
 
