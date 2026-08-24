@@ -676,7 +676,7 @@ base 項、比值項、係數，三個欄位
 |---|---|---|---|---|
 | temperature | $\log p$ | 無 | $1/T$ | logprob(逐 token) |
 | CFG for LLM<br><span class="fine">[Sanchez et al., 2023](https://arxiv.org/abs/2306.17806)</span> | $\log p(x\mid c)$ | $\log p(x\mid c)-\log p(x)$ | $w$ | 兩種條件下的 logprob |
-| contrastive decoding<br><span class="fine">[Li et al., 2023](https://arxiv.org/abs/2210.15097)</span> | $\log p_{\text{strong}}$ | $\log p_{\text{strong}}-\log p_{\text{weak}}$ | $\lambda$ | 兩個模型的 logprob |
+| contrastive decoding<br><span class="fine">[Li et al., 2023](https://arxiv.org/abs/2210.15097)</span>,<br/> Autoguidance<br><span class="fine">[Karras et al., 2024](https://arxiv.org/abs/2406.02507)</span> | $\log p_{\text{strong}}$ | $\log p_{\text{strong}}-\log p_{\text{weak}}$ | $\lambda$ | 兩個模型的 logprob |
 | DoLa<br><span class="fine">[Chuang et al., 2024](https://arxiv.org/abs/2309.03883)</span> | $\log p_{\text{final}}$ | 末層與淺層 logits 之差 | $\lambda$ | 中間層 logits |
 
 <!--
@@ -705,7 +705,6 @@ DoLa(Chuang et al., 2024):不必第二個模型,同一個模型內部末層減�
 
 | 方法 | base | 比值項 | 係數 | 需要的介面 |
 |---|---|---|---|---|
-| Autoguidance<br><span class="fine">[Karras et al., 2024](https://arxiv.org/abs/2406.02507)</span> | $\log p_\theta$ | $\log p_\theta-\log p_\phi$(劣化版模型) | $w$ | 兩個模型的 logprob |
 | RLHF 最優解<br><span class="fine">[Ouyang et al., 2022](https://arxiv.org/abs/2203.02155);推導見 [Rafailov et al., 2023](https://arxiv.org/abs/2305.18290)</span> | $\log \pi_{\text{ref}}$ | $r(y)$ | $1/\beta$ | ref 的 logprob + reward |
 | DDO 最優解<br><span class="fine">[Zheng et al., 2025](https://arxiv.org/abs/2503.01103)</span> | $\log p_{\text{ref}}$ | $\log p_{\text{data}}-\log p_{\text{ref}}$ | $1/\beta$ | 兩者的 logprob |
 
@@ -716,9 +715,6 @@ top-k / top-p 是同一操作的硬截斷版：不連續，但同樣在移除尾
 </div>
 
 <!--
-Autoguidance(Karras et al., 2024):p_B 用一個刻意訓壞的模型,
-比值項是好模型減劣化模型,等於把劣化的方向反向放大。好處是不需要條件標註。
-
 RLHF 最優解(Ouyang et al., 2022;推導見 Rafailov et al., 2023):
 π* 正比於 π_ref 乘 exp(r/β),取 log 就是 base 加上 (1/β) 乘 reward。
 這一列的比值項是一個 reward 函數,不是兩個模型的 log 密度差,第四節會回來處理。
