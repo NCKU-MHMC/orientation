@@ -124,7 +124,7 @@
       </div>
     </div>
     <div class="panel">
-      <h2>三種散度同時量(只優化其中一種)</h2>
+      <h2>三種散度同時量(只最小化其中一種)</h2>
       <p class="hint">不論正在最小化哪一個,三條曲線都同時被計算。<b>最佳化 reverse KL 時,盯著 forward KL 怎麼往上飛</b>——那就是被犧牲掉的覆蓋度。虛線是 JSD 的上界 log 2 ≈ 0.693,它永遠碰不到天花板以上。</p>
       <canvas id="lossCv"></canvas>
       <div class="legend">

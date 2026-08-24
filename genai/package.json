@@ -7,7 +7,7 @@
     "dev:2": "slidev lecture-02.md --open",
     "build": "slidev build lecture-01.md --base ${BASE:-/}genai/l1/ --out dist/l1 --wait-until domcontentloaded --wait 2000 && slidev build lecture-02.md --base ${BASE:-/}genai/l2/ --out dist/l2 --wait-until domcontentloaded --wait 2000",
     "export": "slidev export lecture-01.md lecture-02.md --wait-until domcontentloaded --wait 2000",
-    "check": "node scripts/deck-lint.mjs lecture-01.md lecture-02.md && node scripts/svg-fontsize.check.mjs && node components/divergence-math.check.mjs && npm run check:demos",
+    "check": "node scripts/deck-lint.mjs lecture-01.md lecture-02.md components/*.vue public/demos/*.html && node scripts/svg-fontsize.check.mjs && node components/divergence-math.check.mjs && npm run check:demos",
     "check:demos": "for f in public/demos/*.check.mjs; do node \"$f\" || exit 1; done"
   },
   "dependencies": {

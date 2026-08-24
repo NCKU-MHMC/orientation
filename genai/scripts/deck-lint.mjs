@@ -1,4 +1,6 @@
 // 簡報文字驗收:禁用詞、句式配額、第二人稱、CJK 粗體陷阱、HTML 行內 markdown。
+// .md 為投影片,跑全部檢查;.vue / .html(元件與 demo)只跑禁用詞與第二人稱,
+// 因為那些檔沒有 h1 淺灰註解、frontmatter 這類 Slidev 結構。
 import { readFileSync } from 'node:fs'
 
 const files = process.argv.slice(2)
@@ -7,12 +9,16 @@ if (files.length === 0) {
   process.exit(2)
 }
 
-// 比喻性口語術語與後設編排用語,一律不得出現在投影片檔(含講稿)。
+// 比喻性口語術語與後設編排用語,一律不得出現在投影片檔(含講稿)、元件與 demo。
 const BANNED = [
-  '一把尺', '把尺', '那條軸', '這條軸', '骨架', '骨幹', '招牌病', '體質',
+  '一把尺', '把尺', '那條軸', '這條軸', '根軸', '骨架', '骨幹', '招牌病', '體質',
+  // 拿比喻當術語:改用有定義的名詞(覆蓋程度、係數、特徵性失效……)
+  '光譜', '旋鈕', '盲區', '煞車', '防線', '拓撲稅',
   '伏筆', '下一堂', '下堂', '下週會', '留到第二堂', '留到下', '這頁回收',
   // 宣傳語與空洞強調
   '最關鍵', '徹底改變', '令人驚豔', '值得注意的是', '不可或缺',
+  // 用字統一:台灣慣用
+  '分佈', '優化',
 ]
 
 let failed = false
@@ -24,6 +30,7 @@ const report = (file, line, msg) => {
 for (const file of files) {
   const raw = readFileSync(file, 'utf8')
   const lines = raw.split('\n')
+  const isDeck = file.endsWith('.md')
 
   // 建立「可見文字」遮罩:排除 HTML 註解(講稿)、frontmatter、程式碼區塊
   let inComment = false
@@ -50,10 +57,14 @@ for (const file of files) {
     return out
   })
 
+  // 元件與 demo 沒有講稿註解,整份都算可見文字;'你' 這種字串常值是資料不是文案
+  const visibleLines = isDeck ? visible : lines.map((l) => l.replace(/['"]你['"]/g, ''))
+
   lines.forEach((l, i) => {
     for (const w of BANNED) {
       if (l.includes(w)) report(file, i + 1, `禁用詞「${w}」`)
     }
+    if (!isDeck) return
     // CJK 粗體陷阱:依 CommonMark flanking 規則,開頭 ** 後接標點且前接文字、
     // 或結尾 ** 前接標點且後接文字時,不會解析為粗體
     {
@@ -76,9 +87,11 @@ for (const file of files) {
       report(file, i + 1, 'HTML 標籤同行內含 markdown/數學語法,不會渲染')
   })
 
-  visible.forEach((l, i) => {
+  visibleLines.forEach((l, i) => {
     if (l.includes('你')) report(file, i + 1, '可見文字使用第二人稱「你」')
   })
+
+  if (!isDeck) continue // 以下都是投影片專屬的版面規則
 
   // 主題把 h1 之後緊接的段落渲染成淺灰註解(.slidev-layout h1 + p),
   // 因此每個 h1 後必須是一句可獨立閱讀的短註解:非清單/表格/公式/HTML,句末不留冒號。
