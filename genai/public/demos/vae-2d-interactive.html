@@ -24,7 +24,7 @@
 <header>
   <div class="eyebrow">生成模型入門 · 第一堂 · Lab Demo 01</div>
   <h1>VAE 互動教學 — 2D 玩具資料上的 <span class="beta">&beta;</span>-VAE</h1>
-  <p class="sub">一個 2→2 維潛在空間的 VAE 正在你的瀏覽器裡即時訓練(TensorFlow.js)。左圖是資料空間、中間是潛在空間。
+  <p class="sub">一個 2→2 維潛在空間的 VAE 正在瀏覽器裡即時訓練(TensorFlow.js)。左圖是資料空間、中間是潛在空間。
     調整 &beta; 觀察「重建 vs. KL」的拉鋸,並<b style="color:var(--accent-ink)">點擊或拖曳潛在空間</b>,看解碼器把 z 映射到哪裡。</p>
 </header>
 
@@ -70,7 +70,7 @@
       <div class="legend">
         <span><span class="dot" style="background:linear-gradient(90deg,var(--data),var(--third))"></span>真實資料</span>
         <span><span class="dot" style="background:var(--model)"></span>生成樣本</span>
-        <span><span class="dot" style="background:var(--model);border:1.5px solid var(--ink)"></span>你點的 z 解碼結果</span>
+        <span><span class="dot" style="background:var(--model);border:1.5px solid var(--ink)"></span>點選的 z 解碼結果</span>
       </div>
     </div>
     <div class="panel">
@@ -79,7 +79,7 @@
       <canvas id="latentCv"></canvas>
       <div class="legend">
         <span><span class="dot" style="border:1.5px dashed var(--third);background:none"></span>先驗 N(0,I)</span>
-        <span><span class="dot" style="background:var(--ink)"></span>你選的 z</span>
+        <span><span class="dot" style="background:var(--ink)"></span>選取的 z</span>
       </div>
     </div>
     <div class="panel">

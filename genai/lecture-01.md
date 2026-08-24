@@ -1,6 +1,6 @@
 ---
 theme: default
-title: 生成模型導論(一)分布的度量與調控
+title: 生成模型導論(一) 分布的度量與調控
 titleTemplate: '%s'
 transition: fade
 lineNumbers: false
@@ -1139,7 +1139,7 @@ $$\max_\theta\;\mathbb{E}_{(x,y)\sim \mathcal D_{\text{SFT}}}\big[\log \pi_\thet
 
 <div class="mt-5">
 
-目標函數與預訓練相同，仍是 forward KL，只是換了資料分布，通過顯式將分佈遷移到一個較小的子集上能減輕原先過度通用的特性。但有對新子集 mode-covering 的可能性。
+目標函數與預訓練相同，仍是 forward KL，只是換了資料分布，透過顯式把分布遷移到一個較小的子集上,能減輕原先過度通用的特性。但有對新子集 mode-covering 的可能性。
 
 </div>
 

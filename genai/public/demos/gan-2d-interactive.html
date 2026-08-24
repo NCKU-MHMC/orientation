@@ -25,7 +25,7 @@
 <header>
   <div class="eyebrow">生成模型入門 · 第一堂 · Lab Demo 02</div>
   <h1>GAN 互動教學 — Generator <span class="vs">vs.</span> Discriminator 的對抗訓練</h1>
-  <p class="sub">一個 2D GAN 正在你的瀏覽器裡即時對抗訓練(TensorFlow.js)。左圖是資料空間,中間是<b>判別器的決策地景</b>:
+  <p class="sub">一個 2D GAN 正在瀏覽器裡即時對抗訓練(TensorFlow.js)。左圖是資料空間,中間是<b>判別器的決策地景</b>:
     藍色代表 D 認為「像真的」。注意 GAN <b>沒有 encoder、沒有重建</b>——生成器唯一的學習訊號,就是這張地景的梯度。
     平衡時 D(real) 與 D(fake) 都會逼近 <span style="font-family:var(--mono)">0.5</span>。</p>
 </header>
@@ -81,7 +81,7 @@
       <canvas id="discCv"></canvas>
       <div class="legend">
         <span><span class="swatch"></span>D(x): 0(橘紅,假)→ 1(藍,真)</span>
-        <span><span class="dot" style="background:var(--ink)"></span>你查詢的點 <span id="probeVal" style="font-family:var(--mono);color:var(--ink)"></span></span>
+        <span><span class="dot" style="background:var(--ink)"></span>查詢的點 <span id="probeVal" style="font-family:var(--mono);color:var(--ink)"></span></span>
       </div>
     </div>
     <div class="panel">

@@ -19,7 +19,7 @@
       </div>
       <div class="note coef-n">
         <div class="tag">係數</div>
-        <div>光譜上的座標<br/>越大越往 mode-seeking 端</div>
+        <div>移動的幅度<br/>越大越往 mode-seeking 端</div>
       </div>
       <div class="note ratio-n">
         <div class="tag">比值項</div>
