@@ -148,3 +148,5 @@ events.out.tfevents.*
 generation
 
 old
+
+!.github/
