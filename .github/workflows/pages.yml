@@ -5,20 +5,29 @@ on:
     branches: [2026]
   workflow_dispatch:
 
+# 產出直接推上 gh-pages 分支,Pages 由該分支根目錄服務
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # main 上既有的兩份 deep learning 簡報一併帶進站台,維持原網址
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: .main
+          sparse-checkout: |
+            deep_learning/1st
+            deep_learning/2nd
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -31,21 +40,24 @@ jobs:
         working-directory: genai
         env:
           BASE: /${{ github.event.repository.name }}/
+
       - name: Assemble site
         run: |
-          mkdir -p _site/genai
+          mkdir -p _site/genai _site/deep_learning
           cp -r genai/dist/l1 genai/dist/l2 _site/genai/
+          cp -r .main/deep_learning/1st .main/deep_learning/2nd _site/deep_learning/
           cp .github/pages-index.html _site/index.html
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
+          touch _site/.nojekyll
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      # 單一 commit 覆寫 gh-pages:分支只留最新產出,原始碼分支不被建置產物汙染
+      - name: Publish to gh-pages
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd _site
+          git init -q -b gh-pages
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -q -m "deploy: ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
