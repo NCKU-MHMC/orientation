@@ -310,7 +310,7 @@ logprob 以什麼形式提供、sample 要幾步。
 layout: none
 ---
 
-<DemoFrame src="interface-contract.html" title="介面契約:逐家族呼叫兩個介面" :maxH="470" />
+<DemoFrame src="interface-contract.html" title="介面契約:逐家族呼叫兩個介面" :maxH="500" />
 
 <!--
 [2 分鐘] 展示順序:
@@ -445,7 +445,7 @@ sample:逐 token 產生,第 t 個 token 的分布依賴前 t−1 個的取值,�
 layout: none
 ---
 
-<DemoFrame src="ar-2d-interactive.html" title="AR:逐維生成,精確 logprob" :maxH="470" />
+<DemoFrame src="ar-2d-interactive.html" title="AR:逐維生成,精確 logprob" :maxH="500" />
 
 <!--
 [3 分鐘] 展示腳本:
@@ -617,7 +617,7 @@ DDO 的壓低項恰好在 p_ref 的樣本上施力,那正是 q 系的軌跡,補�
 layout: none
 ---
 
-<DemoFrame src="ar-2d-interactive-2.html" title="訓練軌跡與自由生成軌跡的分離" :maxH="470" />
+<DemoFrame src="ar-2d-interactive-2.html" title="訓練軌跡與自由生成軌跡的分離" :maxH="500" />
 
 <!--
 [3 分鐘] 這一頁的模型是現場訓練的,用 TensorFlow.js:
@@ -809,7 +809,7 @@ coupling 每層只動一半維度,層與層之間用 permutation 混合。
 layout: none
 ---
 
-<DemoFrame src="nf-2d-interactive.html" title="Normalizing Flow:可逆變換與精確密度" :maxH="470" />
+<DemoFrame src="nf-2d-interactive.html" title="Normalizing Flow:可逆變換與精確密度" :maxH="500" />
 
 <!--
 [3 分鐘] 這一頁的 flow 也是現場訓練的:一疊 affine coupling,RealNVP 型,
@@ -1026,7 +1026,7 @@ MSE 的最優解是**條件均值**:多個可能輸出的平均,而非其中任�
 layout: none
 ---
 
-<DemoFrame src="vae-2d-interactive.html" title="VAE:過度平滑、拓撲、β 的兩端" :maxH="470" />
+<DemoFrame src="vae-2d-interactive.html" title="VAE:過度平滑、拓撲、β 的兩端" :maxH="500" />
 
 <!--
 [3 分鐘] 觀察順序:
@@ -1214,7 +1214,7 @@ Unrolled GANs(Metz et al., 2017)讓 G 對 k 步之後的 D 最佳化,消掉這�
 layout: none
 ---
 
-<DemoFrame src="gan-2d-interactive.html" title="Mode collapse:判別器地景看得見,generator 收不到" :maxH="470" />
+<DemoFrame src="gan-2d-interactive.html" title="Mode collapse:判別器地景看得見,generator 收不到" :maxH="500" />
 
 <!--
 [5 分鐘] 訓練到塌縮,然後疊上判別器地景。
@@ -1361,7 +1361,7 @@ x 每步沿 −∇E 走一小段,再加一點高斯雜訊。注意 ∇ₓ log Z 
 layout: none
 ---
 
-<DemoFrame src="ebm-2d-interactive.html" title="EBM:能量地景與 Langevin 抽樣" :maxH="470" />
+<DemoFrame src="ebm-2d-interactive.html" title="EBM:能量地景與 Langevin 抽樣" :maxH="500" />
 
 <!--
 [3 分鐘] 展示腳本:
@@ -1696,7 +1696,7 @@ VAR-d30 在 ImageNet 256 是 4.74 到 1.79。
 layout: none
 ---
 
-<DemoFrame src="flow-matching-2d-interactive.html" title="Flow Matching:同一個散度的另一種分解" :maxH="440" />
+<DemoFrame src="flow-matching-2d-interactive.html" title="Flow Matching:同一個散度的另一種分解" :maxH="500" />
 
 <div class="px-6 pt-2 text-sm tone-muted">
 

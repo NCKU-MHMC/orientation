@@ -91,14 +91,14 @@ layout: statement
 
 <div class="text-xl leading-relaxed mt-8">
 
-<span class="underset">base model 的含糊迴避<div class="underset-lg">---mode-covering---</div></span>與<span class="underset">aligned model 的千篇一律<div class="underset-lg">---mode-seeking---</div></span><br/>
-是同一個量的兩個極端:模型分布的覆蓋程度,也就是機率質量攤在多少種輸出上。
+<span class="underset">base model 的含糊迴避<div class="underset-lg">---mode-covering---</div></span> 與 <span class="underset">aligned model 的千篇一律<div class="underset-lg">---mode-seeking---</div></span><br/>
+是同一個量的兩個極端：模型分布的覆蓋程度，也就是機率質量攤在多少種輸出上。
 
 </div>
 
 <div class="mt-8 tone-faint text-base">
 
-本堂課給出這個主張的論證,並指出覆蓋程度可以在哪些層次上調整。
+本堂課給出這個主張的論證，並指出覆蓋程度可以在哪些層次上調整。
 
 </div>
 
@@ -116,16 +116,16 @@ layout: statement
 
 # 實驗室題目背後的機率問題
 
-實驗室正在跑的六個題目,六個關於分布的陳述
+實驗室正在跑的六個題目，六個關於分布的陳述
 
 | 題目 | 背後的機率問題 |
 |---|---|
-| prompt engineering | 選擇條件變數 $c$,操縱 $p(y \mid c)$ |
-| memory agent | 建構條件集合;長脈絡下 $p(\text{task} \mid \text{prompt})$ 被稀釋 |
+| prompt engineering | 選擇條件變數 $c$，操縱 $p(y \mid c)$ |
+| memory agent | 建構條件集合；長脈絡下 $p(\text{task} \mid \text{context})$ 被稀釋 |
 | 情感支持對話 | 泛泛安慰語與對齊後的多樣性塌縮 |
-| false premise 偵測 | $p(y\mid x)$ 永遠良定義,即使 $p(x)\approx 0$ |
+| false premise 偵測 | $p(y\mid x)$ 永遠良定義，即使 $p(x)\approx 0$ |
 | 信心與正確率 | 模型報出的機率能不能被信任(校準) |
-| LLM-ASR | 直接建模 $p(\text{text}\mid\text{audio})$;外掛 LM 在 log 空間加權 |
+| ASR | 嘗試解構出 $p(\text{feature}\mid\text{audio})$ 來降低 ASR 建模難度：<br/>$p(\text{text}\mid\text{audio} )=\int_{\text{feature}}p(\text{text}\mid\text{feature},\text{audio})p(\text{feature}\mid\text{audio})$；|
 
 <div class="mt-4 tone-faint text-sm">
 
@@ -153,7 +153,7 @@ LLM-ASR 直接建模 p(text|audio),外掛的語言模型是在 log 空間加權�
 
 # 判別式與生成式
 
-一個學標籤的條件分布,一個學資料分布本身
+一個學標籤的條件分布，一個學資料分布本身
 
 <div class="grid grid-cols-2 gap-6 mt-4">
 <div class="card">
@@ -180,8 +180,8 @@ LLM-ASR 直接建模 p(text|audio),外掛的語言模型是在 log 空間加權�
 
 「逼近」馬上引出兩個問題：
 
-1. $p_\theta$ 與 $p_{\text{data}}$ 的差距要用什麼量來度量?
-2. 度量所需要的資訊,雙方拿不拿得出來?
+1. $p_\theta$ 與 $p_{\text{data}}$ 的差距要用什麼量來度量？
+2. 度量所需要的資訊,雙方拿不拿得出來？
 
 </div>
 
@@ -203,7 +203,7 @@ LLM-ASR 直接建模 p(text|audio),外掛的語言模型是在 log 空間加權�
 
 <div class="mt-4">
 
-一張 $256 \times 256$ 的二值影像,狀態總數：
+一張 $256 \times 256$ 的二值影像，狀態總數：
 
 $$2^{256\times256} = 2^{65536} \approx 10^{19728}$$
 
@@ -211,14 +211,14 @@ $$2^{256\times256} = 2^{65536} \approx 10^{19728}$$
 
 <div class="mt-4">
 
-把每個狀態的機率存成一張表,宇宙的原子數($\approx 10^{80}$)遠遠不夠。
+把每個狀態的機率存成一張表：宇宙的原子數($\approx 10^{80}$)遠遠不夠。
 詞彙表 5 萬的 100-token 句子同理：$50000^{100}$ 個狀態。
 
 </div>
 
 <div class="mt-6 aside aside-data tone-muted">
 
-因此分布只能以「函數 + 參數」的形式存在,而能對它做的事,取決於這個函數形式能回答哪些問題。
+因此分布只能以「函數 + 參數」的形式存在，而能對它做的事取決於這個函數形式能回答哪些問題。
 
 </div>
 
@@ -263,7 +263,7 @@ logprob(x) 是「這個 x 在此分布下的對數密度是多少」,x 由外部
 
 # 兩個介面的動作
 
-sample() 交出一個樣本,logprob(x) 交出指定點的對數密度
+sample() 交出一個樣本，logprob(x) 交出指定點的對數密度
 
 <div class="mt-4">
 <ContractAnim />
@@ -282,7 +282,7 @@ sample() 交出一個樣本,logprob(x) 交出指定點的對數密度
 
 # 介面盤點
 
-資料側與模型側,各自能回答什麼
+資料側與模型側，各自能回答什麼
 
 | 物件 | `sample()` | `logprob(x)` |
 |---|---|---|
@@ -336,7 +336,7 @@ $p$ 幾乎為零的區域，無論 $q$ 在那裡放了多少機率，都幾乎�
 
 <div class="mt-4">
 
-把 $p_{\text{data}}$ 和 $p_\theta$ 分別放進兩個位置,得到兩個不同的目標：
+把 $p_{\text{data}}$ 和 $p_\theta$ 分別放進兩個位置，得到兩個不同的目標：
 
 - $\mathrm{KL}(p_{\text{data}}\,\|\,p_\theta)$: Forward KL
 - $\mathrm{KL}(p_\theta\,\|\,p_{\text{data}})$: Reverse KL
@@ -365,7 +365,7 @@ $$\mathrm{KL}(p_{\text{data}}\,\|\,p_\theta)=\int p_{\text{data}}\log\frac{p_{\t
 
 <div class="mt-2 text-sm">
 
-凡 $p_{\text{data}}>0$ 而 $p_\theta\to 0$ 之處,懲罰無上界,所以 $p_\theta$ 必須覆蓋 $p_{\text{data}}$ 的整個支撐集：**zero-avoiding / mode-covering**。代價是把機率質量攤到峰與峰之間的低密度區。
+凡 $p_{\text{data}}>0$ 而 $p_\theta\to 0$ 之處，懲罰無上界，所以 $p_\theta$ 必須覆蓋 $p_{\text{data}}$ 的整個支撐集：**zero-avoiding / mode-covering**。代價是把機率質量攤到峰與峰之間的低密度區。
 
 </div>
 
@@ -390,7 +390,7 @@ MLE 等價於最小化 forward KL,介面表那一頁會把這個等價關係算�
 
 ---
 
-# Reverse KL:放棄不罰
+# Reverse KL：放棄不罰
 
 權重換到 $p_\theta$ 手上
 
@@ -400,13 +400,13 @@ $$\mathrm{KL}(p_\theta\,\|\,p_{\text{data}})=\int p_\theta\log\frac{p_\theta}{p_
 
 <div class="mt-2 text-sm">
 
-$p_\theta$ 不去的地方不進積分,整個丟掉 $p_{\text{data}}$ 的一個眾數不付任何代價;但 $p_\theta$ 涉足 $p_{\text{data}}$ near-zero 區則重罰。**zero-forcing / mode-seeking**。
+$p_\theta$ 不去的地方不進積分，整個丟掉 $p_{\text{data}}$ 的一個眾數不付任何代價；但 $p_\theta$ 涉足 $p_{\text{data}}$ near-zero 區則重罰。**zero-forcing / mode-seeking**。
 
 </div>
 
 <div class="mt-2 aside aside-model text-sm tone-muted">
 
-對齊後的模型回答收斂到少數幾種安全模板、多樣性下降,是 mode-seeking 目標的行為特徵。
+對齊後的模型回答收斂到少數幾種安全模板、多樣性下降，是 mode-seeking 目標的行為特徵。
 
 </div>
 
@@ -423,58 +423,6 @@ zero-forcing,也叫 mode-seeking。
 -->
 
 ---
-layout: none
----
-
-<DemoFrame src="divergence-2d-interactive.html" title="單峰 q 擬合雙峰 p:三種散度,三種解" :maxH="470" />
-
-<!--
-[3 分鐘] 用單峰的 q 擬合雙峰的 p,三種散度各解一次。
-
-展示順序:
-1. forward KL:q 被拉寬、跨接兩個峰,連峰間的空隙都被填上機率,而那裡沒有資料。
-2. reverse KL:q 鎖定其中一個峰,另一個峰完全放棄,損失不會抗議。
-3. JSD:落在中間的折衷。
-
-收束:三個解都是最優解,差別只在最優的定義。換一個散度,就換一種錯誤。
--->
-
----
-
-# 每個散度需要哪些介面
-
-同一份介面清單,三種可得性
-
-| 散度 | 需要的介面 | 可得性 |
-|---|---|---|
-| forward KL $\mathrm{KL}(p_{\text{data}}\|p_\theta)$ | $p_{\text{data}}$.sample + $p_\theta$.logprob | 兩者皆有 |
-| reverse KL $\mathrm{KL}(p_\theta\|p_{\text{data}})$ | $p_\theta$.sample + $p_\theta$.logprob + $p_{\text{data}}$.logprob | **末項不可得** |
-| JSD(由雙側密度的混合構成) | 兩側 logprob | 資料側必缺 |
-
-<div class="mt-5">
-
-forward KL 是唯一所需介面皆可得的散度:期望用 $p_{\text{data}}$ 的樣本近似,被積函數只呼叫 $p_\theta$.logprob。
-
-reverse KL 與 JSD 缺的是同一個介面:$p_{\text{data}}$ 沒有 logprob。
-
-</div>
-
-<!--
-[約 2 分鐘] 把三個散度拿到介面表上核對。
-
-forward KL:期望對 p_data 取,用資料集的樣本近似即可;
-被積函數裡只有 log p_θ,呼叫 p_θ.logprob。兩個介面都拿得到。
-展開來看:E_{p_data}[log p_data] 對 θ 而言是常數,
-剩下的 −E_{p_data}[log p_θ] 就是 MLE。最大概似估計就是 forward KL,不是另一種方法。
-
-reverse KL:期望對 p_θ 取,需要 p_θ 的 sample 與 logprob,這兩個有;
-但被積函數裡有 log p_data,要資料側的密度,這一項拿不到。
-JSD 兩側的 logprob 都要,一樣缺資料側。
-
-兩者缺的是同一格。後面出現的 reward model 與判別器,都是在補這一格。
--->
-
----
 
 # JSD 的定義
 
@@ -484,8 +432,9 @@ $$\mathrm{JSD}(p\,\|\,q)=\tfrac12\,\mathrm{KL}\!\left(p\,\Big\|\,m\right)+\tfrac
 
 <div class="mt-5">
 
-與「對稱化 KL」(Jeffreys divergence)$\mathrm{KL}(p\|q)+\mathrm{KL}(q\|p)$ 不同:
-Jeffreys 繼承兩側的無窮大;JSD 的分母是混合 $m$,只要 $p$ 或 $q$ 有質量,$m$ 就有質量,因此
+與「對稱化 KL」(Jeffreys divergence)$\mathrm{KL}(p\|q)+\mathrm{KL}(q\|p)$ 不同：
+Jeffreys 繼承兩側的無窮大；<br/>
+JSD 的分母是混合 $m$，只要 $p$ 或 $q$ 有質量, $m$ 就有質量，因此
 
 </div>
 
@@ -510,7 +459,7 @@ log(p/m) 最多是 log 2,不會發散。
 
 ---
 
-# 有界的代價:飽和
+# 有界的代價：飽和
 
 支撐集一旦分離,曲線就貼著上界
 
@@ -530,14 +479,14 @@ log(p/m) 最多是 log 2,不會發散。
 
 把散度改寫成一個可訓練的分類問題
 
-以等量樣本訓練一個分類器,判斷樣本來自 $p$ 還是 $q$。最優判別器有閉式解:
+以等量樣本訓練一個分類器，判斷樣本來自 $p$ 還是 $q$。最優判別器有閉式解:
 
 $$D^*(x)=\frac{p(x)}{p(x)+q(x)}$$
 
 <div class="mt-3">
 
 把 $D^*$ 代回二元分類目標,其值為 $2\,\mathrm{JSD}(p\,\|\,q)-2\log 2$。
-換句話說:**JSD 度量的是最優分類器分辨兩個來源的能力**。兩個分布重疊得越好,最優分類器越接近亂猜,JSD 越小。
+換句話說：**JSD 度量的是最優分類器分辨兩個來源的能力**。兩個分布重疊得越好，最優分類器越接近亂猜，JSD 越小。
 
 </div>
 
@@ -574,7 +523,7 @@ D*(x) = p(x)/(p(x)+q(x))。推導只要對每個 x 逐點最大化 BCE 目標,�
 
 | | forward KL | JSD | reverse KL |
 |---|---|---|---|
-| 行為 | mode-covering | 介於其間,但會飽和 | mode-seeking |
+| 行為 | mode-covering | 介於其間，但會飽和 | mode-seeking |
 | 對稱 | 否 | 是 | 否 |
 | 上界 | 無 | $\log 2$ | 無 |
 | 失效型態 | 過度平滑、含糊 | 梯度消失或震盪 | 塌縮、多樣性流失 |
@@ -585,7 +534,7 @@ D*(x) = p(x)/(p(x)+q(x))。推導只要對每個 x 逐點最大化 BCE 目標,�
 
 <div class="mt-3 text-sm tone-faint">
 
-圖中的橫向位置就是覆蓋程度:左端把質量攤給每一種說法,右端集中在少數幾種。
+圖中的橫向位置就是覆蓋程度：左端把質量攤給每一種子集，右端集中在少數幾種。
 
 </div>
 
@@ -604,14 +553,65 @@ RLHF 在右端,是以人類偏好訊號微調的對齊方法,本堂第四節的�
 -->
 
 ---
+layout: none
+---
+
+<DemoFrame src="divergence-2d-interactive.html" title="單峰 q 擬合雙峰 p:三種散度,三種解" :maxH="500" />
+
+<!--
+[3 分鐘] 用單峰的 q 擬合雙峰的 p,三種散度各解一次。
+
+展示順序:
+1. forward KL:q 被拉寬、跨接兩個峰,連峰間的空隙都被填上機率,而那裡沒有資料。
+2. reverse KL:q 鎖定其中一個峰,另一個峰完全放棄,損失不會抗議。
+3. JSD:落在中間的折衷。
+
+收束:三個解都是最優解,差別只在最優的定義。換一個散度,就換一種錯誤。
+-->
+
+---
+
+# 每個散度需要哪些介面
+
+同一份介面清單，三種可得性
+
+| 散度 | 需要的介面 | 可得性 |
+|---|---|---|
+| forward KL $\mathrm{KL}(p_{\text{data}}\|p_\theta)$ | $p_{\text{data}}$.sample + $p_\theta$.logprob | 兩者皆有 |
+| reverse KL $\mathrm{KL}(p_\theta\|p_{\text{data}})$ | $p_\theta$.sample + $p_\theta$.logprob + $p_{\text{data}}$.logprob | **末項不可得** |
+| JSD(由雙側密度的混合構成) | 兩側 logprob | 資料側必缺 |
+
+<div class="mt-5">
+
+forward KL 是唯一所需介面皆可得的散度：期望用 $p_{\text{data}}$ 的樣本近似，被積函數只呼叫 $p_\theta$.logprob。
+
+reverse KL 與 JSD 缺的是同一個介面：$p_{\text{data}}$ 沒有 logprob。
+
+</div>
+
+<!--
+[約 2 分鐘] 把三個散度拿到介面表上核對。
+
+forward KL:期望對 p_data 取,用資料集的樣本近似即可;
+被積函數裡只有 log p_θ,呼叫 p_θ.logprob。兩個介面都拿得到。
+展開來看:E_{p_data}[log p_data] 對 θ 而言是常數,
+剩下的 −E_{p_data}[log p_θ] 就是 MLE。最大概似估計就是 forward KL,不是另一種方法。
+
+reverse KL:期望對 p_θ 取,需要 p_θ 的 sample 與 logprob,這兩個有;
+但被積函數裡有 log p_data,要資料側的密度,這一項拿不到。
+JSD 兩側的 logprob 都要,一樣缺資料側。
+
+兩者缺的是同一格。後面出現的 reward model 與判別器,都是在補這一格。
+-->
+
+---
 
 # 課後練習
 
-以單一高斯擬合雙峰混合,三種散度各解一次
+以單一高斯擬合雙峰混合，三種散度各解一次
 
 以單一高斯 $q=\mathcal N(\mu,\sigma^2)$ 擬合 1D 雙峰混合
-$p=\tfrac12\mathcal N(-2,0.6^2)+\tfrac12\mathcal N(2,0.6^2)$,
-分別最小化三種散度,數值解出 $\mu,\sigma$。
+$p=\tfrac12\mathcal N(-2,0.6^2)+\tfrac12\mathcal N(2,0.6^2)$，分別最小化三種散度並解出 $\mu,\sigma$。
 
 <div class="mt-4">
 <DivergenceFit />
@@ -619,7 +619,7 @@ $p=\tfrac12\mathcal N(-2,0.6^2)+\tfrac12\mathcal N(2,0.6^2)$,
 
 <div class="mt-3 text-sm tone-faint">
 
-預期結果如上圖。動手做一遍,三種行為就不再只是形容詞。
+預期結果如上圖。動手做一遍，三種行為就不再只是形容詞。
 
 </div>
 
@@ -637,7 +637,7 @@ layout: section
 
 # 分布固定之後
 
-目標分布往往不是模型分布本身:更符合條件、更銳利、更安全、更多樣
+目標分布往往不是模型分布本身：更符合條件、更銳利、更安全、更多樣
 
 <!--
 第二節換一個問題:分布已經訓練好了,但想要的往往不是模型分布本身,
@@ -648,7 +648,7 @@ layout: section
 
 # 引導生成的統一形式
 
-base 項、比值項、係數,三個欄位
+base 項、比值項、係數，三個欄位
 
 <div class="mt-10">
 <GuidanceForm />
@@ -711,7 +711,7 @@ DoLa(Chuang et al., 2024):不必第二個模型,同一個模型內部末層減�
 
 <div class="mt-4 text-sm">
 
-top-k / top-p 是同一操作的硬截斷版:不連續,但同樣在移除尾部機率質量。
+top-k / top-p 是同一操作的硬截斷版：不連續，但同樣在移除尾部機率質量。
 
 </div>
 
@@ -734,7 +734,7 @@ DDO 最優解(Zheng et al., 2025):base 是 log p_ref,
 layout: none
 ---
 
-<DemoFrame src="guidance-playground.html" title="同一根滑桿:temperature、CFG、contrastive decoding" :maxH="470" />
+<DemoFrame src="guidance-playground.html" title="同一根滑桿:temperature、CFG、contrastive decoding" :maxH="500" />
 
 <!--
 [3 分鐘] 同一根滑桿,四個情境。
@@ -754,11 +754,11 @@ layout: none
 
 位置、時機、適用範圍
 
-1. **係數決定移動的幅度。** $w$ 或 $1/\beta$ 越大,比值項的作用越強;各方法的控制參數都填在式子的同一欄,移動的方向則由各自的比值項決定。
+1. **係數決定移動的幅度。** $w$ 或 $1/\beta$ 越大, 比值項的作用越強；各方法的控制參數都填在式子的同一欄，移動的方向則由各自的比值項決定。
 
-2. **推論期做與訓練期做,差別只在時機。** 同一條式子可以在解碼時套用,也可以內化進權重(第④節)。
+2. **推論期做與訓練期做,差別只在時機。** 同一條式子可以在解碼時套用，也可以內化進權重(第④節)。
 
-3. **適用範圍由介面決定。** 上兩頁的每一列幾乎都要呼叫 logprob;一個不提供 logprob 的模型或黑箱 API,整個框架對它失效。
+3. **適用範圍由介面決定。** 上兩頁的每一列幾乎都要呼叫 logprob；不提供 logprob 的模型或黑箱就無法在推論期操作分布。
 
 <div class="mt-5">
 <SpectrumRows :rows="2" mark="decoding" />
@@ -820,7 +820,7 @@ layout: center
 class: text-center
 ---
 
-# 休息 10 分鐘
+# 中場 Q & A
 
 <!--
 休息十分鐘。
@@ -836,7 +836,7 @@ layout: section
 
 # 推論期的四層介入
 
-從條件到聚合,每一層呼叫的介面不同
+從條件到聚合，每一層呼叫的介面不同
 
 <!--
 第三節把推論期能做的事分成四層。重點是每一層呼叫的介面不同,
@@ -880,7 +880,7 @@ $$p(y\mid \text{prompt})=\int p(y\mid \text{task})\;p(\text{task}\mid \text{prom
 
 <div class="mt-4">
 
-In-context learning 可讀成隱式貝氏推論([Xie et al., 2022](https://arxiv.org/abs/2111.02080)):prompt 裡的示範不改參數,而是收緊模型對「現在在做哪個 task」的後驗。
+In-context learning 可讀成隱式貝氏推論([Xie et al., 2022](https://arxiv.org/abs/2111.02080))：prompt 裡的示範不改參數，而是收緊模型對「現在在做哪個 task」的後驗。
 
 </div>
 
@@ -908,19 +908,36 @@ Xie 等人的原式在積分內保留 p(y|task, prompt)。
 
 ---
 
-# RAG 與 fine-tuning:兩種安裝條件的方式
+# RAG 與 fine-tuning：兩種安裝條件的方式
 
 條件留在脈絡裡,或攤銷進權重
 
+<div class="grid gap-5 mt-3" style="grid-template-columns: 1.75fr 1fr">
+<div>
+
 | | RAG | fine-tuning |
 |---|---|---|
-| 機率意義 | 顯式條件:$p(y\mid x, \text{檢索到的 } d)$ | 條件攤銷進權重:$p_{\theta'}(y\mid x)$ |
-| 失效型態 | 檢索錯,條件就錯;無關文件稀釋後驗 | 分布外遺忘;更新成本高、不可逆 |
+| 機率意義 | 顯式條件：$p(y\mid x, \text{檢索到的 } d)$ | 條件攤銷進權重：$p_{\theta'}(y\mid x)$ |
+| 失效型態 | 檢索錯, 條件就錯：無關文件稀釋後驗 | 分布外遺忘：更新成本高、不可逆 |
 
-<div class="mt-5">
+<div class="mt-4">
 
-「無關文件稀釋後驗」有量化證據:關鍵資訊放在長脈絡中段時,取用正確率明顯下降(lost-in-the-middle,[Liu et al., 2024](https://arxiv.org/abs/2307.03172))。更多條件不等於更好的條件,$p(\text{task}\mid\text{prompt})$ 會被攤平。
+「無關文件稀釋後驗」有量化證據:關鍵資訊放在長脈絡中段時,取用正確率明顯下降(lost-in-the-middle, [Liu et al., 2024](https://arxiv.org/abs/2307.03172))。更多條件不等於更好的條件，$p(\text{task}\mid\text{prompt})$ 會被攤平。
 
+</div>
+
+</div>
+<div>
+
+<img src="/public/assets/lost-in-the-middle.png" class="w-full" alt="lost-in-the-middle 的 U 形曲線" />
+
+<div class="fine mt-1">
+
+20 份檢索文件，答案所在位置由開頭移到中段，正確率從 75.8% 掉到 54%，中段甚至低於完全不給文件的 closed-book 基線(紅虛線)。
+
+</div>
+
+</div>
 </div>
 
 <!--
@@ -943,13 +960,13 @@ fine-tuning 是分布外遺忘,更新成本高而且不可逆。
 
 同一組 logits,兩種重塑方式
 
-<TempTopP />
+<TempTopP/>
 
 <div class="mt-3">
 
-temperature 把 logits 除以 $T$,直接調整分布的熵;top-p 截斷尾部後再正規化([Holtzman et al., 2020](https://arxiv.org/abs/1904.09751))。
+temperature 把 logits 除以 $T$，直接調整分布的熵；top-p 截斷尾部後再正規化([Holtzman et al., 2020](https://arxiv.org/abs/1904.09751))。
 
-情感支持系統的抽樣設定是一個設計決策:低 $T$ 安全而單調,高 $T$ 多樣而風險高。預設值不是答案,兩種錯誤的相對代價才是。
+抽樣設定是一個設計決策：低 $T$ 安全而單調，高 $T$ 多樣而風險高。
 
 </div>
 
@@ -977,11 +994,11 @@ temperature 與 top-p 都是第二列上的移動。
 
 在 softmax 之前修改分數
 
-- **constrained decoding / grammar**:在合法 token 子集上重新正規化。要求結構化輸出(JSON、SQL)時,這比在 prompt 裡以指示要求格式可靠:非法 token 的機率被精確歸零,軟性指示做不到這一點。
+- **constrained decoding / grammar**: 在合法 token 子集上重新正規化。要求結構化輸出(JSON、SQL)時，這比在 prompt 裡以指示要求格式可靠：非法 token 的機率被精確歸零，軟性指示做不到這一點。
 
-- **logit bias**:對特定 token 加減常數,即統一引導式中一個手寫的比值項。
+- **logit bias**: 對特定 token 加減常數，即統一引導式中一個手寫的比值項。
 
-- **contrastive decoding、DoLa、CFG for LLM**:上一節表中的三列,安裝位置都在這一層,逐 token 修改 logits 後再 softmax。
+- **contrastive decoding、DoLa、CFG for LLM**: 上一節表中的三列，透過逐 token 修改 logits 後再 softmax。
 
 <!--
 在 softmax 之前修改分數。
@@ -1001,17 +1018,17 @@ contrastive decoding、DoLa、CFG for LLM:前面表中的三列,安裝位置都�
 
 # 第 4 層.改變樣本的聚合
 
-抽多個樣本,重新估計答案的分布
+抽多個『完整』樣本，重新估計答案的分布
 
-- **best-of-n**:抽 $n$ 個,用外部評分挑一個
-- **self-consistency**:抽多條推理路徑,對最終答案投票
-- **MBR**(minimum Bayes risk):選「與其他樣本平均距離最近」的輸出
-- **reranking**:以另一個模型重排候選
+- **Best-of-n**: 抽 $n$ 個，用外部評分挑一個
+- **Self-consistency**: 抽多條推理路徑，對最終答案投票
+- **MBR**(minimum Bayes risk): 選「與其他樣本平均距離最近」的輸出
+- **Reranking**: 以另一個模型重排候選
 
 <div class="mt-4">
 
-self-consistency 的機率語意即 Monte Carlo 邊際化:
-$p(a\mid q)=\sum_r p(a\mid r,q)\,p(r\mid q)$,對推理路徑 $r$ 積分([Wang et al., 2023](https://arxiv.org/abs/2203.11171))。
+Self-consistency 的機率語意即 Monte Carlo 邊際化：
+$p(a\mid q)=\sum_r p(a\mid r,q)\,p(r\mid q)$，對推理路徑 $r$ 積分 ([Wang et al., 2023](https://arxiv.org/abs/2203.11171))。
 
 </div>
 
@@ -1079,7 +1096,7 @@ CFG 的作法是讓同一個模型同時學有條件與無條件分數,比值項
 layout: none
 ---
 
-<DemoFrame src="classifier-guidance.html" title="classifier guidance:w=0 無條件,w=1 後驗,w>1 外插" :maxH="470" />
+<DemoFrame src="classifier-guidance.html" title="classifier guidance:w=0 無條件,w=1 後驗,w>1 外插" :maxH="500" />
 
 <!--
 [2 分鐘] 三張圖由左到右:無條件分布、分類器、引導後的分布。左邊兩張與 w 無關。
@@ -1498,7 +1515,7 @@ DDO 的損失同時含 E_{p_data}(抬)與 E_{p_ref}(壓),
 layout: none
 ---
 
-<DemoFrame src="mle-vs-ddo-gradient.html" title="MLE 與 DDO 的梯度場" :maxH="470" />
+<DemoFrame src="mle-vs-ddo-gradient.html" title="MLE 與 DDO 的梯度場" :maxH="500" />
 
 <!--
 [3 分鐘] 左右對照。

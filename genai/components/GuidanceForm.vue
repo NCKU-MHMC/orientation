@@ -19,14 +19,14 @@
       </div>
       <div class="note coef-n">
         <div class="tag">係數</div>
-        <div>光譜上的座標:越大越往 mode-seeking 端</div>
+        <div>光譜上的座標<br/>越大越往 mode-seeking 端</div>
       </div>
       <div class="note ratio-n">
         <div class="tag">比值項</div>
-        <div>移動方向:抬高 p<sub>A</sub> 相對 p<sub>B</sub> 偏好的區域</div>
+        <div>移動方向<br/>抬高 p<sub>A</sub> 相對 p<sub>B</sub> 偏好的區域</div>
       </div>
     </div>
-    <div class="gf-tail">計算完成後再正規化;整條式子只呼叫 logprob 介面</div>
+    <div class="gf-tail">計算完成後再正規化；整條式子只呼叫 logprob 介面</div>
   </div>
 </template>
 

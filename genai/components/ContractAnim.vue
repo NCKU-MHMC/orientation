@@ -92,10 +92,10 @@ onBeforeUnmount(() => ctx && ctx.revert())
     </svg>
     <div class="cap">
       <span :class="{ on: phase === 'sample' }">
-        <code>p.sample()</code> 抽出一個 x,落點的疏密正比於密度
+        <code>p.sample()</code> 抽出一個 x，落點的疏密正比於密度
       </span>
       <span :class="{ on: phase === 'logprob' }">
-        <code>p.logprob(x)</code> 給定一個 x,回報該處密度的對數
+        <code>p.logprob(x)</code> 給定一個 x，回報該處密度的對數
       </span>
     </div>
   </div>

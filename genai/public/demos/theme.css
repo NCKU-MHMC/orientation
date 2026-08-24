@@ -196,6 +196,12 @@ canvas {
   h1 { font-size: 19px; margin: 6px 0; }
 }
 body.embed .sub, body.embed .notes, body.embed .note { display: none; }
-body.embed h1 { font-size: 19px; margin: 6px 0; }
-body.embed { padding: 16px 20px 14px; }
-body.embed .controls { margin-bottom: 12px; }
+/* 標題由投影片上的 DemoFrame 顯示,頁內的 eyebrow 與 h1 收起,高度全留給圖 */
+body.embed .eyebrow, body.embed h1 { display: none; }
+body.embed header { margin-bottom: 8px; }
+body.embed { padding: 10px 16px 10px; }
+body.embed .controls { margin-bottom: 10px; }
+body.embed .panels { gap: 10px; }
+body.embed .panel { padding: 8px 10px 10px; }
+body.embed .panel .hint { margin-bottom: 5px; }
+body.embed .legend, body.embed .marks { margin-top: 5px; }

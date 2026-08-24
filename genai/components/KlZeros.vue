@@ -33,14 +33,14 @@ const isFwd = props.mode === 'forward'
       <path :d="qPath" :stroke="palette.q" stroke-width="2.2" fill="none" stroke-dasharray="none" />
       <text :x="sx(-2)" :y="34" text-anchor="middle" :fill="isFwd ? palette.bad : palette.muted"
         :style="{ fontSize: fs('note') }">
-        {{ isFwd ? 'p>0 而 q→0:懲罰無界' : 'p 的這一峰被 q 忽略:無懲罰' }}
+        {{ isFwd ? 'p>0 而 q→0：懲罰無界' : 'p 的這一峰被 q 忽略：無懲罰' }}
       </text>
       <text :x="sx(-2)" :y="H - 24" text-anchor="middle" :fill="palette.p" :style="{ fontSize: fs('tick') }">p 的左峰</text>
       <text :x="sx(2.9)" :y="60" text-anchor="start" :fill="palette.q" :style="{ fontSize: fs('tick') }">q</text>
     </svg>
     <div class="klz-cap">
-      <template v-if="isFwd">積分由 p 加權:p 有質量而 q 沒有的區域主導損失,q 被迫覆蓋 p 的整個支撐集(zero-avoiding)</template>
-      <template v-else>積分由 q 加權:q 沒去的地方不進入積分,丟掉整個峰不付代價(zero-forcing)</template>
+      <template v-if="isFwd">積分由 p 加權：p 有質量而 q 沒有的區域主導損失，q 被迫覆蓋 p 的整個支撐集(zero-avoiding)</template>
+      <template v-else>積分由 q 加權：q 沒去的地方不進入積分，丟掉整個峰不付代價(zero-forcing)</template>
     </div>
   </div>
 </template>
