@@ -87,8 +87,8 @@ Brooks et al. (2023) InstructPix2Pix(統一式的 zero-shot 編輯嚴格實例)�
 | 32 | 第 2 層.抽樣:temperature 調熵、top-p 截斷再正規化;情感支持系統的取樣設定是設計決策 | TempTopP+SpectrumRows(2) |
 | 33 | 第 3 層.logits:constrained decoding 於合法子集再正規化(結構化輸出正解);contrastive/DoLa/CFG 操作細節 | |
 | 34 | 第 4 層.聚合:best-of-n / MBR / self-consistency / reranking | |
-| 35 | LLM-ASR:噪聲通道即 log 空間線性組合;n-best rescoring 屬第 4 層、speech encoder 屬第 1 層;LM weight 是手調版係數 $w$ | 公式 |
-| 36 | Demo:asr-noisy-channel(2 min) | DemoFrame |
+| 35 | classifier guidance:$\log p_w=\log p+w\log p(c\mid x)$,分類器即比值項;$w=1$ 為貝氏後驗、$w>1$ 為外插;代價是額外訓練的分類器,CFG 由此取代 | 公式 |
+| 36 | Demo:classifier-guidance(2 min) | DemoFrame |
 
 ## ④ 權重層的介入(32 min,p37–51;含 demo 3 min)
 
@@ -247,7 +247,7 @@ FamilyMatrix(focus prop)、Timeline(props 重用)、GuidanceForm
 |---|---|---|---|
 | divergence-2d-interactive | L1 p13 | 3 | B-1 圖的互動形式 |
 | guidance-playground | L1 p24 | 3 | plans/01;涵蓋大綱建議 demo #1(token browser)的兩個論證目標(寫死 logits;真模型版屬 Tier 1,另案) |
-| asr-noisy-channel | L1 p36 | 2 | plans/06 |
+| classifier-guidance | L1 p36 | 2 | plans/06 |
 | mle-vs-ddo-gradient | L1 p48 | 3 | plans/02 |
 | interface-contract | L2 p11 | 2 | plans/03;S1 ① 擺位取消(demo 含四張模型卡,違反第一堂不指涉具體模型的紀律),僅留矩陣頁之後回放 |
 | exposure-bias-track | L2 AR 段 | 3 | plans/05 |

@@ -94,7 +94,9 @@ for (const file of files) {
     }
     if (/[:：]$/.test(next)) report(file, j + 1, '淺灰註解句末不應以冒號銜接下一段')
     // 以全形寬度計:CJK 佔 2、拉丁佔 1,超過 72 就不只一行
-    const width = [...next.replace(/\$[^$]*\$/g, '字')]
+    // markdown 連結只算顯示文字,URL 不佔版面
+    const shown = next.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    const width = [...shown.replace(/\$[^$]*\$/g, '字')]
       .reduce((w, c) => w + (c.charCodeAt(0) > 0x2e80 ? 2 : 1), 0)
     if (width > 72) report(file, j + 1, `淺灰註解過長(寬度 ${width}),應為一行短句`)
   })

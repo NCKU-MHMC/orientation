@@ -58,7 +58,8 @@
   </div>
 
   <div class="lockNote" id="lockNote">此手法不在係數的位置上 — prompt engineering 只更換了 base 的 logits,
-    (A−B) 恆為 0,w 滑桿變灰、拉動它不會改變任何輸出。</div>
+    (A−B) 恆為 0(圖上 p<sub>A</sub> 與 p<sub>B</sub> 兩條線完全重合,沒有方向),
+    w 滑桿變灰、拉動它不會改變任何輸出。</div>
 
   <div class="panel">
     <h2 id="panelTitle">next-token 分布(20 個候選 token)</h2>
@@ -130,9 +131,10 @@ const legend = document.getElementById('legend');
 
 function current(){ return CORE.presets[presetKey]; }
 
-function drawBars(baseP, guidedP){
+function drawBars(baseP, guidedP, pA, pB){
   ctx.clearRect(0,0,W,H);
-  const n = CORE.TOKENS.length, slot = W/n, pad = 20, ymax = Math.max(...baseP, ...guidedP)*1.15;
+  const n = CORE.TOKENS.length, slot = W/n, pad = 20;
+  const ymax = Math.max(...baseP, ...guidedP, ...pA, ...pB)*1.15;
   const yTop = 10, yBase = H-pad;
   for(let i=0;i<n;i++){
     const bx = i*slot+6, bw = (slot-12)/2;
@@ -144,6 +146,16 @@ function drawBars(baseP, guidedP){
     ctx.fillStyle = DEMO.muted; ctx.font=`11px ${DEMO.font.sans}`; ctx.textAlign='center';
     ctx.fillText(CORE.TOKENS[i], bx+bw, H-6);
   }
+  // p_A 與 p_B 疊在同一組長條上:兩條線的落差就是 (log p_A − log p_B) 的方向,
+  // A 高於 B 的 token 被抬起、低於 B 的被壓下;兩線重合則毫無方向可言。
+  const xOf = i => i*slot + slot/2, yOf = v => yBase - (v/ymax)*(yBase-yTop);
+  const curve = (arr,color,dash)=>{
+    ctx.setLineDash(dash||[]); ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.beginPath();
+    arr.forEach((v,i)=> i? ctx.lineTo(xOf(i),yOf(v)) : ctx.moveTo(xOf(i),yOf(v)));
+    ctx.stroke(); ctx.setLineDash([]);
+  };
+  curve(pB, DEMO.ink2, [4,4]);
+  curve(pA, DEMO.third);
 }
 function drawLines(base,A,B){
   ctx.clearRect(0,0,W,H);
@@ -170,9 +182,11 @@ function render(){
     `<span><span class="dot" style="background:${DEMO.third}"></span>w=−3(虛線)</span>`+
     `<span><span class="dot" style="background:${DEMO.data}"></span>w=+3(虛線)</span>`+
     `<span><span class="dot" style="background:${DEMO.model}"></span>目前 w(實線,應嚴格落在兩虛線之間的線性內插位置)</span>`;
-  } else { drawBars(baseP,guidedP); legend.innerHTML =
+  } else { drawBars(baseP,guidedP,CORE.softmax(p.A),CORE.softmax(p.B)); legend.innerHTML =
     `<span><span class="dot" style="background:${DEMO.a(DEMO.data,0.55)}"></span>base 機率(guide 前)</span>`+
-    `<span><span class="dot" style="background:${DEMO.model}"></span>guided 機率(renormalize 後)</span>`;
+    `<span><span class="dot" style="background:${DEMO.model}"></span>guided 機率(renormalize 後)</span>`+
+    `<span><span class="dot" style="background:${DEMO.third}"></span>p<sub>A</sub>(拉向這裡)</span>`+
+    `<span><span class="dot" style="background:${DEMO.ink2}"></span>p<sub>B</sub>(推離這裡,虛線)</span>`;
   }
   document.getElementById('hVal').textContent = CORE.entropy(guidedP).toFixed(3);
   document.getElementById('t1Val').textContent = (CORE.top1(guidedP)*100).toFixed(1)+'%';

@@ -45,7 +45,7 @@
   font-family: var(--serif);
   font-weight: 600;
   font-size: 1.95rem;
-  line-height: 1.22;
+  line-height: 1.6;
   letter-spacing: -0.005em;
   color: var(--ink);
   margin-bottom: 0.15rem;
@@ -152,6 +152,8 @@
 .tone-muted { color: var(--ink-2); }
 .tone-faint { color: var(--muted); }
 .fine { font-size: 0.72rem; color: var(--muted); }
+/* 文獻連結:維持小字灰色,虛線底線表示可點 */
+.slidev-layout .fine a { color: inherit; border-bottom-style: dotted; }
 
 .card {
   border: 1px solid var(--rule);

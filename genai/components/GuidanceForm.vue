@@ -15,7 +15,7 @@
     <div class="gf-notes">
       <div class="note base-n">
         <div class="tag">base 項</div>
-        <div>出發的分布。prompt 改動的就是這一項</div>
+        <div>出發的分布<br/>prompt 改動的就是這一項</div>
       </div>
       <div class="note coef-n">
         <div class="tag">係數</div>
