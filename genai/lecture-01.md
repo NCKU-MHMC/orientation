@@ -1058,19 +1058,19 @@ $$\log p_w(x)\;=\;\log p(x)\;+\;w\,\log p(c\mid x)$$
 
 <div class="mt-4">
 
-由貝氏,$\log p(c\mid x)=\log p(x\mid c)-\log p(x)+\text{const}$:分類器交出來的就是那個比值項。base 項是無條件模型,係數是 guidance scale $w$;安裝位置在第 3 層,逐步修改分數([Dhariwal & Nichol, 2021](https://arxiv.org/abs/2105.05233))。
+由貝氏, $\log p(c\mid x)=\log p(x\mid c)-\log p(x)+\text{const}$：分類器交出來的就是那個比值項。base 項是無條件模型，係數是 guidance scale $w$；安裝位置在第 3 層，逐步修改分數 ([Dhariwal & Nichol, 2021](https://arxiv.org/abs/2105.05233))。
 
 </div>
 
 | $w$ | 得到的分布 |
 |---|---|
 | $0$ | 無條件分布 $p(x)$ |
-| $1$ | 貝氏後驗 $p(x\mid c)$,因為 $p(x)\,p(c\mid x)=p(x,c)$ |
-| $>1$ | 外插:條件更銳利,多樣性下降 |
+| $1$ | 貝氏後驗 $p(x\mid c)$，因為 $p(x)\,p(c\mid x)=p(x,c)$ |
+| $>1$ | 外插：條件更銳利，多樣性下降 |
 
 <div class="mt-3 aside aside-third text-sm tone-muted">
 
-代價是一個額外介面:$p(c\mid x)$ 要另外訓練,而且要在各雜訊尺度的加噪樣本上訓練。CFG 把比值項改由同一個模型跑有條件與無條件兩次算出,這個額外介面就不需要了([Ho & Salimans, 2022](https://arxiv.org/abs/2207.12598))。
+代價是一個額外介面：$p(c\mid x)$ 要另外訓練。CFG 把比值項改由同一個模型跑有條件與無條件兩次算出，這個額外介面就不需要了([Ho & Salimans, 2022](https://arxiv.org/abs/2207.12598))。
 
 </div>
 
@@ -1120,9 +1120,9 @@ layout: none
 layout: section
 ---
 
-# 權重層的介入
+# 後訓練的介入
 
-SFT、RLHF、DPO、DDO:把移動寫進參數
+SFT、RLHF、DPO、DDO：把移動寫進參數
 
 <!--
 第四節把同樣的移動寫進參數:SFT、RLHF、DPO、DDO。
@@ -1139,8 +1139,7 @@ $$\max_\theta\;\mathbb{E}_{(x,y)\sim \mathcal D_{\text{SFT}}}\big[\log \pi_\thet
 
 <div class="mt-5">
 
-目標函數與預訓練相同,仍是 forward KL,只是換了資料分布。
-因此 SFT 後的模型仍落在 mode-covering 端:格式與語氣被塑形,含糊與過度覆蓋的傾向不變。
+目標函數與預訓練相同，仍是 forward KL，只是換了資料分布，通過顯式將分佈遷移到一個較小的子集上能減輕原先過度通用的特性。但有對新子集 mode-covering 的可能性。
 
 </div>
 
@@ -1168,7 +1167,7 @@ $$\max_\pi\;\mathbb{E}_{y\sim\pi}\big[r(y)\big]-\beta\,\mathrm{KL}\big(\pi\,\|\,
 
 <div class="mt-3">
 
-這個目標有閉式最優解(推導見 [Rafailov et al., 2023](https://arxiv.org/abs/2305.18290) 附錄;把解代回目標即可驗證):
+這個目標有閉式最優解(推導見 [Rafailov et al., 2023](https://arxiv.org/abs/2305.18290) 附錄；把解代回目標即可驗證)：
 
 $$\pi^*(y)\;\propto\;\pi_{\text{ref}}(y)\,\exp\!\big(r(y)/\beta\big)$$
 
@@ -1178,7 +1177,7 @@ $$\min_\pi\;\mathrm{KL}\big(\pi\,\|\,\pi^*\big)$$
 
 <div class="tone-muted">
 
-KL 的第一個位置放的是 $\pi$,這正是 reverse KL:對齊訓練落在 mode-seeking 端。
+KL 的第一個位置放的是 $\pi$，這正是 reverse KL：對齊訓練落在 mode-seeking 端。
 
 </div>
 
@@ -1205,13 +1204,13 @@ RLHF 的目標:最大化 reward 的期望,減去 β 乘上與參考模型的 KL�
 
 模型自己的 log ratio 就是隱式 reward
 
-閉式解可以反過來解出 reward:
+閉式解可以反過來解出 reward：
 
 $$r(y)=\beta\log\frac{\pi^*(y)}{\pi_{\text{ref}}(y)}+\text{const}$$
 
 <div class="mt-3">
 
-把這個表達式代入偏好資料的 Bradley–Terry 損失,reward model 從式子裡消失([Rafailov et al., 2023](https://arxiv.org/abs/2305.18290)):
+把這個表達式代入偏好資料的 Bradley–Terry 損失，reward model 從式子裡消失([Rafailov et al., 2023](https://arxiv.org/abs/2305.18290)):
 
 $$\mathcal L_{\text{DPO}}=-\mathbb{E}\left[\log\sigma\!\left(\beta\log\frac{\pi_\theta(y_w)}{\pi_{\text{ref}}(y_w)}-\beta\log\frac{\pi_\theta(y_l)}{\pi_{\text{ref}}(y_l)}\right)\right]$$
 
@@ -1219,7 +1218,7 @@ $$\mathcal L_{\text{DPO}}=-\mathbb{E}\left[\log\sigma\!\left(\beta\log\frac{\pi_
 
 <div class="mt-4">
 
-整條損失只呼叫 $\pi_\theta$ 與 $\pi_{\text{ref}}$ 的 logprob 介面;最佳化的仍是同一個 reverse KL 目標。
+整條損失只呼叫 $\pi_\theta$ 與 $\pi_{\text{ref}}$ 的 logprob 介面；最佳化的仍是同一個 reverse KL 目標。
 
 </div>
 
@@ -1247,13 +1246,13 @@ reverse KL 缺的那一個介面
 
 <div class="mt-5">
 
-需求表裡標「不可得」的那一格,由 reward model 填補:它從人類偏好標註學出純量分數 $r(y)$,而 $r/\beta$ 正好充當目標分布相對 $\pi_{\text{ref}}$ 的 log 密度比。
+需求表裡標「不可得」的那一格，由 reward model 填補:它從人類偏好標註學出純量分數 $r(y)$，而 $r/\beta$ 正好充當目標分布相對 $\pi_{\text{ref}}$ 的 log 密度比。
 
 </div>
 
 <div class="mt-4">
 
-要注意目標分布在此換了對象:對齊瞄準的已非 $p_{\text{data}}$,而是偏好加權後的 $\pi^*\propto\pi_{\text{ref}}\,e^{r/\beta}$。缺 logprob 的困境不變,代理的品質決定對齊的品質:reward model 學壞了,$\pi^*$ 就指向錯的地方(reward hacking)。
+要注意目標分布在此換了對象：對齊瞄準的已非 $p_{\text{data}}$，而是偏好加權後的 $\pi^*\propto\pi_{\text{ref}}\,e^{r/\beta}$。<br/>缺 logprob 的困境不變，代理的品質決定對齊的品質：reward model 學壞了，$\pi^*$ 就指向錯的地方(reward hacking)。
 
 </div>
 
@@ -1280,19 +1279,19 @@ mode-seeking 是方向的性質,對任何目標分布都導致收斂到該目標
 
 單調來自目標函數的形式
 
-「對齊讓模型更安全,但更單調」可以從目標函數推出,不是經驗巧合:
+「對齊讓模型更安全，但更單調」可以從目標函數推出，不是經驗巧合:
 
 <div class="mt-3">
 
-- reverse KL 目標的最優解**只在 reward 高的區域放質量**;多樣性沒有出現在目標函數裡
-- 唯一抑制塌縮的是 $\beta\,\mathrm{KL}(\pi\|\pi_{\text{ref}})$,而它約束的是**與參考模型的距離**,不是多樣性本身
-- 實測:RLHF 後輸出多樣性系統性下降([Kirk et al., 2024](https://arxiv.org/abs/2310.06452))
+- reverse KL 目標的最優解**只在 reward 高的區域放質量**；多樣性沒有出現在目標函數裡
+- 唯一抑制塌縮的是 $\beta\,\mathrm{KL}(\pi\|\pi_{\text{ref}})$,而它約束的是**與參考模型的距離**，不是多樣性本身
+- 實測：RLHF 後輸出多樣性系統性下降([Kirk et al., 2024](https://arxiv.org/abs/2310.06452))
 
 </div>
 
 <div class="mt-4 aside aside-model">
 
-情感支持系統的安全與多樣共用同一個 $\beta$:調鬆帶來變化也帶來風險,調緊帶來安全也帶來模板。同一個參數同時決定這兩件事。
+$\beta$ 的取捨問題：調鬆帶來變化也帶來不受控的風險，調緊帶來安全也帶來模板。
 
 </div>
 
@@ -1321,18 +1320,18 @@ Kirk 等人量的是 summarization 等任務上 per-input 與 cross-input 的多
 
 reward model 與 judge 共有的限制
 
-reward model 對**單一樣本**給分:$r(y)\in\mathbb R$。
+reward model 對**單一樣本**給分：$r(y)\in\mathbb R$。
 
 <div class="mt-3">
 
-「這個分布太窄」是**分布層級**的性質,單點分數的介面裡沒有承載它的欄位:
-每個模板回答逐點看都得高分,計分器對「全部都是同一種回答」無從抗議。
-
+「這個分布太窄」是**分布層級**的性質，單點分數的介面裡沒有承載它的欄位：<br/>
+<div class="ml-10">每個模板回答逐點看都得高分,計分器對「全部都是同一種回答」無從抗議。
+</div>
 </div>
 
 <div class="mt-4">
 
-LLM-as-judge 同樣逐點評審,同樣的極限;把 judge 換強並不補上這個欄位。
+LLM-as-judge 同樣逐點評審，同樣的極限；把 judge 換強並不補上這個欄位。
 
 </div>
 
@@ -1361,7 +1360,7 @@ LLM-as-judge 也是逐點評審,受同一個限制。把 judge 換成更強的�
 
 # 兩件已經在手上的事實
 
-一個判別器閉式解,一條引導式
+一個判別器閉式解，一條引導式
 
 <div class="mt-4 grid grid-cols-1 gap-5">
 
@@ -1385,7 +1384,7 @@ $$\log p_{\text{guided}}=\log p_{\text{ref}}+\tfrac1\beta\big(\log p_{\text{data
 
 <div class="mt-5 tone-muted">
 
-接下來的方法只用這兩件事,不引入任何新原理。
+接下來的方法只用這兩件事，不引入任何新原理。
 
 </div>
 
@@ -1401,25 +1400,25 @@ log p_guided = log p_ref + (1/β)(log p_data − log p_ref)。
 
 ---
 
-# DDO:用自己的 logprob 當判別器
+# DDO：用自己的 logprob 當判別器
 
 判別器不必是另一個網路
 
-任何提供 logprob 的分布,都可以直接**宣告**自己是判別器([Zheng et al., 2025](https://arxiv.org/abs/2503.01103)):
+任何提供 logprob 的分布，都可以直接**宣告**自己是判別器([Zheng et al., 2025](https://arxiv.org/abs/2503.01103)):
 
 $$d_\theta(x)\;=\;\sigma\!\left(\beta\,\log\frac{p_\theta(x)}{p_{\text{ref}}(x)}\right)$$
 
 <div class="mt-3">
 
-- $\beta$ 是必要的縮放:log ratio 的逐維差異隨維度累積、量級可達數十至數百,直接進 sigmoid 會使梯度消失
-- 以標準 BCE 訓練:真樣本標 1,參考模型樣本標 0
-- BCE 的最優判別器是 $\sigma(\log(p_{\text{data}}/p_{\text{ref}}))$;對照兩式,$\beta=1$ 時最優解就是 $p_\theta=p_{\text{data}}$,一般 $\beta$ 給出 $p_\theta^*\propto p_{\text{ref}}^{\,1-1/\beta}p_{\text{data}}^{\,1/\beta}$
+- $\beta$ 是必要的縮放：log ratio 的逐維差異隨維度累積、量級可達數十至數百,直接進 sigmoid 會使梯度消失
+- 以標準 BCE 訓練：真樣本標 1, 參考模型樣本標 0
+- BCE 的最優判別器是 $\sigma(\log(p_{\text{data}}/p_{\text{ref}}))$：對照兩式, $\beta=1$ 時最優解就是 $p_\theta=p_{\text{data}}$, 一般 $\beta$ 給出 $p_\theta^*\propto p_{\text{ref}}^{\,1-1/\beta}p_{\text{data}}^{\,1/\beta}$
 
 </div>
 
 <div class="mt-4 aside aside-third tone-muted">
 
-DPO 把 reward 參數化成 log ratio;DDO 把**判別器**參數化成 log ratio。參數化手法相同,套用的對象不同。
+DPO 把 reward 參數化成 log ratio；DDO 把**判別器**參數化成 log ratio。參數化手法相同，套用的對象不同。
 
 </div>
 
@@ -1445,7 +1444,7 @@ DDO 的隱式判別器是 σ(β·log(p_θ/p_ref)),參數化手法完全平行,�
 
 # DDO 的機制
 
-兩種樣本,一個 BCE 損失
+兩種樣本，一個 BCE 損失
 
 <DdoMechanism />
 
@@ -1487,7 +1486,7 @@ $$\nabla_\theta L\;=\;\int \big(1-d_\theta(x)\big)\,\big(p_\theta(x)-p_{\text{da
 
 <div class="mt-4">
 
-MLE 的梯度只有第一種作用:在資料點上抬密度,對模型自己多出來的機率質量沒有任何移除機制。DDO 的損失同時含 $\mathbb E_{p_{\text{data}}}[\cdot]$(抬)與 $\mathbb E_{p_{\text{ref}}}[\cdot]$(壓),「遠離自己的樣本」的精確意義在此。
+MLE 的梯度只有第一種作用：在資料點上抬密度，對模型自己多出來的機率質量沒有任何移除機制。DDO 的損失同時含 $\mathbb E_{p_{\text{data}}}[\cdot]$(抬)與 $\mathbb E_{p_{\text{ref}}}[\cdot]$(壓)，「遠離自己的樣本」的精確意義在此。
 
 </div>
 
@@ -1535,13 +1534,16 @@ forward KL 則兩側皆降。「同時作用於兩端」在這裡以數字兌現
 抬升與壓低分屬兩端
 
 <div class="mt-4">
-<SpectrumRows :rows="3" />
+<SpectrumRows :rows="3" ddo />
 </div>
 
 <div class="mt-6">
 
-抬升項做的是 forward KL 的事(把質量搬向資料),壓低項做的是 reverse KL 的事(從過剩區撤出質量):**DDO 同時作用於兩端**,多數方法只能佔一端。
+抬升項做的是 forward KL 的事(把質量搬向資料)，壓低項做的是 reverse KL 的事(從過剩區撤出質量)：
+<div class="text-center text-xl mt-5">
 
+**DDO 同時作用於兩端**，多數方法只能佔一端。
+</div>
 </div>
 
 <!--
@@ -1549,29 +1551,29 @@ forward KL 則兩側皆降。「同時作用於兩端」在這裡以數字兌現
 壓低項做的是 reverse KL 的事,從過剩區撤出質量。
 所以 DDO 同時作用於兩端,而多數方法只能佔一端。
 
-第三列到這裡完整:左端 SFT,右端 DPO 與小 β 的 DDO,
-DDO 特殊的地方在於兩端同時施力。
+第三列到這裡完整:左端 SFT、右端 DPO,而 DDO 是圖上那條橫跨兩端的帶,
+左箭頭是抬升項、右箭頭是壓低項。其他方法都只佔一端,這是 DDO 與它們的差別。
 -->
 
 ---
 
 # DPO、DDO 與統一引導式
 
-同一種參數化,兩個用途
+同一種參數化，兩個用途
 
 | | DPO | DDO |
 |---|---|---|
 | 隱式參數化 | reward $=\beta\log\frac{\pi_\theta}{\pi_{\text{ref}}}$ | 判別器 $=\sigma\!\big(\beta\log\frac{p_\theta}{p_{\text{ref}}}\big)$ |
 | 目標 | 偏好學習 | 分布對齊 |
-| 資料 | 成對人類標註 | 原始訓練資料,無需配對 |
+| 資料 | 成對人類標註 | 原始訓練資料，無需配對 |
 
 <div class="mt-4">
 
-DDO 的最優解([Zheng et al., 2025](https://arxiv.org/abs/2503.01103)):
+DDO 的最優解 ([Zheng et al., 2025](https://arxiv.org/abs/2503.01103)):
 
 $$p_\theta^*\;\propto\;p_{\text{ref}}^{\,1-1/\beta}\;p_{\text{data}}^{\,1/\beta}$$
 
-正是統一引導式方法表末列的指數形式。guidance 在推論期執行這次銳化,DDO 把同一個操作寫進權重,推論時不再需要第二次前向。
+正是統一引導式方法表末列的指數形式。guidance 在推論期執行這次銳化，而 DDO 則把同一個操作寫進權重，這使得推論時不再需要第二次前向。
 
 </div>
 
@@ -1593,16 +1595,16 @@ DDO 把同一個操作寫進權重,推論時不再需要第二次前向。
 
 # 訓練到頂之後
 
-MLE 收斂之後,指標仍有空間
+MLE 收斂之後，指標仍有空間
 
-[Zheng et al. (2025)](https://arxiv.org/abs/2503.01103) 微調多個提供 logprob 的生成模型,兩則觀察與本堂論證直接相關:
+[Zheng et al. (2025)](https://arxiv.org/abs/2503.01103) 微調多個提供 logprob 的生成模型，兩則觀察與本堂論證直接相關：
 
 <div class="grid grid-cols-2 gap-6 mt-3">
 <div>
 
-1. **繼續用 MLE 訓練,指標不動甚至劣化。** forward KL 目標已到達其可達的極限;卡住的原因在目標函數,調參數解不開。
+1. **繼續用 MLE 訓練，指標不動甚至劣化。** forward KL 目標已到達其可達的極限；卡住的原因在目標函數，調參數解不開。
 
-2. **有些模型此前靠 top-k / top-p 撐指標。** 截斷降低了有效溫度,把分布的缺陷藏起來而非修好;換上 DDO 後,不加任何截斷的原始分布品質即提升。
+2. **有些模型此前靠 top-k / top-p 撐指標。** 截斷降低了有效溫度，把分布的缺陷藏起來而非修好；換上 DDO 後，不加任何截斷的原始分布品質即提升。
 
 </div>
 <div>
@@ -1611,7 +1613,7 @@ MLE 收斂之後,指標仍有空間
 
 <div class="fine mt-2">
 
-class-conditional CIFAR-10 第一輪微調(圖 6b、6c)。灰色虛線是繼續用 MLE 訓練,FID 由 1.85 起不降反升;彩色線是不同超參數設置的 DDO,1500 步內壓到 1.6 附近。
+class-conditional CIFAR-10 第一輪微調(圖 6b、6c)。灰色虛線是繼續用 MLE 訓練, FID 由 1.85 起不降反升; 彩色線是不同超參數設置的 DDO, 1500 步內壓到 1.6 附近。
 
 </div>
 
@@ -1647,17 +1649,17 @@ forward KL 目標已經到達它可達的極限,卡住的原因在目標函數,�
 
 ---
 
-# 兩種輸出,覆蓋程度的兩端
+# 兩種輸出, 覆蓋程度的兩端
 
-開場的兩欄,各自的位置
+開場的兩欄，各自的位置
 
 <div class="mt-2">
-<SpectrumRows :rows="3" />
+<SpectrumRows :rows="3" ddo />
 </div>
 
 <div class="mt-6">
 
-含糊的續寫出自 forward KL 訓練,同質的回答出自 reverse KL 對齊,分居覆蓋程度的兩端。這個位置可以在三個層次上調整:
+含糊的續寫出自 forward KL 訓練，同質的回答出自 reverse KL 對齊，分居覆蓋程度的兩端。這個位置可以在三個層次上調整:
 
 - 訓練目標(選哪個散度)
 - 解碼設定(temperature、top-p、guidance 係數)
@@ -1680,18 +1682,18 @@ forward KL 目標已經到達它可達的極限,卡住的原因在目標函數,�
 
 ---
 
-# 本堂的假設,與兩個未解的問題
+# 本堂的假設, 與兩個未解的問題
 
-兩個介面齊備,是全部論證的前提
+兩個介面齊備，是全部論證的前提
 
-**本堂自始至終的假設**:$\pi_{\text{ref}}$(以及 $p_\theta$)同時提供 `sample()` 與 `logprob(x)`。
+**本堂自始至終的假設**：$\pi_{\text{ref}}$(以及 $p_\theta$) 同時提供 `sample()` 與 `logprob(x)`。
 
 <div class="mt-5">
 
-兩個此刻沒有答案的問題:
+兩個此刻沒有答案的問題：
 
-1. reverse KL 一族缺 $p_{\text{data}}$.logprob,各方法拿什麼**代理**去補?本堂只見過 reward model 一種。
-2. 一個**完全不提供 logprob** 的模型,要拿什麼訓練?本堂的每一種損失對它都寫不出來。
+1. reverse KL 一族缺 $p_{\text{data}}$.logprob，各方法拿什麼**代理**去補？本堂只見過 reward model 一種。
+2. 一個**完全不提供 logprob** 的模型，要拿什麼訓練？
 
 </div>
 
@@ -1712,21 +1714,23 @@ forward KL 目標已經到達它可達的極限,卡住的原因在目標函數,�
 
 # 本堂總結
 
-五件帶得走的事
+機率花式操作技巧
 
-1. **介面決定可能性。** 一個分布至多提供 `sample()` 與 `logprob(x)`;$p_{\text{data}}$ 只有前者,缺的那一格貫穿整堂課。
+1. **介面決定可能性。** 一個分布至多提供 `sample()` 與 `logprob(x)`。  
+$p_{\text{data}}$ 只有前者，缺的失的 `logprob(x)` 正是模型的擬何目標。
 
-2. **選散度就是選錯誤型態。** forward KL 過度覆蓋、reverse KL 塌縮、JSD 飽和,三種失效都寫在目標函數裡。
+2. **選散度就是選錯誤型態。** forward KL 過度覆蓋、reverse KL 塌縮、JSD 飽和，三種失效都寫在目標函數裡。
 
-3. **引導只有一條式子。** $\log p_{\text{guided}}=\log p_{\text{base}}+w\,(\log p_A-\log p_B)$:temperature、CFG、classifier guidance、RLHF、DDO 都只是填欄位。
+3. **引導只有一條式子。** $\log p_{\text{guided}}=\log p_{\text{base}}+w\,(\log p_A-\log p_B)$.  
+temperature、CFG、classifier guidance、RLHF、DDO 都只是填欄位。
 
-4. **推論期分四層。** 條件、抽樣、logits、聚合;第 1、4 層只需要 `sample()`,第 2、3 層要 `logprob(x)`。
+4. **推論期分四層。** 條件、抽樣、logits、聚合；第 1、4 層只需要 `sample()`，第 2、3 層要 `logprob(x)`。
 
 5. **覆蓋程度可以在三個層次上調整。** 訓練目標、解碼設定、權重微調。
 
 <div class="mt-5 tone-faint">
 
-遇到沒看過的方法,第一個問題永遠一樣:它呼叫了哪一個介面。
+遇到沒看過的方法，第一個問題永遠一樣：它呼叫了哪一個介面。
 
 </div>
 
