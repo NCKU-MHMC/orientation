@@ -22,12 +22,6 @@ class: text-left
 
 ## 建構滿足介面的分布
 
-<div class="mt-10 tone-faint">
-
-新進成員訓練・第二堂（120 分鐘）
-
-</div>
-
 <!--
 聽眾同第一堂：剛進實驗室的碩一新生，修過深度學習導論，還沒有自己的研究題目。
 
@@ -40,33 +34,35 @@ class: text-left
 
 ---
 
-# 用神經網路構造出這兩個介面
+# 從操作分布到建構分布
 
-每一種構造方式對應一個模型家族
+上一堂的每一個結論，都以分布已經在手上為前提
 
-<div class="mt-10">
+| | 上一堂 | 這一堂 |
+|---|---|---|
+| 問題 | 兩個分布之間的距離怎麼定義 | 對模型與資料施加什麼約束 |
+| | 手上已有的分布怎麼操作 | 分布怎麼解構成可訓練的部件 |
+| 分布的地位 | 給定的抽象物件 | 要建構出來的 $p_\theta$ |
+
+<div class="mt-8">
 <ContractCard compact />
 </div>
 
-<div class="mt-10">
-
-介面以什麼形式提供、以什麼代價換得，是家族之間全部的差異。AR、Flow、VAE、EBM、DPM、GAN 是六種構造方式。
-
-</div>
-
-<div class="mt-8 aside aside-data text-sm tone-muted">
-
-上一堂的每一種損失都要呼叫 `logprob(x)`：$\mathrm{KL}$ 系列、$\mathcal L_{\text{DPO}}$、$d_\theta=\sigma\!\big(\beta\log\tfrac{p_\theta}{p_{\text{ref}}}\big)$。只生樣本、不報密度的模型，只能改走判別器代理。
-
+<div class="mt-8">
+常見的生成模型有 AR(Autoregressive Model)、Flow(Normalizing Flow, NF)、VAE(Variational Autoencoder)、EBM(Energy-Based Model)、DPM(Diffusion Probabilistic Model)、GAN(Generative Adversarial Network) 這六種，它們分別以不同代價構造分布。
 </div>
 
 <!--
-[約 3 分鐘] 今天的任務：用神經網路構造出提供這兩個介面的物件。
-AR、Flow、VAE、EBM、DPM、GAN 各是一種構造方式。
-六個家族的差別不在風格，在兩個介面各以什麼形式提供、代價是什麼。
+[約 3 分鐘] 上一堂做了兩件事。
+一是定義兩個分布之間的距離，也就是散度怎麼選、選了之後承擔哪一種錯誤。
+二是分布固定之後怎麼操作它，統一引導式、推論期的四層介入、DPO 與 DDO 都屬於這一類。
+兩件事共用同一個前提：分布已經在手上，兩個介面齊備。
 
-第一堂寫過的每一種損失，KL 系列、DPO、DDO 的判別器，拆開來看都要呼叫 logprob。
-只會生樣本、不會報密度的模型，訓練只能改走判別器代理。
+這一堂換題目：對模型與資料施加什麼約束、把分布解構成什麼部件，
+才能擬合真實分布，建構出 p_θ。
+驗收標準不變，造出來的物件要能提供 sample 與 logprob。
+AR、Flow、VAE、EBM、DPM、GAN 各是一種構造方式，
+差別在兩個介面各以什麼形式提供、代價是什麼。
 -->
 
 ---
@@ -75,15 +71,15 @@ AR、Flow、VAE、EBM、DPM、GAN 各是一種構造方式。
 
 每一個缺口，對應一種工程回應
 
-| 散度 | 需要的介面 | 缺什麼 | 代理 | 形成的家族 |
-|---|---|---|---|---|
-| forward KL | $p_{\text{data}}$.sample + $p_\theta$.logprob | 不缺 | 不需要 | MLE：AR / Flow / VAE / DPM / EBM |
-| reverse KL | $p_\theta$.sample + $p_\theta$.logprob + $p_{\text{data}}$.logprob | $p_{\text{data}}$.logprob | reward / energy | RLHF、VI |
-| JSD | 兩側 logprob | 資料側必缺；generator 不維護密度時模型側也缺 | 訓練一個分類器 | GAN |
+| 散度 | 需要的介面 | 代理 | 形成的家族 |
+|---|---|---|---|
+| forward KL<br><span class="fine">Kullback–Leibler</span> | $p_{\text{data}}$.sample + $p_\theta$.logprob | 不需要 | MLE(Maximum Likelihood Estimation)：AR / Flow / VAE / DPM / EBM |
+| reverse KL | $p_\theta$.sample + $p_\theta$.logprob + $p_{\text{data}}$.logprob | reward / energy | RLHF(Reinforcement Learning from Human Feedback)、VI(Variational Inference) |
+| JSD<br><span class="fine">Jensen–Shannon divergence</span> | 兩側 logprob | 訓練一個分類器 | GAN |
 
 <div class="mt-5">
 
-GAN 用判別器並非設計偏好：資料側的 logprob 本來就缺，而 GAN 的 generator 又不維護自身密度，JSD 需要的兩個 logprob 就一個都不剩；分類器是唯一能把 JSD 變成可計算目標的代理（第一堂的判別器讀法：最優分類器的損失值即 JSD 的仿射函數）。
+<!--GAN 用判別器並非設計偏好：資料側的 logprob 本來就缺，而 GAN 的 generator 又不維護自身密度，JSD 需要的兩個 logprob 就一個都不剩；分類器是唯一能把 JSD 變成可計算目標的代理（第一堂的判別器讀法：最優分類器的損失值即 JSD 的仿射函數）。-->
 
 </div>
 
@@ -142,7 +138,7 @@ GAN 的 mode collapse 由同一個極限驅動。
 
 <div class="mt-2">
 
-DDO 屬於 forward KL 列，本來不需要任何代理。
+DDO(Direct Discriminative Optimization) 屬於 forward KL 列，本來不需要任何代理。
 
 它做的事是**把 JSD 列的判別器構造搬進來**：不另訓分類器，直接宣告 $\sigma(\beta\log(p_\theta/p_{\text{ref}}))$ 是判別器。
 
@@ -217,7 +213,7 @@ sample 欄有三種：逐維序列、一步、多步。
 <div class="mt-4">
 
 1. **訓練只能經過判別器代理**：任何散度都需要密度資訊，GAN 一側拿不出來。
-2. **上一堂以 logprob 為前提的方法全數不適用**：統一引導式、DPO、DDO，對 GAN 一條都寫不出來。
+2. **上一堂以 logprob 為前提的方法全數不適用**：統一引導式、DPO(Direct Preference Optimization)、DDO，對 GAN 一條都寫不出來。
 3. **放棄正規化密度，換得架構自由**：generator 不受可逆性、序列分解或任何密度簿記的約束，任意一步映射都合法，品質因此能在單步內達成。
 
 </div>
@@ -244,20 +240,17 @@ generator 不受可逆性、序列分解或任何密度簿記的約束，任意�
 
 <div class="mt-2">
 
-**AR 與 Normalizing Flow**：logprob 同樣精確，sample 形式不同。
-
-| | AR | NF |
-|---|---|---|
-| logprob | chain rule 逐項相加 | 變數變換公式 |
-| sample | 逐維序列（慢、表達力強） | 一步（快，但受可逆性約束） |
-
-NF 證明了密度與一步生成可以共存；代價是每一層都必須可逆且 Jacobian 可算，表達力被此束縛。
+| | AR | NF | DPM |
+|---|---|---|---|
+| logprob | chain rule 逐項相加 | 變數變換公式 | 變分下界；經 probability flow ODE 精確 |
+| sample | 逐維序列（慢、表達力強） | 一步（快，但受可逆性約束） | 多步迭代（步數即成本） |
+| 分解方式 | 沿維度 | 沿可逆層 | 沿雜訊尺度 |
 
 </div>
 
 <div class="mt-4">
 
-**DPM** 把一步生成拆成許多個子問題，每個子問題是一次簡單迴歸：logprob 與品質都保住，代價全數記在抽樣步數上。
+AR 與 NF 的 logprob 同樣精確，形式不同；NF 證明了密度與一步生成可以共存，代價是每一層都必須可逆且 Jacobian 可算，表達力被此束縛。DPM 把一步生成拆成許多個子問題，每個子問題是一次簡單迴歸，品質與密度都保住，代價全數記在抽樣步數上。
 
 </div>
 
@@ -269,8 +262,12 @@ NF 用變數變換公式。sample 就分開了：AR 逐維序列，慢但表達�
 NF 一步，快但每一層都要可逆、Jacobian 要算得動，表達力被這兩個條件束縛。
 NF 證明了精確密度與一步生成可以共存。
 
-DPM 是第三種：把一步生成拆成許多個子問題，每個子問題是一次簡單迴歸，
-logprob 與品質都保住，代價全數記在抽樣步數上。
+DPM 是第三欄：把一步生成拆成許多個子問題，每個子問題是一次簡單迴歸，
+logprob 拿到變分下界，經 probability flow ODE 還能精確算，品質也保住，
+代價全數記在抽樣步數上。
+
+最後一列是三者的分解方式：AR 切在維度之間，NF 切在可逆層之間，
+DPM 切在訊噪比之間，同一個 forward KL 的三種切法。
 
 所以「快」與「有密度」是兩個獨立的維度，
 真正的取捨在表達力、架構約束與步數之間。
@@ -344,8 +341,6 @@ sample quality・mode coverage・sampling speed
 <div class="mt-2">
 
 三個目標同時滿足，目前沒有任何家族做到([Xiao, Kreis & Vahdat, 2022](https://arxiv.org/abs/2112.07804))。每個家族都落在某一條邊上：兩端是它拿到的目標，對面的頂點是它付出的代價，沿邊的位置是兩個目標之間的偏重。
-
-品質與覆蓋那條邊，是上一堂覆蓋程度的另一種畫法；速度頂點對應矩陣的 sample 欄。
 
 </div>
 
@@ -456,22 +451,36 @@ layout: none
 
 ---
 
-# Cross-entropy 與 KL 的關係
+# Cross-entropy(CE) 與 KL 的關係
 
 兩者只差一項資料本身的熵
 
 $$H(p,q)=H(p)+\mathrm{KL}(p\,\|\,q)$$
 
-<div class="mt-4">
+<div class="mt-3 text-sm">
 
-- 分類任務的目標 $p$ 是 one-hot，$H(p)=0$，所以 CE 與 forward KL 是同一個數
-- 目標一旦變軟（label smoothing、distillation），兩者開始分離：$H(p)>0$ 成為 CE 的下限
-- 語言建模最小化 CE，等價於最小化 forward KL：AR 家族落在 mode-covering 端的原因
+| 項 | 定義 | 讀法 |
+|---|---|---|
+| $H(p,q)$ | $-\mathbb{E}_{x\sim p}\big[\log q(x)\big]$ | 拿 $p$ 的樣本餵給模型 $q$，取 $-\log q(x)$ 的平均，就是訓練時最小化的 loss |
+| $H(p)$ | $-\mathbb{E}_{x\sim p}\big[\log p(x)\big]$ | 資料本身的熵，只由 $p$ 決定，換哪個模型都不變 |
+
+</div>
+
+<div class="mt-4 text-center">
+
+語言建模最小化 CE，等價於最小化 forward KL：AR 家族落在 mode-covering 端的原因
 
 </div>
 
 <!--
+兩個量先分清楚。
+H(p,q) 是交叉熵：從 p 抽樣本，讀模型 q 給的 −log q(x)，取平均。
+這就是訓練時真正在最小化的那個 loss，模型換了它就會變。
+H(p) 是資料自身的熵：同樣的平均，但讀的是 p 自己的 −log p(x)。
+它只由資料分布決定，與模型無關，訓練再久也壓不下去。
+
 這條恆等式一行就能證：展開 CE 的定義，加減 E_p[log p]。
+差值就是 forward KL，所以 CE 的下限是 H(p)，不是零。
 
 三個推論。
 分類任務的目標 p 是 one-hot，H(p) 等於零，所以 CE 與 forward KL 是同一個數。
@@ -499,7 +508,7 @@ H(p) 那一項是資料本身的熵，誰也壓不掉。
 | 同資料比差值 | $H(p)$ 是共同常數，模型間的 CE 差就是 KL 差 |
 | 參考模型正規化 | 以另一個模型的 logprob 為基準（DDO 的 log ratio 即此形） |
 | 已知熵的合成資料 | 人造分布，$H(p)$ 可解析計算 |
-| 繞開 likelihood | MAUVE、MMD、下游任務指標 |
+| 繞開 likelihood | MAUVE、MMD(Maximum Mean Discrepancy)、下游任務指標 |
 
 </div>
 
@@ -522,13 +531,13 @@ leaderboard 上比的從來是相對值。
 
 換一個與詞表無關的單位
 
-同一份文本，不同 tokenizer 切出的 token 數不同，per-token 的 CE 之間不可比。換算到位元組：
+同一份文本，不同 tokenizer 切出的 token 數不同，per-token 的 CE 之間不可比。換算到位元組，以 BPB(Bits Per Byte) 為單位：
 
 $$\mathrm{BPB}=\frac{T}{N_{\text{bytes}}}\cdot\log_2 \mathrm{PPL}_{\text{token}}$$
 
 <div class="mt-4">
 
-$T$ 為 token 數、$N_{\text{bytes}}$ 為位元組數：把「每 token 的困惑度」換算成「每位元組的位元數」，單位與 tokenizer 無關。
+$T$ 為 token 數、$N_{\text{bytes}}$ 為位元組數、$\mathrm{PPL}$ 為困惑度(Perplexity)：把「每 token 的困惑度」換算成「每位元組的位元數」，單位與 tokenizer 無關。
 
 </div>
 
@@ -667,7 +676,7 @@ $p(y\mid x)$ 對**任何** $x$ 都良定義，包括 $p(x)\approx 0$ 的荒謬�
 <div class="mt-4">
 
 - forward KL 訓練獎勵「在資料上覆蓋」，語料裡的問題幾乎都伴隨回答；拒答作為輸出模式，結構上沒有位置，除非 post-training 明文補上（[Kalai et al., 2025](https://arxiv.org/abs/2509.04664) 從訓練目標與評測誘因分析幻覺的必然性）
-- 「$p(y\mid x)$ 算得出來」與「$x$ 值得回答」是兩個獨立命題；false premise 偵測要判定的是後者（基準：(QA)²，[Kim et al., 2023](https://arxiv.org/abs/2212.10003)）
+- 「$p(y\mid x)$ 算得出來」與「$x$ 值得回答」是兩個獨立命題；false premise 偵測要判定的是後者（基準：(QA)²，Question Answering with Questionable Assumptions，[Kim et al., 2023](https://arxiv.org/abs/2212.10003)）
 
 </div>
 
@@ -694,7 +703,7 @@ false premise 偵測要判定的是後者，等於在條件分布之外另建一
 
 <Timeline :items="[
   { name: 'n-gram', note: '計數即條件機率；脈絡長度受限於統計強度' },
-  { name: 'RNN / LSTM', note: '參數化條件分布，脈絡不再截斷', tag: '品質' },
+  { name: 'RNN / LSTM', note: 'recurrent neural network 與 long short-term memory：參數化條件分布，脈絡不再截斷', tag: '品質' },
   { name: 'attention → Transformer', year: '2017', note: '訓練可平行，scaling 自此可行', tag: '品質', url: 'https://arxiv.org/abs/1706.03762' },
   { name: 'scaling laws', year: '2020', note: '損失隨規模冪律下降，投資有可預測回報(Kaplan et al.)', tag: '品質・覆蓋', url: 'https://arxiv.org/abs/2001.08361' },
   { name: 'instruction tuning / RLHF', year: '2022', note: '往 mode-seeking 端移動：可用性換多樣性', tag: '覆蓋程度右移', url: 'https://arxiv.org/abs/2203.02155' },
@@ -726,7 +735,7 @@ instruction tuning 與 RLHF(2022)：往 mode-seeking 端移動，用多樣性換
 
 <div class="mt-5">
 
-**應用**：對話與 agent、程式生成，以及 LLM-ASR 裡作為預訓練 backbone 提高辨識能力。
+**應用**：對話與 agent、程式生成，以及 LLM-ASR(Large Language Model + Automatic Speech Recognition) 裡作為預訓練 backbone 提高辨識能力。
 
 </div>
 
@@ -795,8 +804,8 @@ sample 更簡單：從標準高斯抽 z，前向一步。
 兩個硬條件：bijection，同維度、可逆、可微；以及 Jacobian 要算得動。
 任意 D×D 行列式是 O(D³)，所以 NF 用架構設計讓 Jacobian 呈三角形，
 行列式退化成對角線連乘，降到 O(D)。離散 NF 的架構史，大半是三角結構的設計史：
-NICE(Dinh et al., 2014)用 additive coupling，det 恆為 1；
-RealNVP(Dinh et al., 2016)用 affine coupling，log|det| 是各 s 之和；
+NICE，non-linear independent components estimation(Dinh et al., 2014)，用 additive coupling，det 恆為 1；
+RealNVP，real-valued non-volume preserving(Dinh et al., 2016)，用 affine coupling，log|det| 是各 s 之和；
 Glow(Kingma & Dhariwal, 2018)加上可學的 invertible 1x1 conv，以 LU 參數化。
 coupling 每層只動一半維度，層與層之間用 permutation 混合。
 -->
@@ -836,7 +845,7 @@ layout: none
 
 自迴歸把成本推到一側，coupling 兩側同時便宜
 
-| | MAF | IAF | Coupling（NICE / RealNVP / Glow） |
+| | MAF<br><span class="fine">masked autoregressive flow</span> | IAF<br><span class="fine">inverse autoregressive flow</span> | Coupling（NICE / RealNVP / Glow） |
 |---|---|---|---|
 | 依賴結構 | 逐維，條件於 $x_{1:i-1}$ | 逐維，條件於 $u_{1:i-1}$ | 二分區塊，一半條件另一半 |
 | logprob | 一次並行評估（快） | 逐維還原 $u$，$O(D)$ 串行（慢） | 一次並行評估（快） |
@@ -876,15 +885,15 @@ Jacobian 一樣是三角形。
 
 # 連續化：行列式退化為跡
 
-層數趨於無窮的極限是一條 ODE(Neural ODE,[Chen et al., 2018](https://arxiv.org/abs/1806.07366))
+層數趨於無窮的極限是一條常微分方程
 
 $$\frac{dz}{dt}=f(z,t),\qquad \frac{d\log p(z(t))}{dt}=-\mathrm{Tr}\!\left(\frac{\partial f}{\partial z}\right)$$
 
 <div class="mt-3">
 
-- 非線性的行列式在連續極限下換成線性的跡：$O(D^3)\to O(D)$，架構約束隨之解除
+- Neural ODE(Ordinary Differential Equation)([Chen et al., 2018](https://arxiv.org/abs/1806.07366))：非線性的行列式在連續極限下換成線性的跡：$O(D^3)\to O(D)$，架構約束隨之解除
 - 可逆性免費取得：向量場 Lipschitz 連續則軌跡不相交(Picard–Lindelöf)，不再需要 coupling 結構
-- FFJORD([Grathwohl et al., 2018](https://arxiv.org/abs/1810.01367))：Hutchinson 估計跡，免建 Jacobian
+- FFJORD(Free-form Jacobian of Reversible Dynamics)：Hutchinson 估計跡，免建 Jacobian([Grathwohl et al., 2018](https://arxiv.org/abs/1810.01367))
 - 代價：MLE 訓練的每一步都要呼叫數值 ODE solver，慢且不穩
 
 </div>
@@ -909,9 +918,9 @@ adjoint 法可以讓顯存與深度無關。
 
 # NF 的特徵性失效與今日角色
 
-OOD 悖論、結構限制，與今日的應用領域
+分布外樣本的悖論、結構限制，與今日的應用領域
 
-**OOD 悖論**：在複雜影像上以 MLE 訓練的 NF，常給沒見過的更簡單影像更高的 log-likelihood([Nalisnick et al., 2019](https://arxiv.org/abs/1810.09136))：forward KL 只要求資料處機率高，不禁止別處更高；低複雜度影像經可逆映射聚在高斯原點附近的高密度區。精確似然與可靠的 OOD 偵測是兩件事。
+**OOD(Out-Of-Distribution) 悖論**：在複雜影像上以 MLE 訓練的 NF，常給沒見過的更簡單影像更高的 log-likelihood([Nalisnick et al., 2019](https://arxiv.org/abs/1810.09136))：forward KL 只要求資料處機率高，不禁止別處更高；低複雜度影像經可逆映射聚在高斯原點附近的高密度區。精確似然與可靠的 OOD 偵測是兩件事。
 
 <div class="mt-3">
 
@@ -969,7 +978,7 @@ VAE 的定位：引入 latent 變數，logprob 只到下界，sample 是 decoder
 
 以下界取代不可解的邊際似然
 
-引入 latent $z$：$p_\theta(x)=\int p_\theta(x\mid z)\,p(z)\,dz$，積分不可解，改而最大化下界：
+引入 latent $z$：$p_\theta(x)=\int p_\theta(x\mid z)\,p(z)\,dz$，積分不可解，改而最大化證據下界(Evidence Lower Bound, ELBO)：
 
 $$\log p_\theta(x)\;\ge\;\mathrm{ELBO}=\mathbb{E}_{q_\phi(z\mid x)}\big[\log p_\theta(x\mid z)\big]-\mathrm{KL}\big(q_\phi(z\mid x)\,\|\,p(z)\big)$$
 
@@ -998,7 +1007,7 @@ amortization gap 是共享的 encoder 無法對每一筆資料輸出各自的最
 
 Gaussian 重建項與 mode-covering 的疊加
 
-重建項用 Gaussian likelihood 時，$\log p_\theta(x\mid z)$ 等價於負 MSE；
+重建項用 Gaussian likelihood 時，$\log p_\theta(x\mid z)$ 等價於負的均方誤差(Mean Squared Error, MSE)；
 MSE 的最優解是**條件均值**：多個可能輸出的平均，而非其中任何一個。
 
 <div class="mt-4">
@@ -1056,8 +1065,8 @@ prior holes：aggregate posterior 與標準高斯不重合，先驗抽樣落進�
 
 <Timeline dense :items="[
   { name: 'β-VAE', year: '2017', note: '調 KL 項係數，換 disentanglement(Higgins et al.)', tag: '控制', url: 'https://openreview.net/forum?id=Sy2fzU9gl' },
-  { name: 'VQ-VAE', year: '2017', note: '離散 latent：decoder 無法忽略，繞開 posterior collapse(van den Oord et al.)', tag: '結構', url: 'https://arxiv.org/abs/1711.00937' },
-  { name: 'VQ-GAN', year: '2021', note: '加對抗損失，重建變銳利(Esser et al.)', tag: '品質', url: 'https://arxiv.org/abs/2012.09841' },
+  { name: 'VQ-VAE', year: '2017', note: 'vector quantized VAE，離散 latent：decoder 無法忽略，繞開 posterior collapse(van den Oord et al.)', tag: '結構', url: 'https://arxiv.org/abs/1711.00937' },
+  { name: 'VQ-GAN', year: '2021', note: 'vector quantized GAN：加對抗損失，重建變銳利(Esser et al.)', tag: '品質', url: 'https://arxiv.org/abs/2012.09841' },
   { name: '壓縮器角色', year: '今日', note: 'Stable Diffusion 在 VAE latent 空間跑 diffusion', tag: '基礎設施', url: 'https://arxiv.org/abs/2112.10752' },
 ]" />
 
@@ -1273,9 +1282,9 @@ layout: none
 穩定、品質、規模，最後轉向蒸餾
 
 <Timeline dense :items="[
-  { name: 'DCGAN', year: '2015', note: '穩定可複製的卷積配方(Radford et al.)', tag: '品質', url: 'https://arxiv.org/abs/1511.06434' },
+  { name: 'DCGAN', year: '2015', note: 'deep convolutional GAN：穩定可複製的卷積配方(Radford et al.)', tag: '品質', url: 'https://arxiv.org/abs/1511.06434' },
   { name: 'conditional GAN', note: '條件化生成', tag: '控制', url: 'https://arxiv.org/abs/1411.1784' },
-  { name: 'WGAN', year: '2017', note: 'Earth Mover 距離替代 JSD，支撐集分離時仍有梯度(Arjovsky et al.)', tag: '穩定', url: 'https://arxiv.org/abs/1701.07875' },
+  { name: 'WGAN', year: '2017', note: 'Wasserstein GAN：Earth Mover 距離替代 JSD，支撐集分離時仍有梯度(Arjovsky et al.)', tag: '穩定', url: 'https://arxiv.org/abs/1701.07875' },
   { name: 'StyleGAN', year: '2019', note: '品質與可控性(Karras et al.)', tag: '品質', url: 'https://arxiv.org/abs/1812.04948' },
   { name: 'BigGAN', year: '2019', note: '大規模訓練(Brock et al.)', tag: '品質', url: 'https://arxiv.org/abs/1809.11096' },
   { name: '蒸餾目標', year: '近年', note: '少從頭訓練；把多步模型壓成一步的對抗式蒸餾', tag: '速度', url: 'https://arxiv.org/abs/2311.17042' },
@@ -1309,7 +1318,7 @@ layout: section
 
 # Energy-Based Model
 
-未正規化的密度，MCMC 抽樣
+未正規化的密度，MCMC(Markov Chain Monte Carlo) 抽樣
 
 <div class="mt-4">
 <FamilyMatrix focus="EBM" compact />
@@ -1389,7 +1398,7 @@ $$\nabla_\theta\log p(x)=\underbrace{-\nabla_\theta E(x)}_{\text{壓低真實資
 |---|---|---|
 | Contrastive Divergence<br><span class="fine">[Hinton, 2002](https://doi.org/10.1162/089976602760128018)</span> | 鏈從資料點起跑只走 $k$ 步；$\log Z$ 梯度對消 | $\mathrm{KL}(p_{\text{data}}\|p_\theta)-\mathrm{KL}(p_k\|p_\theta)$ |
 | Score matching<br><span class="fine">[Hyvärinen, 2005](https://jmlr.org/papers/v6/hyvarinen05a.html)</span> | 改對 $x$ 微分：$\nabla_x\log Z=0$，$Z$ 直接消失 | Fisher divergence |
-| NCE<br><span class="fine">[Gutmann & Hyvärinen, 2010](https://proceedings.mlr.press/v9/gutmann10a.html)</span> | 與已知雜訊分布做二元分類，$Z$ 當可學純量 | BCE（漸近 KL） |
+| NCE<br><span class="fine">noise contrastive estimation・[Gutmann & Hyvärinen, 2010](https://proceedings.mlr.press/v9/gutmann10a.html)</span> | 與已知雜訊分布做二元分類，$Z$ 當可學純量 | BCE(Binary Cross Entropy)（漸近 KL） |
 
 <!--
 MLE 的梯度拆成兩個相位：壓低真實資料的能量，拉高模型自生樣本的能量。
@@ -1440,14 +1449,14 @@ sampler 掉進去之後訓練就崩壞；與 BatchNorm 尤其不相容，
 
 # EBM 的改進史與今日角色
 
-從 Hopfield 到 JEM
+從 Hopfield 到 JEM(Joint Energy-based Model)
 
 <Timeline dense :items="[
   { name: 'Hopfield 網路・Boltzmann Machine', year: '1982–85', note: '能量地景支配網路狀態；隨機隱單元(Hopfield;Ackley, Hinton & Sejnowski)', tag: '概念', url: 'https://doi.org/10.1073/pnas.79.8.2554' },
-  { name: 'RBM', year: '1986', note: '二部圖限制使 Gibbs sampling 可行(Smolensky)', tag: '可訓練', url: 'https://stanford.edu/~jlmcc/papers/PDP/Volume%201/Chap6_PDP86.pdf' },
+  { name: 'RBM', year: '1986', note: 'restricted Boltzmann machine：二部圖限制使 Gibbs sampling 可行(Smolensky)', tag: '可訓練', url: 'https://stanford.edu/~jlmcc/papers/PDP/Volume%201/Chap6_PDP86.pdf' },
   { name: 'Contrastive Divergence', year: '2002', note: '短鏈繞過平衡態；2006 年疊層預訓練帶動深度學習復興(Hinton)', tag: '訓練', url: 'https://doi.org/10.1162/089976602760128018' },
   { name: '深度 ConvNet 能量函數', year: '2016', note: '現代網路參數化 E(Xie et al.)', tag: '品質', url: 'https://arxiv.org/abs/1602.03264' },
-  { name: 'ImageNet 規模', year: '2019', note: 'replay buffer 穩定 SGLD(Du & Mordatch)', tag: '規模', url: 'https://arxiv.org/abs/1903.08689' },
+  { name: 'ImageNet 規模', year: '2019', note: 'replay buffer 穩定 SGLD，stochastic gradient Langevin dynamics(Du & Mordatch)', tag: '規模', url: 'https://arxiv.org/abs/1903.08689' },
   { name: 'JEM', year: '2020', note: '任何 softmax 分類器都暗含 EBM：E(x) = −LogSumExp(logits)(Grathwohl et al.)', tag: '統一', url: 'https://arxiv.org/abs/1912.03263' },
 ]" />
 
@@ -1572,9 +1581,9 @@ diffusion 學的 s(x,t) 就是各雜訊尺度下能量地景的梯度場；
 三篇論文，步數降兩個量級
 
 <Timeline dense :items="[
-  { name: 'DDPM', year: '2020', note: '離散時間逐步去噪，千步量級(Ho et al.)', tag: '品質・覆蓋', url: 'https://arxiv.org/abs/2006.11239' },
-  { name: 'DDIM', year: '2020', note: '非 Markov 過程族，η=0 得確定性抽樣；已訓練的 DDPM 權重免重訓，步數大減(Song et al.)', tag: '速度', url: 'https://arxiv.org/abs/2010.02502' },
-  { name: 'Score-based SDE', year: '2021', note: '離散步驟統一成連續時間 SDE；probability flow ODE 由此而來(Song et al.)', tag: '理論統一', url: 'https://arxiv.org/abs/2011.13456' },
+  { name: 'DDPM', year: '2020', note: 'denoising diffusion probabilistic models：離散時間逐步去噪，千步量級(Ho et al.)', tag: '品質・覆蓋', url: 'https://arxiv.org/abs/2006.11239' },
+  { name: 'DDIM', year: '2020', note: 'denoising diffusion implicit models：非 Markov 過程族，η=0 得確定性抽樣；已訓練的 DDPM 權重免重訓，步數大減(Song et al.)', tag: '速度', url: 'https://arxiv.org/abs/2010.02502' },
+  { name: 'Score-based SDE', year: '2021', note: '離散步驟統一成連續時間 SDE(stochastic differential equation)；probability flow ODE 由此而來(Song et al.)', tag: '理論統一', url: 'https://arxiv.org/abs/2011.13456' },
 ]" />
 
 <!--
@@ -1591,7 +1600,7 @@ DDIM 的確定性抽樣正是 probability flow ODE 的離散化特例，SDE 框�
 
 ---
 
-# CFG 與 zero-shot 編輯
+# CFG(Classifier-Free Guidance) 與 zero-shot 編輯
 
 統一引導式在這個家族的原始形式([Ho & Salimans, 2022](https://arxiv.org/abs/2207.12598))
 
@@ -1635,8 +1644,8 @@ latent 空間、速度場、一步蒸餾
 
 <Timeline dense :items="[
   { name: 'Latent Diffusion', year: '2022', note: '在 VAE latent 空間跑 diffusion，算力降一個量級(Rombach et al.)', tag: '速度', url: 'https://arxiv.org/abs/2112.10752' },
-  { name: 'Flow Matching / Rectified Flow', year: '2023', note: 'CNF 的免模擬訓練法：在插值路徑上直接迴歸速度場；源分布不必是 Gaussian(Lipman et al.;Liu et al.)', tag: '簡化', url: 'https://arxiv.org/abs/2210.02747' },
-  { name: 'Consistency Models / 對抗式蒸餾', year: '2023', note: '多步 ODE 積分蒸餾成一步(Song et al.)；對抗式蒸餾另見 ADD(Sauer et al.)', tag: '速度', url: 'https://arxiv.org/abs/2303.01469' },
+  { name: 'Flow Matching / Rectified Flow', year: '2023', note: 'continuous normalizing flow(CNF) 的免模擬訓練法：在插值路徑上直接迴歸速度場；源分布不必是 Gaussian(Lipman et al.;Liu et al.)', tag: '簡化', url: 'https://arxiv.org/abs/2210.02747' },
+  { name: 'Consistency Models / 對抗式蒸餾', year: '2023', note: '多步 ODE 積分蒸餾成一步(Song et al.)；對抗式蒸餾另見 ADD，adversarial diffusion distillation(Sauer et al.)', tag: '速度', url: 'https://arxiv.org/abs/2303.01469' },
 ]" />
 
 <div class="mt-3 text-sm tone-muted">
@@ -1667,7 +1676,7 @@ Latent Diffusion 的壓縮層就是 VAE 段的收尾，
 
 對原以 CFG 推論的模型，DDO 微調後**免 guidance** 的品質超過原 CFG 基線，每步省下一次前向（[Zheng et al., 2025 專案頁](https://research.nvidia.com/labs/cosmos-lab/ddo/)）；下表為免 guidance 的前後對照：
 
-| 模型 | 資料集 | FID（前 → 後，無 guidance） |
+| 模型 | 資料集 | FID(Fréchet Inception Distance)（前 → 後，無 guidance） |
 |---|---|---|
 | EDM | CIFAR-10 | 1.79 → 1.30 |
 | EDM2 | ImageNet-64 | 1.58 → 0.97 |
@@ -1725,102 +1734,97 @@ reflow 用自己上一輪的非交叉配對重訓，軌跡拉直之後一階 Eul
 layout: section
 ---
 
-# 定位
+# 總結
 
-六個題目，三組定位
+六個家族的優缺點與適用場景
 
 <!--
-最後一節把六個題目放回三組定位：覆蓋程度、呼叫的介面、三難取捨。
+最後一節把六個家族並排收尾：各自的長處、代價，以及什麼題目該找誰。
 -->
 
 ---
 
-# 實驗室題目的完整定位
+# 六個家族的優缺點
 
-覆蓋程度、呼叫的介面、三難取捨
+長處與代價都寫在兩個介面上
 
-| 題目 | 覆蓋程度 | 呼叫的介面 | 三難取捨 |
-|---|---|---|---|
-| prompt engineering | 只換 base 項，係數不動 | sample | 不觸及 |
-| memory agent | 同上；條件集合的設計 | sample | 不觸及 |
-| 情感支持對話 | 右端，受 $\beta$ 約束 | sample（+logprob 可調） | 覆蓋 vs 品質 |
-| false premise 偵測 | 左端訓練的結構後果 | logprob | 不觸及 |
-| 信心與正確率 | logprob 讀數的可信度（校準） | logprob | 不觸及 |
-| LLM-ASR | log 空間線性組合 | 兩者 | 速度（n-best 的 n） |
+| 家族 | 優點 | 缺點 |
+|---|---|---|
+| AR | logprob 精確且便宜，訓練穩定，離散資料天生適用 | 生成逐維串行，長度即延遲；自由生成會偏離訓練分布 |
+| NF | logprob 精確，一步生成，映射可逆 | 每層都要可逆且 Jacobian 可算，表達力受此束縛 |
+| VAE | 一步生成，訓練穩定，latent 可供下游使用 | logprob 只有下界；條件均值造成重建模糊 |
+| GAN | 一步生成，品質銳利，架構不受密度簿記約束 | 沒有 logprob；訓練不穩，易 mode collapse |
+| EBM | 能量函數形式自由，多個能量可直接相加組合 | $\log Z$ 不可算，訓練與抽樣都要 MCMC |
+| DPM / FM | 品質與覆蓋兼顧，訓練穩定，可用引導式控制 | 抽樣多步，速度是它的短邊 |
 
 <!--
-[約 3 分鐘] 這是開場那張兩欄表的完成態。逐列快速走過即可，
-每一列的術語現在都有定義：覆蓋程度來自第一堂第一節，介面貫穿兩堂，三難是今天第三節。
+[約 3 分鐘] 這張表把六個家族的長處與代價並排。
 
-prompt engineering 與 memory agent：只換 base 項，係數不動，只呼叫 sample，不觸及三難。
-情感支持對話：落在右端，受 β 約束，主要用 sample，加上 logprob 可以再調，
-取捨在覆蓋與品質之間。
-false premise 偵測：是左端訓練的結構後果，呼叫 logprob。
-信心與正確率：問的是 logprob 讀數本身可不可信，也就是校準。
-LLM-ASR：log 空間的線性組合，兩個介面都用，速度的取捨在 n-best 的 n。
+AR：logprob 一次前向就拿到，訓練穩定，離散序列天生適用；代價在生成的串行與誤差累積。
+NF：精確密度加一步生成，兩件好事同時到手；代價是可逆與 Jacobian 兩個硬條件壓住表達力。
+VAE：一步生成、訓練穩定、latent 可用；代價是 logprob 只到下界，重建偏模糊。
+GAN：一步生成、品質銳利、架構自由；代價是整欄 logprob 空白，訓練不穩。
+EBM：能量形式自由、可相加組合；代價是 log Z 不可算，訓練與抽樣都得跑 MCMC。
+DPM 與 FM：品質與覆蓋兼顧、訓練穩定、可引導；代價全記在步數上。
 
-再提醒一次，這六個是實驗室現在在跑的題目，不是各位現在的題目；
-一年後定題目時，這張表可以拿來當檢查清單。
+每一欄的優缺點都不是風格評語，是兩個介面的形式與代價直接推出來的。
 -->
 
 ---
 
-# 結語：往哪裡走
+# 六個家族的適用場景
 
-進入第 2、3 層的成本
+先看題目要哪個介面，再看能付多少步數
 
-實驗室現行方法多在**第 1 層與第 4 層**，只呼叫 `sample()`：對黑箱 API 也可行，這是它們成為主力的理由。
-
-<div class="mt-4">
-<LayerStack :focus="1" />
-</div>
-
-<div class="mt-4">
-
-第 2、3 層額外需要的只有 `logprob`；實驗室使用的每一個模型都提供這個介面，而這兩層的方法**不需要任何額外訓練資源**。
-
-</div>
+| 家族 | 什麼題目找它 | 代表用途 |
+|---|---|---|
+| AR | 離散序列，且需要密度讀數 | 語言與程式生成、n-best rescoring、偵測與校準 |
+| NF | 要精確密度，又要一步生成 | 變分後驗、語音 vocoder、分子平衡態、模擬推斷 |
+| VAE | 要表徵或壓縮，不追求逐點品質 | 異常偵測、擴散模型的 latent 空間基礎設施 |
+| GAN | 單步就要高品質，且不需要密度 | 影像轉換與超解析、把多步模型蒸餾成一步 |
+| EBM | 對既有分布做修正或整體評分 | 序列級重排序、OOD 偵測、分子勢能面 |
+| DPM / FM | 連續訊號的高品質生成與可控編輯 | 影像、影片、音訊、分子設計、動作生成 |
 
 <!--
-實驗室現行的方法多在第 1 層與第 4 層，只呼叫 sample，
-所以對黑箱 API 也可行，這是它們成為主力的理由。
+[約 3 分鐘] 同樣六列，換成「什麼題目該找誰」。
 
-第 2、3 層額外需要的只有 logprob，而實驗室使用的每一個模型都提供這個介面，
-這兩層的方法也不需要額外的訓練資源。
+AR：離散序列而且要讀密度，語言與程式生成、rescoring、偵測與校準都在這一列。
+NF：精確密度加一步生成同時要求時才輪到它，變分後驗、vocoder、分子平衡態、模擬推斷。
+VAE：目標是表徵或壓縮，逐點品質可以讓步，異常偵測與 latent 基礎設施是今日主場。
+GAN：單步就要高品質、又不需要密度，影像轉換、超解析、一步蒸餾。
+EBM：手上已經有一個分布，要對它修正或整體評分，序列級重排序與 OOD 偵測。
+DPM 與 FM：連續訊號的生成與可控編輯，今天大部分影像影片音訊系統在這一列。
 
-這裡講的是成本結構，不是要放棄第 1、4 層：
-往第 2、3 層走，新增的需求只有一個本來就有的介面。
+選家族的順序：先問要哪個介面、以什麼形式，再問能付多少抽樣步數。
+兩個問題答完，候選通常只剩一兩個。
 -->
 
 ---
 layout: statement
 ---
 
-# 覆蓋程度的兩端
+# 選家族就是選介面
 
 <div class="text-xl leading-relaxed mt-8">
 
-含糊的迴避出自 forward KL 訓練，千篇一律出自 reverse KL 對齊：
-覆蓋程度的兩端。
+先問題目要 sample 還是 logprob、要哪一種形式；再問能付多少抽樣步數。兩個問題答完，六選一就只剩一兩個候選。
 
 </div>
 
 <div class="mt-8 text-base tone-faint">
 
-訓練目標、解碼設定、權重微調，三個層次各有一個可調的參數；
-六個家族，各以自己的介面決定哪些移動可行。
+沒有一個家族三難全拿；每一次選擇都是拿一個目標換另一個，而換掉的是什麼，寫在它的兩個介面上。
 
 </div>
 
 <!--
-第一堂開場的主張到這裡驗完：
-含糊的迴避出自 forward KL 訓練，千篇一律出自 reverse KL 對齊，
-兩者分居覆蓋程度的兩端。
+收尾一句：選家族就是選介面。
 
-訓練目標、解碼設定、權重微調，三個層次各有一個可調的參數；
-而六個家族各以自己的介面，決定哪些調整對它可行。
+先問題目要 sample 還是 logprob、要哪一種形式，
+再問能付多少抽樣步數，六選一通常就只剩一兩個候選。
 
-兩種現象、一個連續的量、三個施力層次、六種構造，兩堂課的內容就是這四樣。
+沒有一個家族三難全拿。每一次選擇都是拿一個目標換另一個，
+而換掉的是什麼，就寫在它的兩個介面上。
 -->
 
 ---
@@ -1926,31 +1930,6 @@ layout: statement
 -->
 
 ---
-layout: center
+layout: end
 class: text-center
 ---
-
-# 兩堂課結束
-
-<div class="mt-6 tone-faint">
-
-作業：為第一堂挑的那個題目選一個 AR 以外的家族，寫出它兩個介面的實作形式與特徵性失效，並指出第一堂哪些方法因此適用、哪些失效；一頁，下次 lab meeting 前交。
-
-</div>
-
-<div class="mt-8 text-sm tone-faint">
-
-自學資源：[MIT 6.S184](https://diffusion.csail.mit.edu/)・[李宏毅《生成式 AI》系列](https://speech.ee.ntu.edu.tw/~hylee/genai/2024-spring.php)・Jurafsky & Martin, [*Speech and Language Processing* 3rd ed. draft](https://web.stanford.edu/~jurafsky/slp3/)
-
-</div>
-
-<!--
-作業：為第一堂挑的那個題目選一個 AR 以外的家族，
-寫出它兩個介面的實作形式與特徵性失效，
-並指出第一堂哪些方法因此適用、哪些失效。一頁，下次 lab meeting 前交。
-
-批改重點：介面形式寫對，以及「哪些方法失效」有沒有回到介面上給理由。
-
-自學資源：MIT 6.S184、李宏毅的生成式 AI 系列、
-Jurafsky & Martin 的 Speech and Language Processing 第三版草稿。
--->

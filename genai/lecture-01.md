@@ -1745,3 +1745,9 @@ reverse KL 不可算、reward model 要存在、H(p) 估不出來,全都由那�
 如果只帶走一件事,帶第 1 條:看到新方法先問它呼叫哪一個介面。
 完整書目見課程 repo 的文獻頁。
 -->
+
+---
+layout: end
+class: text-center
+---
+
