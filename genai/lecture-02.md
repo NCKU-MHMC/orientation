@@ -2,6 +2,7 @@
 theme: default
 title: 生成模型導論（二）建構滿足介面的分布
 titleTemplate: '%s'
+routerMode: hash
 transition: fade
 lineNumbers: false
 drawings:

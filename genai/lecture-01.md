@@ -2,6 +2,7 @@
 theme: default
 title: 生成模型導論(一) 分布的度量與調控
 titleTemplate: '%s'
+routerMode: hash
 transition: fade
 lineNumbers: false
 drawings:
