@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VAE 互動教學:2D 玩具資料</title>
+<script src="vendor/tf.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
+<style>
+  /* 這支 demo 專屬的樣式;通用外殼在 theme.css */
+  h1 .beta { font-family: var(--mono); color: var(--accent-ink); }
+  #latentCv { cursor: crosshair; }
+  .readout .r-recon b { color: var(--accent-ink); }
+  .readout .r-kl b { color: var(--third); }
+  /* ① 講的是 β 兩端的失效狀態,用 warn 標記 */
+  .note.n1 { border-left-color: var(--warn); }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">生成模型入門 · 第一堂 · Lab Demo 01</div>
+  <h1>VAE 互動教學 — 2D 玩具資料上的 <span class="beta">&beta;</span>-VAE</h1>
+  <p class="sub">一個 2→2 維潛在空間的 VAE 正在瀏覽器裡即時訓練(TensorFlow.js)。左圖是資料空間、中間是潛在空間。
+    調整 &beta; 觀察「重建 vs. KL」的拉鋸,並<b style="color:var(--accent-ink)">點擊或拖曳潛在空間</b>,看解碼器把 z 映射到哪裡。</p>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div class="ctrl"><label for="dataset">資料集</label>
+      <select id="dataset">
+        <option value="moons">雙月 Two Moons</option>
+        <option value="ring">圓環 Ring</option>
+        <option value="mixture">高斯混合 ×6</option>
+        <option value="mixtureOff">高斯混合 ×6(中心偏移)</option>
+        <option value="spiral">螺旋 Spiral</option>
+      </select>
+    </div>
+    <div class="ctrl"><label for="beta">&beta;(KL 權重)</label>
+      <input type="range" id="beta" min="0" max="4" step="0.1" value="1">
+      <span class="val" id="betaVal">1.0</span>
+    </div>
+    <div class="ctrl"><label for="speed">訓練速度</label>
+      <input type="range" id="speed" min="1" max="12" step="1" value="4">
+      <span class="val" id="speedVal">4</span>
+    </div>
+    <div class="ctrl">
+      <button class="primary" id="playBtn">▶ 開始訓練</button>
+      <button id="resetBtn">↺ 重設模型</button>
+    </div>
+    <label class="toggle ctrl"><input type="checkbox" id="showGen" checked> 生成樣本</label>
+    <label class="toggle ctrl"><input type="checkbox" id="showGrid" checked> 解碼網格</label>
+    <div class="readout">
+      <span>step <b id="stepVal">0</b></span>
+      <span class="r-recon">重建 <b id="reconVal">–</b></span>
+      <span class="r-kl">KL <b id="klVal">–</b></span>
+    </div>
+  </div>
+
+  <div class="loading" id="loading">正在初始化 TensorFlow.js…</div>
+
+  <div class="panels">
+    <div class="panel">
+      <h2>資料空間 x ∈ ℝ²</h2>
+      <p class="hint">彩色點=真實資料(顏色為資料的內在座標)。橘紅點=從先驗 z~N(0,I) 解碼的生成樣本。網格=解碼器把潛在空間的方格「摺」進資料流形的樣子。</p>
+      <canvas id="dataCv"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:linear-gradient(90deg,var(--data),var(--third))"></span>真實資料</span>
+        <span><span class="dot" style="background:var(--model)"></span>生成樣本</span>
+        <span><span class="dot" style="background:var(--model);border:1.5px solid var(--ink)"></span>點選的 z 解碼結果</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>潛在空間 z ∈ ℝ²(可點擊/拖曳)</h2>
+      <p class="hint">每個點是資料經 encoder 得到的 μ(x),顏色與左圖對應。虛線圓=先驗 N(0,I) 的 1σ、2σ。KL 項就是在把這團點「推」進圓裡。</p>
+      <canvas id="latentCv"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="border:1.5px dashed var(--third);background:none"></span>先驗 N(0,I)</span>
+        <span><span class="dot" style="background:var(--ink)"></span>選取的 z</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>損失曲線</h2>
+      <p class="hint">ELBO 的兩項:<b style="color:var(--accent-ink)">重建誤差</b>(還原得像不像)與 <b style="color:var(--third)">KL 散度</b>(潛在分布貼不貼近先驗)。調 β 立刻能看到兩者的消長。</p>
+      <canvas id="lossCv"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--model)"></span>重建 MSE</span>
+        <span><span class="dot" style="background:var(--third)"></span>KL</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note n1">
+      <h3>① 重建 vs. KL 的拉鋸</h3>
+      把 <code>β</code> 拉到 <b>0</b>:KL 消失,模型退化成普通 Autoencoder——潛在點四散、重建很準,但從先驗取樣(橘紅點)會落在沒學過的區域,生成品質崩壞。
+      把 <code>β</code> 拉到 <b>3~4</b>:潛在點被硬擠成一團標準常態,重建誤差上升、生成樣本糊成一片——這就是 <b>posterior collapse</b> 的前兆。
+    </div>
+    <div class="note n2">
+      <h3>② 動手玩潛在空間</h3>
+      在中間面板<b>點擊或拖曳</b>任一位置,左圖會即時顯示 decoder(z) 的落點。試著沿一條直線滑動:輸出會在資料流形上<b>連續滑移</b>——這就是 VAE「潛在空間內插」的由來。
+      也觀察「解碼網格」:decoder 是一個連續函數,只能把方格<b>平滑地彎折</b>,所以像圓環這種有洞的拓撲,VAE 天生蓋不乾淨。
+    </div>
+    <div class="note n3">
+      <h3>③ 建議實驗流程</h3>
+      1) 用<b>雙月</b>訓練到 step ≈ 3000,看生成樣本是否貼合資料。<br>
+      2) 切到<b>圓環</b>:注意環的缺口或內部的「橋」——連續映射的代價。<br>
+      3) 用<b>高斯混合</b>觀察潛在空間如何分區,並在兩群中間點一下 z:輸出常落在兩群之間的低密度區,這就是 VAE「<b>模糊/平均化</b>」的 2D 版本。<br>
+      4) 切到<b>中心偏移版</b>(半徑 3、重心在 (-3,0)):decoder 必須把整個先驗搬到偏離原點的位置;因為 decoder 是連續函數、又要蓋滿先驗,群與群之間常會留下明顯的「橋」——拿去和 GAN demo 在同一份資料上的 mode collapse 對照,likelihood vs. adversarial 的差異一目了然。
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ============ 全域狀態 ============ */
+let VIEW = 3.0;                   // 資料空間畫布範圍 [-VIEW,VIEW]²,依資料集調整
+const LVIEW = 3.0;                // 潛在空間固定畫 [-3,3]²(先驗尺度不變)
+const H = 48, LD = 2;             // 隱藏層寬度、潛在維度
+let params = null, optimizer = null;
+let data = null;                  // {pts:Float32Array, c:Float32Array, n}
+let dataTensor = null, evalTensor = null, evalC = null;
+let genZ = null;                  // 固定的一批 z ~ N(0,I),看生成點隨訓練移動
+let step = 0, playing = false, beta = 1.0, stepsPerFrame = 4;
+let lossHist = [];                // {s, recon, kl}
+let pickedZ = null;               // [z1,z2] 使用者點選
+let frame = 0;
+
+/* ============ 資料集 ============ */
+function makeDataset(name, n = 1500){
+  const pts = new Float32Array(n*2), c = new Float32Array(n);
+  const g = () => { // 標準常態 (Box-Muller)
+    const u = Math.random()||1e-9, v = Math.random();
+    return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+  };
+  for(let i=0;i<n;i++){
+    let x=0,y=0,ci=0;
+    if(name==='moons'){
+      const t = Math.random()*Math.PI, up = i%2===0;
+      if(up){ x=Math.cos(t); y=Math.sin(t); ci=t/Math.PI*0.5; }
+      else  { x=1-Math.cos(t); y=0.5-Math.sin(t); ci=0.5+t/Math.PI*0.5; }
+      x=(x-0.5)*1.7; y=(y-0.25)*1.7;
+      x+=g()*0.07; y+=g()*0.07;
+    }else if(name==='ring'){
+      const th = Math.random()*2*Math.PI, r = 1.9+g()*0.09;
+      x=r*Math.cos(th); y=r*Math.sin(th); ci=th/(2*Math.PI);
+    }else if(name==='mixture'){
+      const k = i%6, th = k/6*2*Math.PI;
+      x=1.9*Math.cos(th)+g()*0.17; y=1.9*Math.sin(th)+g()*0.17; ci=k/6;
+    }else if(name==='mixtureOff'){
+      // 以最左邊的高斯 (角度 π,即 (-r,0)) 為基準,把整個混合的中心平移到它身上
+      const r = 3.0, k = i%6, th = k/6*2*Math.PI;
+      x=r*Math.cos(th)-r+g()*0.12; y=r*Math.sin(th)+g()*0.12; ci=k/6;
+    }else{ // spiral
+      const t = Math.random();
+      const th = 1.9*2*Math.PI*t, r = 0.25+2.0*t;
+      x=r*Math.cos(th)+g()*0.05; y=r*Math.sin(th)+g()*0.05; ci=t;
+    }
+    pts[2*i]=x; pts[2*i+1]=y; c[i]=ci;
+  }
+  return {pts, c, n};
+}
+
+function setDataset(name){
+  VIEW = (name==='mixtureOff') ? 6.6 : 3.0;   // 偏移版資料橫跨 [-6,0],放大資料空間畫布
+  data = makeDataset(name);
+  dataTensor?.dispose(); evalTensor?.dispose();
+  dataTensor = tf.tensor2d(data.pts, [data.n,2]);
+  // 固定 800 點做視覺化/損失評估
+  const m = Math.min(800, data.n), sub = new Float32Array(m*2); evalC = new Float32Array(m);
+  for(let i=0;i<m;i++){ sub[2*i]=data.pts[2*i]; sub[2*i+1]=data.pts[2*i+1]; evalC[i]=data.c[i]; }
+  evalTensor = tf.tensor2d(sub,[m,2]);
+}
+
+/* ============ 模型:手刻 MLP(tanh,平滑流形較好看) ============ */
+const dense = (ni,no)=>({ W: tf.variable(tf.randomNormal([ni,no],0,Math.sqrt(1.4/ni))), b: tf.variable(tf.zeros([no])) });
+const fw = (l,x)=> x.matMul(l.W).add(l.b);
+
+function buildModel(){
+  disposeModel();
+  params = { e1:dense(2,H), e2:dense(H,H), mu:dense(H,LD), lv:dense(H,LD),
+             d1:dense(LD,H), d2:dense(H,H), out:dense(H,2) };
+  optimizer = tf.train.adam(2e-3);
+  step = 0; lossHist = [];
+}
+function disposeModel(){
+  if(!params) return;
+  for(const k in params){ params[k].W.dispose(); params[k].b.dispose(); }
+  params = null;
+}
+const varList = ()=> Object.values(params).flatMap(l=>[l.W,l.b]);
+
+function encode(x){
+  let h = tf.tanh(fw(params.e1,x)); h = tf.tanh(fw(params.e2,h));
+  return { mu: fw(params.mu,h), lv: fw(params.lv,h) };
+}
+function decode(z){
+  let h = tf.tanh(fw(params.d1,z)); h = tf.tanh(fw(params.d2,h));
+  return fw(params.out,h);
+}
+
+/* ============ 訓練 ============ */
+function sampleBatch(bs=256){
+  const b = new Float32Array(bs*2);
+  for(let i=0;i<bs;i++){ const j=(Math.random()*data.n)|0; b[2*i]=data.pts[2*j]; b[2*i+1]=data.pts[2*j+1]; }
+  return tf.tensor2d(b,[bs,2]);
+}
+function trainStep(){
+  const x = sampleBatch();
+  optimizer.minimize(()=>{
+    const {mu,lv} = encode(x);
+    const z = mu.add(lv.mul(0.5).exp().mul(tf.randomNormal(mu.shape)));   // reparameterization
+    const xr = decode(z);
+    const recon = xr.sub(x).square().sum(-1).mean();
+    const kl = mu.square().add(lv.exp()).sub(1).sub(lv).sum(-1).mean().mul(0.5);
+    return recon.add(kl.mul(beta));
+  }, false, varList());
+  x.dispose(); step++;
+}
+function evalLosses(){
+  return tf.tidy(()=>{
+    const {mu,lv} = encode(evalTensor);
+    const z = mu.add(lv.mul(0.5).exp().mul(tf.randomNormal(mu.shape)));
+    const xr = decode(z);
+    const recon = xr.sub(evalTensor).square().sum(-1).mean().dataSync()[0];
+    const kl = mu.square().add(lv.exp()).sub(1).sub(lv).sum(-1).mean().mul(0.5).dataSync()[0];
+    return {recon, kl};
+  });
+}
+
+/* ============ 畫布工具 ============ */
+function setupCanvas(cv, square=true){
+  const dpr = window.devicePixelRatio||1;
+  const w = cv.clientWidth, h = square? w : Math.round(w*0.62);
+  cv.width = w*dpr; cv.height = h*dpr;
+  cv.style.height = h+'px';
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  return ctx;
+}
+const dataCv = document.getElementById('dataCv');
+const latentCv = document.getElementById('latentCv');
+const lossCv = document.getElementById('lossCv');
+let dtx, ltx, xtx;
+function resizeAll(){ dtx=setupCanvas(dataCv); ltx=setupCanvas(latentCv); xtx=setupCanvas(lossCv,false); draw(true); }
+window.addEventListener('resize', ()=>resizeAll());
+
+const viewOf = cv => cv===latentCv ? LVIEW : VIEW;
+const toPx = (cv,x,y)=>{ const v=viewOf(cv); return [ (x/v*0.5+0.5)*cv.clientWidth, (0.5-y/v*0.5)*cv.clientWidth ]; };
+const toXY = (cv,px,py)=>{ const v=viewOf(cv); return [ (px/cv.clientWidth-0.5)*2*v, (0.5-py/cv.clientWidth)*2*v ]; };
+// 真實資料與其潛在 μ:在 data 與 third 之間依內在座標取色,兩張圖對得起來
+const hue = c => { const a=[47,93,124], b=[95,115,80];
+  return `rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*c)).join(',')})`; };
+
+function drawGrid(ctx,cv){
+  const w=cv.clientWidth;
+  ctx.clearRect(0,0,w,w);
+  ctx.strokeStyle=DEMO.grid; ctx.lineWidth=1;
+  const vmax = Math.ceil(viewOf(cv))-1;
+  for(let v=-vmax;v<=vmax;v++){
+    const [px]=toPx(cv,v,0), [,py]=toPx(cv,0,v);
+    ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,w);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(w,py);ctx.stroke();
+  }
+  ctx.strokeStyle=DEMO.rule2;
+  const [cx]=toPx(cv,0,0), [,cy]=toPx(cv,0,0);
+  ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,w);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(w,cy);ctx.stroke();
+}
+
+/* ============ 主繪圖 ============ */
+function draw(force=false){
+  if(!params||!data) return;
+  /* ---- 資料空間 ---- */
+  drawGrid(dtx,dataCv);
+  // 解碼網格(signature:看 decoder 如何摺疊先驗)
+  if(document.getElementById('showGrid').checked){
+    const G=13, zs=new Float32Array(G*G*2);
+    for(let i=0;i<G;i++)for(let j=0;j<G;j++){
+      zs[2*(i*G+j)] = -2.2+4.4*j/(G-1); zs[2*(i*G+j)+1] = -2.2+4.4*i/(G-1);
+    }
+    const out = tf.tidy(()=> decode(tf.tensor2d(zs,[G*G,2])).dataSync());
+    dtx.strokeStyle=DEMO.a(DEMO.ink2,0.55); dtx.lineWidth=1;
+    for(let i=0;i<G;i++){ dtx.beginPath();
+      for(let j=0;j<G;j++){ const k=i*G+j,[px,py]=toPx(dataCv,out[2*k],out[2*k+1]); j?dtx.lineTo(px,py):dtx.moveTo(px,py);} dtx.stroke(); }
+    for(let j=0;j<G;j++){ dtx.beginPath();
+      for(let i=0;i<G;i++){ const k=i*G+j,[px,py]=toPx(dataCv,out[2*k],out[2*k+1]); i?dtx.lineTo(px,py):dtx.moveTo(px,py);} dtx.stroke(); }
+  }
+  // 真實資料
+  const m = evalC.length, sub = evalTensor.dataSync();
+  for(let i=0;i<m;i++){
+    const [px,py]=toPx(dataCv,sub[2*i],sub[2*i+1]);
+    dtx.fillStyle=hue(evalC[i]); dtx.globalAlpha=0.75;
+    dtx.beginPath();dtx.arc(px,py,2.1,0,7);dtx.fill();
+  }
+  dtx.globalAlpha=1;
+  // 生成樣本
+  if(document.getElementById('showGen').checked){
+    const gen = tf.tidy(()=> decode(genZ).dataSync());
+    dtx.fillStyle=DEMO.model;
+    for(let i=0;i<gen.length/2;i++){
+      const [px,py]=toPx(dataCv,gen[2*i],gen[2*i+1]);
+      dtx.globalAlpha=0.8; dtx.beginPath();dtx.arc(px,py,1.7,0,7);dtx.fill();
+    }
+    dtx.globalAlpha=1;
+  }
+  /* ---- 潛在空間 ---- */
+  drawGrid(ltx,latentCv);
+  // 先驗 1σ 2σ 圓
+  ltx.setLineDash([4,4]); ltx.strokeStyle=DEMO.third; ltx.lineWidth=1.2;
+  for(const r of [1,2]){
+    const [cx,cy]=toPx(latentCv,0,0), [rx]=toPx(latentCv,r,0);
+    ltx.beginPath();ltx.arc(cx,cy,rx-cx,0,7);ltx.stroke();
+  }
+  ltx.setLineDash([]);
+  const mus = tf.tidy(()=> encode(evalTensor).mu.dataSync());
+  for(let i=0;i<m;i++){
+    const [px,py]=toPx(latentCv,mus[2*i],mus[2*i+1]);
+    ltx.fillStyle=hue(evalC[i]); ltx.globalAlpha=0.8;
+    ltx.beginPath();ltx.arc(px,py,2.1,0,7);ltx.fill();
+  }
+  ltx.globalAlpha=1;
+  // 使用者選的 z 與其解碼
+  if(pickedZ){
+    const [px,py]=toPx(latentCv,pickedZ[0],pickedZ[1]);
+    ltx.strokeStyle=DEMO.ink; ltx.lineWidth=2;
+    ltx.beginPath();ltx.arc(px,py,7,0,7);ltx.stroke();
+    ltx.beginPath();ltx.moveTo(px-11,py);ltx.lineTo(px+11,py);ltx.moveTo(px,py-11);ltx.lineTo(px,py+11);ltx.stroke();
+    const o = tf.tidy(()=> decode(tf.tensor2d(pickedZ,[1,2])).dataSync());
+    const [qx,qy]=toPx(dataCv,o[0],o[1]);
+    dtx.fillStyle=DEMO.model; dtx.strokeStyle=DEMO.ink; dtx.lineWidth=1.5;
+    dtx.beginPath();dtx.arc(qx,qy,6,0,7);dtx.fill();dtx.stroke();
+  }
+  /* ---- 損失曲線 ---- */
+  const w=lossCv.clientWidth, hh=lossCv.clientHeight;
+  xtx.clearRect(0,0,w,hh);
+  const win = lossHist.slice(-240);
+  if(win.length>1){
+    let ymax=0; for(const p of win) ymax=Math.max(ymax,p.recon,p.kl);
+    ymax=Math.max(ymax,1e-3)*1.1;
+    xtx.strokeStyle=DEMO.grid;
+    for(let k=1;k<4;k++){ const y=hh*k/4; xtx.beginPath();xtx.moveTo(0,y);xtx.lineTo(w,y);xtx.stroke(); }
+    const line=(key,col)=>{
+      xtx.strokeStyle=col; xtx.lineWidth=1.8; xtx.beginPath();
+      win.forEach((p,i)=>{ const x=i/(win.length-1)*w, y=hh-(p[key]/ymax)*hh*0.94-4; i?xtx.lineTo(x,y):xtx.moveTo(x,y); });
+      xtx.stroke();
+    };
+    line('recon',DEMO.model); line('kl',DEMO.third);
+    xtx.fillStyle=DEMO.muted; xtx.font=`10px ${DEMO.font.mono}`;
+    xtx.fillText(ymax.toFixed(2), 4, 11);
+  }
+}
+
+/* ============ 互動 ============ */
+function pickLatent(ev){
+  const r = latentCv.getBoundingClientRect();
+  const px = (ev.touches? ev.touches[0].clientX:ev.clientX)-r.left;
+  const py = (ev.touches? ev.touches[0].clientY:ev.clientY)-r.top;
+  pickedZ = toXY(latentCv,px,py);
+  if(!playing) draw();
+}
+let dragging=false;
+latentCv.addEventListener('pointerdown',e=>{dragging=true;latentCv.setPointerCapture(e.pointerId);pickLatent(e);});
+latentCv.addEventListener('pointermove',e=>{ if(dragging) pickLatent(e); });
+latentCv.addEventListener('pointerup',()=>dragging=false);
+
+document.getElementById('beta').addEventListener('input',e=>{
+  beta=+e.target.value; document.getElementById('betaVal').textContent=beta.toFixed(1);
+});
+document.getElementById('speed').addEventListener('input',e=>{
+  stepsPerFrame=+e.target.value; document.getElementById('speedVal').textContent=stepsPerFrame;
+});
+document.getElementById('dataset').addEventListener('change',e=>{
+  setDataset(e.target.value); buildModel(); pickedZ=null;
+});
+document.getElementById('resetBtn').addEventListener('click',()=>{ buildModel(); pickedZ=null; });
+const playBtn=document.getElementById('playBtn');
+playBtn.addEventListener('click',()=>{
+  playing=!playing; playBtn.textContent = playing? '⏸ 暫停':'▶ 開始訓練';
+});
+document.getElementById('showGen').addEventListener('change',()=>draw());
+document.getElementById('showGrid').addEventListener('change',()=>draw());
+
+/* ============ 主迴圈 ============ */
+function loop(){
+  if(params){
+    if(playing){
+      for(let i=0;i<stepsPerFrame;i++) trainStep();
+      if(step%10<stepsPerFrame){
+        const L=evalLosses(); lossHist.push({s:step,...L});
+        document.getElementById('stepVal').textContent=step;
+        document.getElementById('reconVal').textContent=L.recon.toFixed(3);
+        document.getElementById('klVal').textContent=L.kl.toFixed(3);
+      }
+    }
+    if(frame%2===0 && (playing||frame%30===0)) draw();
+  }
+  frame++;
+  requestAnimationFrame(loop);
+}
+
+/* ============ 啟動 ============ */
+(async function init(){
+  try{ await tf.setBackend('webgl'); }catch(e){ await tf.setBackend('cpu'); }
+  await tf.ready();
+  genZ = tf.randomNormal([400,2]);          // 固定一批 z,觀察生成點隨訓練「長」進資料裡
+  setDataset('moons');
+  buildModel();
+  document.getElementById('loading').style.display='none';
+  resizeAll();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

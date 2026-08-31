@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Classifier Guidance:分類器就是比值項</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
+<style>
+  /* 這支 demo 專屬的樣式;通用外殼在 theme.css */
+  header, .wrap { max-width: 1100px; }
+  .formula { font-family: var(--mono); font-size: 14px; color: var(--accent-ink); margin: 6px 0; }
+  .classes { display: flex; gap: 8px; }
+  .classes button.active { background: var(--accent); color: #fdfbf7; font-weight: 600; border-color: var(--accent); }
+  canvas { width: 100%; display: block; }
+  .marks { display: flex; gap: 10px; font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+  .marks b { color: var(--ink-2); font-weight: 600; }
+  .map {
+    background: var(--paper-2); border: 1px solid var(--rule); border-radius: var(--radius);
+    padding: 10px 14px; margin-top: 12px; font-size: 12.5px; color: var(--ink-2); line-height: 1.75;
+  }
+  .map .base { color: var(--data); font-weight: 600; }
+  .map .bonus { color: var(--third); font-weight: 600; }
+  .map .coef { color: var(--accent-ink); font-weight: 600; }
+  .stage { font-weight: 600; color: var(--ink); }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">生成模型入門 · 第一堂 · Demo 06</div>
+  <h1>Classifier Guidance:分類器就是比值項</h1>
+  <div class="formula">log p_w(x) = log p(x) + w · log p(c|x)　　log p(c|x) = log p(x|c) − log p(x) + const</div>
+  <p class="sub">
+    無條件模型給 <code>p(x)</code>,另外訓練的分類器給 <code>p(c|x)</code>,兩個介面都拿得到,
+    貝氏反轉才寫得出來。<b>w = 0</b> 回到無條件分布,<b>w = 1</b> 恰好是貝氏後驗 <code>p(x|c)</code>,
+    <b>w &gt; 1</b> 是外插:條件更銳利、多樣性下降。三個類別的高斯混合,密度為解析解,不需訓練。
+  </p>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div class="classes" id="classBtns"></div>
+    <div class="ctrl"><label for="w">guidance scale w</label>
+      <input type="range" id="w" min="0" max="4" step="0.05" value="0">
+      <span class="val" id="wVal">0.00</span>
+    </div>
+    <label class="toggle ctrl"><input type="checkbox" id="showSamples" checked> 顯示樣本</label>
+    <div class="readout">
+      <span>格點熵 <b id="hVal">–</b> bits</span>
+      <span>目標類別質量 <b id="mVal">–</b></span>
+      <span>‖p<sub>w</sub> − p(·|c)‖₁ <b id="dVal">–</b></span>
+    </div>
+  </div>
+
+  <div class="panels">
+    <div class="panel">
+      <h2>無條件分布 <code>p(x)</code></h2>
+      <p class="hint">三個類別的混合。base 項就是它,與 w 無關。</p>
+      <canvas id="cv1"></canvas>
+      <div class="marks"><span><b>A</b> π=0.45</span><span><b>B</b> π=0.35</span><span><b>C</b> π=0.20</span></div>
+    </div>
+    <div class="panel">
+      <h2>分類器 <code>p(c|x)</code></h2>
+      <p class="hint">所選類別的後驗機率,深色為 1、淺色為 0;虛線是 0.5 的決策邊界。這張圖也與 w 無關。</p>
+      <canvas id="cv2"></canvas>
+      <div class="marks"><span>比值項 = log p(c|x)</span></div>
+    </div>
+    <div class="panel">
+      <h2>引導後 <code>p_w(x)</code></h2>
+      <p class="hint" id="stageHint"></p>
+      <canvas id="cv3"></canvas>
+      <div class="marks"><span>樣本 250 點,由格點分布抽出</span></div>
+    </div>
+  </div>
+
+  <div class="map">
+    <div><b>Demo 01 統一式</b>&nbsp; log p<sub>guided</sub> = <span class="base">log p<sub>base</sub></span> + <span class="coef">w</span>·(<span class="bonus">log p<sub>A</sub> − log p<sub>B</sub></span>)</div>
+    <div><b>classifier guidance</b>&nbsp; log p<sub>w</sub> = <span class="base">log p(x)</span> + <span class="coef">w</span>·<span class="bonus">log p(c|x)</span>,而 <span class="bonus">log p(c|x) = log p(x|c) − log p(x) + const</span></div>
+    <div style="margin-top:6px">
+      對應關係:<span class="base">無條件模型</span> 是 base;<span class="bonus">分類器</span> 就是比值項,
+      因為由貝氏它本來就等於「條件減無條件」;<span class="coef">w</span> 是統一式裡的係數。
+      代價是一個額外介面:<code>p(c|x)</code> 要另外訓練。CFG 把比值項改成同一個模型跑有條件與無條件兩次,分類器就不需要了。
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3>w = 1 不是隨便挑的</h3>
+      p(x)·p(c|x) 正好是 p(x, c),正規化之後就是 p(x|c)。所以 w = 1 的引導結果與貝氏後驗完全相同,
+      右上角的 <code>‖p_w − p(·|c)‖₁</code> 在 w = 1 時歸零。
+    </div>
+    <div class="note n2">
+      <h3>w &gt; 1 是外插,不是更正確</h3>
+      p_w ∝ p(x)<sup>1−w</sup>·(π<sub>c</sub>·p(x|c))<sup>w</sup>:超過 1 之後是把無條件分布反向扣除。
+      目標類別質量上升、格點熵下降,也就是保真度換多樣性。實務上正是這樣調的。
+    </div>
+    <div class="note n3">
+      <h3>這裡的分類器是解析解</h3>
+      本頁的 p(c|x) 由高斯混合直接算出。真實的 diffusion 沒有這種好事:分類器必須在每個雜訊尺度的
+      加噪樣本上另外訓練,這個額外成本就是後來 CFG 取而代之的理由。
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* CORE:BEGIN */
+const CORE = (function () {
+  const TAU = Math.PI * 2;
+  // 三個類別:先驗 π、中心 μ、對角標準差 sd。刻意讓 A 寬、B 窄、C 扁,引導的效果才看得出差別。
+  const CLASSES = [
+    { name: 'A', pi: 0.45, mu: [-1.15, 0.10], sd: [0.95, 0.62] },
+    { name: 'B', pi: 0.35, mu: [1.05, 0.80], sd: [0.46, 0.46] },
+    { name: 'C', pi: 0.20, mu: [0.30, -1.20], sd: [0.42, 0.75] },
+  ];
+  const VIEW = 3.2; // 視窗為 [-VIEW, VIEW]^2
+
+  const logNormal = (x, y, c) => {
+    const dx = (x - c.mu[0]) / c.sd[0], dy = (y - c.mu[1]) / c.sd[1];
+    return -0.5 * (dx * dx + dy * dy) - Math.log(TAU * c.sd[0] * c.sd[1]);
+  };
+  // log p(x, c=k) = log π_k + log N(x; μ_k, Σ_k)
+  const logJoint = (x, y, k) => Math.log(CLASSES[k].pi) + logNormal(x, y, CLASSES[k]);
+  // log p(x):對 k 做 logsumexp,遠尾不會 underflow
+  function logMix(x, y) {
+    let m = -Infinity;
+    const t = new Array(CLASSES.length);
+    for (let k = 0; k < CLASSES.length; k++) { t[k] = logJoint(x, y, k); if (t[k] > m) m = t[k]; }
+    let s = 0;
+    for (let k = 0; k < CLASSES.length; k++) s += Math.exp(t[k] - m);
+    return m + Math.log(s);
+  }
+  // log p(c=k|x) ∈ (−∞, 0];這就是比值項,等於 log p(x|c) − log p(x) + log π_k
+  const logPost = (x, y, k) => logJoint(x, y, k) - logMix(x, y);
+  // 未正規化的引導後對數密度。全程在 log 空間相加,w 再大也不會溢位。
+  const logGuided = (x, y, k, w) => logMix(x, y) + w * logPost(x, y, k);
+
+  const at = (i, N) => (i / (N - 1) - 0.5) * 2 * VIEW;
+
+  // 在 N×N 格點上算出正規化後的機率質量(總和為 1)。fn 回傳未正規化的 log 密度。
+  function normalizeGrid(N, fn) {
+    const lg = new Float64Array(N * N);
+    let m = -Infinity;
+    for (let j = 0; j < N; j++) {
+      const y = at(N - 1 - j, N);
+      for (let i = 0; i < N; i++) {
+        const v = fn(at(i, N), y);
+        lg[j * N + i] = v;
+        if (v > m) m = v;
+      }
+    }
+    const p = new Float64Array(N * N);
+    let s = 0;
+    for (let t = 0; t < p.length; t++) { p[t] = Math.exp(lg[t] - m); s += p[t]; }
+    for (let t = 0; t < p.length; t++) p[t] /= s;
+    return p;
+  }
+
+  const guided = (k, w, N) => normalizeGrid(N, (x, y) => logGuided(x, y, k, w));
+  const uncond = (N) => normalizeGrid(N, (x, y) => logMix(x, y));
+  // 類別條件分布 p(x|c=k):單一高斯,與 w 無關
+  const conditional = (k, N) => normalizeGrid(N, (x, y) => logNormal(x, y, CLASSES[k]));
+
+  function stats(k, w, N) {
+    const p = guided(k, w, N), q = conditional(k, N);
+    let H = 0, mass = 0, meanLogPost = 0, l1 = 0;
+    for (let j = 0; j < N; j++) {
+      const y = at(N - 1 - j, N);
+      for (let i = 0; i < N; i++) {
+        const t = j * N + i, w0 = p[t];
+        if (w0 > 1e-15) H -= w0 * Math.log2(w0);
+        const lp = logPost(at(i, N), y, k);
+        mass += w0 * Math.exp(lp);
+        meanLogPost += w0 * lp;
+        l1 += Math.abs(w0 - q[t]);
+      }
+    }
+    return { entropy: H, classMass: mass, meanLogPost, l1ToPosterior: l1 };
+  }
+
+  return { CLASSES, VIEW, at, logNormal, logJoint, logMix, logPost, logGuided,
+           normalizeGrid, guided, uncond, conditional, stats };
+})();
+/* CORE:END */
+
+const $ = (id) => document.getElementById(id);
+const RES = 200;          // 熱圖解析度
+const STAT_N = 160;       // 讀數用的格點
+let cls = 1, w = 0, showSamples = true;
+
+/* ---------- 熱圖 ---------- */
+function paint(cv, p, opts) {
+  const o = opts || {};
+  const dpr = window.devicePixelRatio || 1;
+  const box = cv.clientWidth;
+  cv.width = box * dpr; cv.height = box * dpr; cv.style.height = box + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const off = document.createElement('canvas');
+  off.width = off.height = RES;
+  const octx = off.getContext('2d'), img = octx.createImageData(RES, RES);
+  let max = 0;
+  for (const v of p) if (v > max) max = v;
+  const gamma = o.gamma || 0.45; // 壓一下動態範圍,尾部才看得見
+  for (let t = 0; t < p.length; t++) {
+    const [r, g, b] = DEMO.heat(Math.pow(p[t] / max, gamma));
+    img.data[t * 4] = r; img.data[t * 4 + 1] = g; img.data[t * 4 + 2] = b; img.data[t * 4 + 3] = 255;
+  }
+  octx.putImageData(img, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(off, 0, 0, box, box);
+  return { ctx, box };
+}
+
+const toPx = (x, y, box) => [(x / CORE.VIEW * 0.5 + 0.5) * box, (0.5 - y / CORE.VIEW * 0.5) * box];
+
+function drawCentres(ctx, box) {
+  ctx.font = '600 11px ' + DEMO.font.sans;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  CORE.CLASSES.forEach((c, k) => {
+    const [px, py] = toPx(c.mu[0], c.mu[1], box);
+    ctx.beginPath(); ctx.arc(px, py, 9, 0, 7);
+    ctx.fillStyle = k === cls ? DEMO.a(DEMO.accent, 0.9) : DEMO.a(DEMO.ink2, 0.55);
+    ctx.fill();
+    ctx.fillStyle = '#fdfbf7'; ctx.fillText(c.name, px, py + 0.5);
+  });
+}
+
+/* ---------- 三個面板 ---------- */
+function drawUncond() {
+  const { ctx, box } = paint($('cv1'), CORE.uncond(RES));
+  drawCentres(ctx, box);
+}
+
+function drawClassifier() {
+  const cv = $('cv2');
+  const dpr = window.devicePixelRatio || 1, box = cv.clientWidth;
+  cv.width = box * dpr; cv.height = box * dpr; cv.style.height = box + 'px';
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const off = document.createElement('canvas');
+  off.width = off.height = RES;
+  const octx = off.getContext('2d'), img = octx.createImageData(RES, RES);
+  const post = new Float64Array(RES * RES);
+  for (let j = 0; j < RES; j++) {
+    const y = CORE.at(RES - 1 - j, RES);
+    for (let i = 0; i < RES; i++) {
+      const v = Math.exp(CORE.logPost(CORE.at(i, RES), y, cls));
+      post[j * RES + i] = v;
+      const [r, g, b] = DEMO.heat(v);
+      const t = (j * RES + i) * 4;
+      img.data[t] = r; img.data[t + 1] = g; img.data[t + 2] = b; img.data[t + 3] = 255;
+    }
+  }
+  // 0.5 決策邊界:標出相鄰格點跨越 0.5 的位置
+  for (let j = 0; j < RES; j++) for (let i = 0; i < RES; i++) {
+    const v = post[j * RES + i];
+    const right = i + 1 < RES ? post[j * RES + i + 1] : v;
+    const down = j + 1 < RES ? post[(j + 1) * RES + i] : v;
+    if ((v - 0.5) * (right - 0.5) < 0 || (v - 0.5) * (down - 0.5) < 0) {
+      const t = (j * RES + i) * 4;
+      img.data[t] = 25; img.data[t + 1] = 24; img.data[t + 2] = 23;
+    }
+  }
+  octx.putImageData(img, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(off, 0, 0, box, box);
+  drawCentres(ctx, box);
+}
+
+// 由格點分布抽樣:建累積表後二分搜尋,格內再加均勻抖動
+function sampleFrom(p, n) {
+  const cum = new Float64Array(p.length);
+  let s = 0;
+  for (let t = 0; t < p.length; t++) { s += p[t]; cum[t] = s; }
+  const step = 2 * CORE.VIEW / (RES - 1);
+  const out = [];
+  for (let m = 0; m < n; m++) {
+    const u = Math.random() * s;
+    let lo = 0, hi = p.length - 1;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (cum[mid] < u) lo = mid + 1; else hi = mid; }
+    const i = lo % RES, j = (lo - i) / RES;
+    out.push([CORE.at(i, RES) + (Math.random() - 0.5) * step,
+              CORE.at(RES - 1 - j, RES) + (Math.random() - 0.5) * step]);
+  }
+  return out;
+}
+
+function drawGuided() {
+  const p = CORE.guided(cls, w, RES);
+  const { ctx, box } = paint($('cv3'), p);
+  if (showSamples) {
+    ctx.fillStyle = DEMO.a(DEMO.data, 0.75);
+    for (const [x, y] of sampleFrom(p, 250)) {
+      const [px, py] = toPx(x, y, box);
+      ctx.beginPath(); ctx.arc(px, py, 1.7, 0, 7); ctx.fill();
+    }
+  }
+  drawCentres(ctx, box);
+}
+
+function stageText() {
+  if (w < 0.02) return ['w = 0', '完全沒有引導,這張圖就是左邊那張 p(x)。'];
+  if (Math.abs(w - 1) < 0.03) return ['w = 1', '恰好是貝氏後驗 p(x|c);右上角的 L₁ 距離歸零。'];
+  if (w < 1) return ['0 < w < 1', '介於無條件與後驗之間,其他類別的質量還沒清乾淨。'];
+  if (w <= 2.5) return ['w > 1', '外插:比後驗更集中,其他類別幾乎被清空,多樣性開始下降。'];
+  return ['w ≫ 1', '過度銳化:質量塌到分類器最有把握的區域,樣本雲明顯縮小。'];
+}
+
+function render() {
+  $('wVal').textContent = w.toFixed(2);
+  const s = CORE.stats(cls, w, STAT_N);
+  $('hVal').textContent = s.entropy.toFixed(2);
+  $('mVal').textContent = (s.classMass * 100).toFixed(1) + '%';
+  $('dVal').textContent = s.l1ToPosterior.toFixed(3);
+  const [tag, txt] = stageText();
+  $('stageHint').innerHTML = '<span class="stage">' + tag + '</span>　' + txt;
+  drawClassifier();
+  drawGuided();
+}
+
+/* ---------- 綁定 ---------- */
+CORE.CLASSES.forEach((c, k) => {
+  const b = document.createElement('button');
+  b.textContent = '類別 ' + c.name;
+  b.className = k === cls ? 'active' : '';
+  b.onclick = () => {
+    cls = k;
+    [...$('classBtns').children].forEach((el, idx) => el.className = idx === k ? 'active' : '');
+    drawUncond(); render();
+  };
+  $('classBtns').appendChild(b);
+});
+$('w').oninput = (e) => { w = +e.target.value; render(); };
+$('showSamples').onchange = (e) => { showSamples = e.target.checked; drawGuided(); };
+window.addEventListener('resize', () => { drawUncond(); render(); });
+drawUncond();
+render();
+</script>
+</body>
+</html>

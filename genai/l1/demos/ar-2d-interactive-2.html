@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AR 互動教學:2D 軌跡</title>
+<script src="vendor/tf.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
+<style>
+  /* 這支 demo 專屬的樣式；通用外殼在 theme.css */
+  button.zap{border-color:var(--warn);color:var(--warn)}
+  button.zap:hover{background:var(--paper-3);border-color:var(--warn)}
+  .readout .r-one b{color:var(--data)}
+  .readout .r-roll b{color:var(--accent-ink)}
+  #dataCv{cursor:crosshair}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">生成模型入門 · 第二堂 · Lab Demo 05</div>
+  <h1>AR 互動教學 — 2D 軌跡上的自迴歸:<span class="k">context window</span> 與 <span class="eb">exposure bias</span></h1>
+  <p class="sub">一個小 MLP 正在瀏覽器裡即時學 <code style="font-family:var(--mono)">x<sub>t+1</sub> = f(x<sub>t−k+1</sub>, …, x<sub>t</sub>)</code>:吃最後 <b style="color:var(--ink)">k</b> 個點、以 MSE(高斯 likelihood 的 forward KL)teacher forcing 訓練。
+    左圖同時畫出<b style="color:var(--data)">teacher-forced 一步預測</b>與<b style="color:var(--accent-ink)">自由 rollout</b> 兩條軌道;
+    調 <b style="color:var(--ink)">k</b> 看 context 不足的病,按<b style="color:var(--warn)">擾動</b>看 exposure bias 的病。</p>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div class="ctrl"><label for="dataset">資料集</label>
+      <select id="dataset">
+        <option value="circle">圓 Circle(k=1 就夠)</option>
+        <option value="eight">8 字 Figure-eight(交叉點歧義)</option>
+        <option value="loops">三圈一岔 Counting(k=8 失敗、k=64 痊癒)</option>
+      </select>
+    </div>
+    <div class="ctrl"><label for="kSlider">k(context window)</label>
+      <input type="range" id="kSlider" min="0" max="6" step="1" value="0">
+      <span class="val" id="kVal">1</span>
+    </div>
+    <div class="ctrl"><label for="epsSlider">&epsilon;(scheduled sampling)</label>
+      <input type="range" id="epsSlider" min="0" max="0.9" step="0.05" value="0">
+      <span class="val" id="epsVal">0.00</span>
+    </div>
+    <div class="ctrl"><label for="speed">訓練速度</label>
+      <input type="range" id="speed" min="1" max="12" step="1" value="5">
+      <span class="val" id="speedVal">5</span>
+    </div>
+    <label class="toggle ctrl"><input type="checkbox" id="trainChk"> 訓練</label>
+    <div class="ctrl"><label for="sigSlider">&sigma;(rollout 每步微擾)</label>
+      <input type="range" id="sigSlider" min="0" max="0.12" step="0.005" value="0">
+      <span class="val" id="sigVal">0.000</span>
+    </div>
+    <div class="ctrl">
+      <button class="primary" id="playBtn">⏸ 暫停</button>
+      <button id="resetBtn">↺ 重設模型</button>
+      <button class="zap" id="zapBtn">⚡ 擾動 rollout</button>
+    </div>
+    <div class="readout">
+      <span>step <b id="stepVal">0</b></span>
+      <span class="r-one">一步 RMSE <b id="oneVal">–</b></span>
+      <span class="r-roll">rollout 偏離 <b id="rollVal">–</b></span>
+    </div>
+  </div>
+
+  <div class="loading" id="loading">正在初始化 TensorFlow.js…</div>
+
+  <div class="panels">
+    <div class="panel">
+      <h2>資料空間 x ∈ ℝ²(可點擊重啟 rollout)</h2>
+      <p class="hint">藍點=真實軌跡(深淺為時間相位)。<b style="color:var(--data)">深藍箭頭</b>=每個真實點上的一步預測(前綴取自資料=訓練軌道)。<b style="color:var(--accent-ink)">橘紅軌跡</b>=模型自己餵自己的 rollout(前綴取自模型=推論軌道)。<b style="color:var(--third)">◎</b>=歧義點。</p>
+      <canvas id="dataCv"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:linear-gradient(90deg,var(--paper-3),var(--data))"></span>真實軌跡</span>
+        <span><span class="dot" style="background:var(--data)"></span>一步預測</span>
+        <span><span class="dot" style="background:var(--model)"></span>rollout</span>
+        <span><span class="dot" style="border:1.5px dashed var(--third);background:none"></span>歧義點</span>
+        <span><span class="dot" style="background:var(--warn)"></span>擾動</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>偏離 vs. rollout 步數(誤差複利)</h2>
+      <p class="hint">每回合 rollout 的離流形距離,隨步數畫成一條線;淡線=之前幾回合。<b style="color:var(--data)">藍色虛線</b>=一步 RMSE:若誤差不複利,曲線應停在虛線附近。</p>
+      <canvas id="horizonCv"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--model)"></span>本回合</span>
+        <span><span class="dot" style="background:var(--model);opacity:.35"></span>先前回合</span>
+        <span><span class="dot" style="border-top:1.5px dashed var(--data);border-radius:0;height:0"></span>一步 RMSE</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>訓練曲線(同單位可比,log 尺度)</h2>
+      <p class="hint"><b style="color:var(--data)">一步 RMSE</b>(teacher-forced,訓練 loss 實際測的量)與<b style="color:var(--accent-ink)">rollout 平均偏離</b>(推論實際發生的量)。兩線的落差就是 exposure bias。</p>
+      <canvas id="lossCv"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--data)"></span>一步 RMSE</span>
+        <span><span class="dot" style="background:var(--model)"></span>rollout 平均偏離</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3>① 兩條軌道的分岔(B-2 板書的可執行版)</h3>
+      藍色箭頭全程貼著流形:因為它們的前綴永遠來自真實資料,這正是 teacher forcing 測量的世界。
+      橘紅 rollout 的前綴來自模型自己,每步小誤差被下一步當成輸入,<b>複利成軌跡級的漂移</b>。
+      訓練曲線面板中兩線同單位:一步 RMSE 一路下降,rollout 偏離卻卡在高處——<b>loss 從未測量過下面那條軌道</b>。
+    </div>
+    <div class="note n2">
+      <h3>② context window:k 是能治什麼病的?</h3>
+      <b>圓</b>:位置唯一決定下一步,<code>k=1</code> 就收斂。<b>8 字</b>:交叉點上單看位置有兩個方向,條件分布雙峰,MSE 模型輸出兩峰的<b>平均</b>——藍色箭頭在交叉點直直指向中間、rollout 在那裡出軌;拉到 <code>k=2</code>(等於知道速度)立刻痊癒。
+      <b>三圈一岔</b>:岔口的位置<b>與速度都相同</b>,該續圈還是出岔取決於「已繞第幾圈」,判斷這件事需要回看到上一次出岔,依賴長度約 25–56 步。注意這個病<b>不會反映在離流形距離上</b>(每一步都貼著某條圓),要看左圖左上角的圈數計數:<code>k≤8</code> 連一圈(24 步)都蓋不住,圈數失控(常見是永遠不出岔、一路往上加);<code>k=64</code> 蓋過兩圈半,圈數穩定在 3。<b>加 context 有用,且只在依賴長度落進窗內的那一刻生效</b>——這就是長對話漂移與 lost-in-the-middle 的 2D 版本。
+    </div>
+    <div class="note n3">
+      <h3>③ 擾動、每步微擾與 scheduled sampling</h3>
+      按 <b>⚡ 擾動</b> 把 rollout 推離流形一次;<b>&sigma;</b> 滑桿是它的連續版——推論時每步輸出都加上 N(0, &sigma;²) 的微擾,類比取樣溫度。純 teacher forcing(<code>&epsilon;=0</code>)下,&sigma; 只要 0.05 上下,誤差複利就會讓 rollout 明顯散開:訓練分布裡沒有帶雜訊的前綴,模型不會回收這些誤差。
+      把 <code>&epsilon;</code> 拉高重訓時,訓練中的自我前綴步<b>也會注入同一個 &sigma;</b>,於是訓練分布涵蓋了推論分布——同樣 &sigma;=0.06,偏離可從 ~0.5 降到 ~0.1,而一步 RMSE 幾乎不變。<b>修復條件不是「有沒有用自己的樣本」,而是「訓練時見過的偏差是否涵蓋推論時的偏差」。</b>
+      建議搭配<b>取消勾選「訓練」</b>做量測:模型凍結後,調 &sigma; 前後的差異純粹來自推論端,不會被持續訓練混淆。
+      這是「讓下方軌道也被測量」的三個答案(scheduled sampling / RL·DPO / DDO)中最便宜的一個——共同點都是負向訊號來自模型自己的樣本。
+    </div>
+    <div class="note n4">
+      <h3>④ 建議實驗流程</h3>
+      1) <b>圓 + k=1</b>,勾選<b>「訓練」</b>(預設關閉)訓到 step ≈ 2000:rollout 貼合,建立正常樣態。<br>
+      2) 切 <b>8 字 + k=1</b>:盯著交叉點的藍色箭頭與 rollout 出軌;拉 <b>k=2</b> 看痊癒。<br>
+      3) 切 <b>三圈一岔</b>:先用 <b>k=8</b> 訓一陣,盯左上角圈數計數(常見是永遠不出岔);再拉 <b>k=64</b> 重訓,圈數穩定回到 3。<br>
+      4) 回到 8 字 + k=2,訓練收斂後<b>取消勾選「訓練」</b>凍結模型,把 <b>&sigma;</b> 拉到 0.06 看誤差複利發散;再勾回「訓練」、<b>&epsilon;</b> 拉到 0.5(&sigma; 保持 0.06)重訓 2000 步,重新凍結量測——同樣的雜訊下 rollout 穩住了。
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ============ 全域狀態 ============ */
+const KMAX = 64, HID = 64, DS = 4;       // 最大窗長、隱藏寬度、delta 縮放
+const S_ABS = 3.0, S_OFF = 4.0;          // 輸入特徵縮放:絕對座標 /3、相對位移 ×4
+let EP_LEN = 240;                         // rollout 每回合步數(三圈一岔加長以觀察計數)
+let VIEW = 3.0;
+let K = 1, eps = 0.0, stepsPerFrame = 5;
+let training = false, sigma = 0.0;        // 訓練開關(預設關閉)、rollout 每步微擾
+let params = null, optimizer = null;
+let data = null;                          // {arr, N, period, ambig, view}
+let refPts = null;                        // 離流形距離用的參考點
+let step = 0, playing = true, frame = 0;
+let evalHist = [], rollHist = [];         // {s, v}
+let evalPreds = null, evalStart = 0, evalRMSE = null;
+let rw = null, rollTrail = [], epDist = [], pastEps = [], epStep = 0, lastRollMean = null;
+let zapMark = null;                       // {x,y,ttl}
+let dsName = 'circle';
+let loopCnt = 0, loopCounts = [], prevY = 0, inC2 = false, loopFresh = true;  // 三圈一岔的圈數計數
+
+/* ============ 資料集 ============ */
+const gauss = () => {
+  const u = Math.random()||1e-9, v = Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+};
+function makeTraj(name){
+  const NOISE = 0.02;
+  let period, view, ambig = null, gen;
+  if(name==='circle'){
+    period = 80; view = 3.0;
+    gen = j => { const th = 2*Math.PI*(j%period)/period;
+      return [1.9*Math.cos(th), 1.9*Math.sin(th)]; };
+  }else if(name==='eight'){
+    period = 160; view = 3.0; ambig = [[0,0]];
+    gen = j => { const t = 2*Math.PI*(j%period)/period;
+      return [2.3*Math.sin(t), 2.3*Math.sin(t)*Math.cos(t)]; };
+  }else{ // loops:大圓 (r=1.7) 繞三圈 → 小圓 (r=0.8, 圓心 (2.5,0)) 順時針一圈
+         // 步幅刻意加粗(24 步/圈),使依賴長度(~56 步)落在 k 滑桿範圍內
+    period = 88; view = 3.6; ambig = [[1.7,0]];
+    gen = j => { const m = j%period;
+      if(m<72){ const th = 2*Math.PI*(m%24)/24;
+        return [1.7*Math.cos(th), 1.7*Math.sin(th)]; }
+      const phi = Math.PI - 2*Math.PI*(m-72)/16;
+      return [2.5+0.8*Math.cos(phi), 0.8*Math.sin(phi)]; };
+  }
+  const reps = Math.round(2400/period), N = reps*period;
+  const arr = new Float32Array(N*2);
+  for(let j=0;j<N;j++){
+    const p = gen(j);
+    arr[2*j]   = p[0]+gauss()*NOISE;
+    arr[2*j+1] = p[1]+gauss()*NOISE;
+  }
+  return {arr, N, period, ambig, view};
+}
+function setDataset(name){
+  dsName = name;
+  data = makeTraj(name);
+  VIEW = data.view;
+  EP_LEN = (name==='loops')? 1000 : 240;
+  const step6 = 6, M = Math.floor(data.N/step6);
+  refPts = new Float32Array(M*2);
+  for(let i=0;i<M;i++){ refPts[2*i]=data.arr[2*i*step6]; refPts[2*i+1]=data.arr[2*i*step6+1]; }
+  evalStart = KMAX;
+  resetModel();
+}
+
+/* ============ 模型 ============ */
+function resetModel(){
+  if(params) for(const k in params) params[k].dispose();
+  const inD = 2*K;
+  const mk = (r,c,std)=>tf.variable(tf.randomNormal([r,c],0,std));
+  params = {
+    W1: mk(inD,HID,Math.sqrt(1/inD)), b1: tf.variable(tf.zeros([HID])),
+    W2: mk(HID,HID,Math.sqrt(1/HID)), b2: tf.variable(tf.zeros([HID])),
+    W3: mk(HID,2,0.01),               b3: tf.variable(tf.zeros([2])),
+  };
+  optimizer = tf.train.adam(2e-3);
+  step = 0; evalHist = []; rollHist = []; evalPreds = null; evalRMSE = null; lastRollMean = null;
+  pastEps = []; restartRollout();
+  evalOneStep();                          // 未訓練也先畫一次箭頭(隨機狀態)
+  evalHist = [];                          // 但不讓它汙染訓練曲線
+}
+function forward(x){ // x:[B,2K] → delta*DS:[B,2]
+  return tf.tidy(()=>{
+    let h = tf.tanh(tf.add(tf.matMul(x, params.W1), params.b1));
+    h = tf.tanh(tf.add(tf.matMul(h, params.W2), params.b2));
+    return tf.add(tf.matMul(h, params.W3), params.b3);
+  });
+}
+/* 把 K 個絕對點 (JS 陣列 [ [x,y]… 最新在尾) 編成一列輸入特徵;位移以 lag 正規化 */
+function encRow(win, out, o){
+  const c = win[K-1];
+  out[o] = c[0]/S_ABS; out[o+1] = c[1]/S_ABS;
+  for(let j=1;j<K;j++){
+    const p = win[K-1-j];
+    out[o+2*j]   = (p[0]-c[0])*S_OFF/j;
+    out[o+2*j+1] = (p[1]-c[1])*S_OFF/j;
+  }
+}
+function truthWin(t){ // 以 index t 結尾的真實窗
+  const w = [];
+  for(let j=t-K+1;j<=t;j++) w.push([data.arr[2*j], data.arr[2*j+1]]);
+  return w;
+}
+
+/* ============ 訓練(含 batch 層級 scheduled sampling)============ */
+const BATCH = 128;
+function trainStep(){
+  const d = (eps>0 && Math.random()<eps) ? 1+Math.floor(Math.random()*4) : 0;
+  const ts = new Int32Array(BATCH);
+  const wins = [];
+  for(let b=0;b<BATCH;b++){
+    const t = KMAX + Math.floor(Math.random()*(data.N-KMAX-1));
+    ts[b] = t;
+    wins.push(truthWin(t-d));            // 從 t−d 的真實窗出發
+  }
+  for(let s=0;s<d;s++){                  // d 步自我 rollout 汙染前綴(不回傳梯度)
+    const X = new Float32Array(BATCH*2*K);
+    for(let b=0;b<BATCH;b++) encRow(wins[b], X, b*2*K);
+    const xt = tf.tensor2d(X,[BATCH,2*K]);
+    const dl = tf.tidy(()=>forward(xt).dataSync());
+    xt.dispose();
+    for(let b=0;b<BATCH;b++){
+      const c = wins[b][K-1];             // 自我步也加上 σ 微擾:訓練分布涵蓋推論分布
+      wins[b].push([c[0]+dl[2*b]/DS + gauss()*sigma, c[1]+dl[2*b+1]/DS + gauss()*sigma]);
+      wins[b].shift();
+    }
+  }
+  const X = new Float32Array(BATCH*2*K), Y = new Float32Array(BATCH*2);
+  for(let b=0;b<BATCH;b++){
+    encRow(wins[b], X, b*2*K);
+    const c = wins[b][K-1], t = ts[b];   // 目標:拉回真實軌跡的下一點
+    Y[2*b]   = (data.arr[2*(t+1)]   - c[0])*DS;
+    Y[2*b+1] = (data.arr[2*(t+1)+1] - c[1])*DS;
+  }
+  const xt = tf.tensor2d(X,[BATCH,2*K]), yt = tf.tensor2d(Y,[BATCH,2]);
+  optimizer.minimize(()=>tf.tidy(()=>{
+    const p = forward(xt);
+    return tf.mean(tf.square(tf.sub(p,yt)));
+  }));
+  xt.dispose(); yt.dispose();
+  step++;
+}
+
+/* ============ 評估:teacher-forced 一步預測箭頭 + RMSE ============ */
+function evalOneStep(){
+  const P = data.period, s0 = evalStart;
+  const X = new Float32Array(P*2*K);
+  for(let i=0;i<P;i++) encRow(truthWin(s0+i), X, i*2*K);
+  const xt = tf.tensor2d(X,[P,2*K]);
+  const dl = tf.tidy(()=>forward(xt).dataSync());
+  xt.dispose();
+  const preds = new Float32Array(P*2);
+  let se = 0;
+  for(let i=0;i<P;i++){
+    const t = s0+i;
+    const px = data.arr[2*t]  + dl[2*i]/DS;
+    const py = data.arr[2*t+1]+ dl[2*i+1]/DS;
+    preds[2*i]=px; preds[2*i+1]=py;
+    const ex = px-data.arr[2*(t+1)], ey = py-data.arr[2*(t+1)+1];
+    se += ex*ex+ey*ey;
+  }
+  evalPreds = preds;
+  evalRMSE = Math.sqrt(se/P);
+  evalHist.push({s:step, v:evalRMSE});
+}
+
+/* ============ Rollout ============ */
+function restartRollout(fromIdx){
+  const t = (fromIdx!=null) ? fromIdx
+          : KMAX + Math.floor(Math.random()*(data.N-KMAX-1));
+  rw = truthWin(t);
+  rollTrail = rw.map(p=>[p[0],p[1]]);
+  epDist = []; epStep = 0;
+  loopCnt = 0; loopCounts = []; prevY = rw[K-1][1]; inC2 = rw[K-1][0]>1.95; loopFresh = true;
+}
+function manifoldDist(x,y){
+  let best = 1e9;
+  for(let i=0;i<refPts.length/2;i++){
+    const dx = x-refPts[2*i], dy = y-refPts[2*i+1];
+    const d2 = dx*dx+dy*dy;
+    if(d2<best) best = d2;
+  }
+  return Math.sqrt(best);
+}
+function rolloutStep(){
+  const X = new Float32Array(2*K);
+  encRow(rw, X, 0);
+  const xt = tf.tensor2d(X,[1,2*K]);
+  const dl = tf.tidy(()=>forward(xt).dataSync());
+  xt.dispose();
+  const c = rw[K-1];
+  const nx = c[0]+dl[0]/DS + gauss()*sigma;
+  const ny = c[1]+dl[1]/DS + gauss()*sigma;
+  rw.push([nx,ny]); rw.shift();
+  rollTrail.push([nx,ny]);
+  if(rollTrail.length>420) rollTrail.shift();
+  epDist.push(manifoldDist(nx,ny));
+  if(dsName==='loops'){                  // 圈數計數:過負 x 軸=完成一圈,x>1.95=出岔
+    const nowC2 = nx>1.95;
+    if(nowC2 && !inC2){
+      if(loopFresh) loopFresh = false;   // 重啟後第一次出岔是殘影,不列入
+      else { loopCounts.push(loopCnt); if(loopCounts.length>7) loopCounts.shift(); }
+      loopCnt = 0;
+    }
+    inC2 = nowC2;
+    if(nx<0 && prevY>0 && ny<=0) loopCnt++;
+    prevY = ny;
+  }
+  epStep++;
+  if(epStep>=EP_LEN){
+    const half = epDist.slice(Math.floor(epDist.length/2));
+    const mean = half.reduce((a,b)=>a+b,0)/half.length;
+    lastRollMean = mean;
+    if(training) rollHist.push({s:step, v:mean});  // 訓練關閉時不畫進訓練曲線
+    pastEps.push(epDist);
+    if(pastEps.length>6) pastEps.shift();
+    restartRollout();
+  }
+}
+function zap(){
+  const th = Math.random()*2*Math.PI, r = 0.45;
+  const c = rw[K-1];
+  const nx = c[0]+r*Math.cos(th), ny = c[1]+r*Math.sin(th);
+  rw[K-1] = [nx,ny];
+  rollTrail.push([nx,ny]);
+  zapMark = {x:nx, y:ny, ttl:70};
+}
+
+/* ============ 畫布 ============ */
+const dataCv = document.getElementById('dataCv');
+const horizonCv = document.getElementById('horizonCv');
+const lossCv = document.getElementById('lossCv');
+const dtx = dataCv.getContext('2d'), htx = horizonCv.getContext('2d'), xtx = lossCv.getContext('2d');
+function sizeCanvases(){
+  const dpr = window.devicePixelRatio||1;
+  for(const cv of [dataCv,horizonCv,lossCv]){
+    const w = cv.clientWidth;
+    const h = (cv===dataCv)? w : Math.max(180, w*0.72);
+    cv.style.height = h+'px';
+    cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr);
+    cv.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
+  }
+}
+const toPx = (cv,x,y)=>{
+  const w = cv.clientWidth, h = parseFloat(cv.style.height)||cv.clientHeight;
+  return [ (x/VIEW*0.5+0.5)*w, (-y/VIEW*0.5+0.5)*h ];
+};
+
+function drawData(){
+  const w = dataCv.clientWidth, h = parseFloat(dataCv.style.height);
+  dtx.clearRect(0,0,w,h);
+  // 網格
+  dtx.strokeStyle = DEMO.grid; dtx.lineWidth = 1;
+  for(let g=-3;g<=3;g++){
+    const [gx,] = toPx(dataCv,g,0), [,gy] = toPx(dataCv,0,g);
+    dtx.beginPath(); dtx.moveTo(gx,0); dtx.lineTo(gx,h); dtx.stroke();
+    dtx.beginPath(); dtx.moveTo(0,gy); dtx.lineTo(w,gy); dtx.stroke();
+  }
+  // 真實軌跡(顏色 = 週期內相位)
+  const P = data.period;
+  for(let j=0;j<data.N;j+=2){
+    const [px,py] = toPx(dataCv,data.arr[2*j],data.arr[2*j+1]);
+    const ph = (j%P)/P;                       // 週期內相位以 data 的深淺表示
+    dtx.fillStyle = DEMO.a(DEMO.data, 0.22+0.38*ph);
+    dtx.fillRect(px-1,py-1,2,2);
+  }
+  // 歧義點
+  if(data.ambig){
+    dtx.strokeStyle = DEMO.a(DEMO.third,0.9); dtx.lineWidth = 1.5;
+    dtx.setLineDash([4,3]);
+    for(const a of data.ambig){
+      const [px,py] = toPx(dataCv,a[0],a[1]);
+      dtx.beginPath(); dtx.arc(px,py,11,0,7); dtx.stroke();
+    }
+    dtx.setLineDash([]);
+  }
+  // teacher-forced 一步預測箭頭(每 2 點畫一支)
+  if(evalPreds){
+    dtx.strokeStyle = DEMO.a(DEMO.data,0.95); dtx.lineWidth = 1.3;
+    for(let i=0;i<P;i+=2){
+      const t = evalStart+i;
+      const [ax,ay] = toPx(dataCv,data.arr[2*t],data.arr[2*t+1]);
+      const [bx,by] = toPx(dataCv,evalPreds[2*i],evalPreds[2*i+1]);
+      const dx = bx-ax, dy = by-ay, L = Math.hypot(dx,dy)||1;
+      const ex = ax+dx*2.2, ey = ay+dy*2.2;   // 放大 2.2 倍讓箭頭可見
+      dtx.beginPath(); dtx.moveTo(ax,ay); dtx.lineTo(ex,ey); dtx.stroke();
+      const ux = dx/L, uy = dy/L;
+      dtx.beginPath();
+      dtx.moveTo(ex,ey); dtx.lineTo(ex-(ux*3+uy*2), ey-(uy*3-ux*2));
+      dtx.moveTo(ex,ey); dtx.lineTo(ex-(ux*3-uy*2), ey-(uy*3+ux*2));
+      dtx.stroke();
+    }
+  }
+  // rollout 軌跡(舊淡新亮)
+  const n = rollTrail.length;
+  for(let i=1;i<n;i++){
+    const a = rollTrail[i-1], b = rollTrail[i];
+    const age = i/n;
+    dtx.strokeStyle = DEMO.a(DEMO.model, 0.08+0.72*age);
+    dtx.lineWidth = 1+1.4*age;
+    const [ax,ay] = toPx(dataCv,a[0],a[1]);
+    const [bx,by] = toPx(dataCv,b[0],b[1]);
+    dtx.beginPath(); dtx.moveTo(ax,ay); dtx.lineTo(bx,by); dtx.stroke();
+  }
+  if(n){
+    const c = rollTrail[n-1];
+    const [px,py] = toPx(dataCv,c[0],c[1]);
+    dtx.fillStyle = DEMO.model;
+    dtx.beginPath(); dtx.arc(px,py,4,0,7); dtx.fill();
+    dtx.strokeStyle = DEMO.a(DEMO.model,0.5);
+    dtx.beginPath(); dtx.arc(px,py,7,0,7); dtx.stroke();
+  }
+  // 圈數計數讀出(僅三圈一岔)
+  if(dsName==='loops'){
+    dtx.font = `11px ${DEMO.font.mono}`;
+    dtx.fillStyle = DEMO.muted;
+    dtx.fillText('岔前圈數 · 真實 = 3', 10, 18);
+    dtx.fillStyle = DEMO.model;
+    const txt = loopCounts.length? loopCounts.join(', ')+(loopCnt?` (+${loopCnt}…)`:'')
+                                  : (loopCnt?`(+${loopCnt}…)`:'–');
+    dtx.fillText('rollout = '+txt, 10, 33);
+  }
+  // 擾動標記
+  if(zapMark && zapMark.ttl>0){
+    const [px,py] = toPx(dataCv,zapMark.x,zapMark.y);
+    dtx.strokeStyle = DEMO.a(DEMO.warn, zapMark.ttl/70);
+    dtx.lineWidth = 2;
+    dtx.beginPath(); dtx.arc(px,py,9+(70-zapMark.ttl)*0.15,0,7); dtx.stroke();
+    zapMark.ttl--;
+  }
+}
+
+function drawHorizon(){
+  const w = horizonCv.clientWidth, h = parseFloat(horizonCv.style.height);
+  htx.clearRect(0,0,w,h);
+  let ymax = 0.3;
+  for(const ep of pastEps) for(const v of ep) if(v>ymax) ymax = v;
+  for(const v of epDist) if(v>ymax) ymax = v;
+  ymax *= 1.1;
+  htx.strokeStyle = DEMO.grid;
+  for(let k=1;k<4;k++){ const y = h*k/4;
+    htx.beginPath(); htx.moveTo(0,y); htx.lineTo(w,y); htx.stroke(); }
+  const plot = (arr, style, lw)=>{
+    if(arr.length<2) return;
+    htx.strokeStyle = style; htx.lineWidth = lw;
+    htx.beginPath();
+    for(let i=0;i<arr.length;i++){
+      const x = i/(EP_LEN-1)*w, y = h-4-(arr[i]/ymax)*(h-14);
+      i? htx.lineTo(x,y): htx.moveTo(x,y);
+    }
+    htx.stroke();
+  };
+  for(let e=0;e<pastEps.length;e++)
+    plot(pastEps[e], DEMO.a(DEMO.model, 0.14+0.07*e), 1);
+  plot(epDist, DEMO.model, 1.8);
+  if(evalRMSE!=null){
+    const y = h-4-(evalRMSE/ymax)*(h-14);
+    htx.strokeStyle = DEMO.a(DEMO.data,0.9); htx.lineWidth = 1.2;
+    htx.setLineDash([5,4]);
+    htx.beginPath(); htx.moveTo(0,y); htx.lineTo(w,y); htx.stroke();
+    htx.setLineDash([]);
+  }
+  htx.fillStyle = DEMO.muted; htx.font = `10px ${DEMO.font.mono}`;
+  htx.fillText(ymax.toFixed(2), 4, 11);
+  htx.fillText('0', 4, h-6);
+}
+
+function drawLoss(){
+  const w = lossCv.clientWidth, h = parseFloat(lossCv.style.height);
+  xtx.clearRect(0,0,w,h);
+  if(evalHist.length<2 && rollHist.length<2) return;
+  const all = evalHist.concat(rollHist);
+  let lo = 1e9, hi = -1e9, smax = 1;
+  for(const p of all){
+    const lv = Math.log10(Math.max(p.v,1e-4));
+    if(lv<lo) lo = lv; if(lv>hi) hi = lv;
+    if(p.s>smax) smax = p.s;
+  }
+  lo -= 0.15; hi += 0.15;
+  xtx.strokeStyle = DEMO.grid;
+  for(let k=1;k<4;k++){ const y = h*k/4;
+    xtx.beginPath(); xtx.moveTo(0,y); xtx.lineTo(w,y); xtx.stroke(); }
+  const plot = (hist, style)=>{
+    if(hist.length<2) return;
+    xtx.strokeStyle = style; xtx.lineWidth = 1.8;
+    xtx.beginPath();
+    hist.forEach((p,i)=>{
+      const x = p.s/smax*w;
+      const y = h-4-((Math.log10(Math.max(p.v,1e-4))-lo)/(hi-lo))*(h-14);
+      i? xtx.lineTo(x,y): xtx.moveTo(x,y);
+    });
+    xtx.stroke();
+  };
+  plot(evalHist, DEMO.data);
+  plot(rollHist, DEMO.model);
+  xtx.fillStyle = DEMO.muted; xtx.font = `10px ${DEMO.font.mono}`;
+  xtx.fillText(Math.pow(10,hi).toFixed(2), 4, 11);
+  xtx.fillText(Math.pow(10,lo).toFixed(3), 4, h-6);
+}
+
+/* ============ 互動 ============ */
+document.getElementById('dataset').addEventListener('change', e=>setDataset(e.target.value));
+document.getElementById('kSlider').addEventListener('input', e=>{
+  K = Math.pow(2, +e.target.value);      // 1,2,4,8,16,32,64
+  document.getElementById('kVal').textContent = K;
+  resetModel();
+});
+document.getElementById('epsSlider').addEventListener('input', e=>{
+  eps = +e.target.value;
+  document.getElementById('epsVal').textContent = eps.toFixed(2);
+});
+document.getElementById('speed').addEventListener('input', e=>{
+  stepsPerFrame = +e.target.value;
+  document.getElementById('speedVal').textContent = stepsPerFrame;
+});
+document.getElementById('trainChk').addEventListener('change', e=>{ training = e.target.checked; });
+document.getElementById('sigSlider').addEventListener('input', e=>{
+  sigma = +e.target.value;
+  document.getElementById('sigVal').textContent = sigma.toFixed(3);
+});
+const playBtn = document.getElementById('playBtn');
+playBtn.addEventListener('click', ()=>{
+  playing = !playing;
+  playBtn.textContent = playing? '⏸ 暫停':'▶ 繼續';
+});
+document.getElementById('resetBtn').addEventListener('click', ()=>resetModel());
+document.getElementById('zapBtn').addEventListener('click', ()=>zap());
+dataCv.addEventListener('pointerdown', ev=>{
+  const r = dataCv.getBoundingClientRect();
+  const mx = (ev.clientX-r.left)/r.width, my = (ev.clientY-r.top)/r.height;
+  const x = (mx-0.5)*2*VIEW, y = -(my-0.5)*2*VIEW;
+  let best = 1e9, bi = KMAX;             // 從最近的真實點重啟(前綴取自真實資料)
+  for(let j=KMAX;j<data.N-1;j+=2){
+    const dx = x-data.arr[2*j], dy = y-data.arr[2*j+1];
+    const d2 = dx*dx+dy*dy;
+    if(d2<best){ best = d2; bi = j; }
+  }
+  restartRollout(bi);
+});
+window.addEventListener('resize', sizeCanvases);
+
+/* ============ 主迴圈 ============ */
+function loop(){
+  frame++;
+  if(playing){
+    if(training){
+      for(let i=0;i<stepsPerFrame;i++) trainStep();
+      if(frame%30===0) evalOneStep();
+    }
+    for(let i=0;i<3;i++) rolloutStep();
+  }
+  drawData(); drawHorizon(); drawLoss();
+  document.getElementById('stepVal').textContent = step;
+  document.getElementById('oneVal').textContent = evalRMSE!=null? evalRMSE.toFixed(3):'–';
+  document.getElementById('rollVal').textContent = lastRollMean!=null? lastRollMean.toFixed(3):'–';
+  requestAnimationFrame(loop);
+}
+
+/* ============ 啟動 ============ */
+(async()=>{
+  await tf.ready();
+  try{ await tf.setBackend('webgl'); }catch(e){ await tf.setBackend('cpu'); }
+  document.getElementById('loading').style.display = 'none';
+  sizeCanvases();
+  setDataset('circle');
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

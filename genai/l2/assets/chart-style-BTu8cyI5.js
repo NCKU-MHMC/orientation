@@ -1,0 +1,1 @@
+var e={title:19,label:15,tick:12.5,note:13},t={p:`#2f5d7c`,q:`#c05a32`,accent:`#5f7350`,bad:`#a03a2e`,ink:`#191817`,muted:`#7a736a`,grid:`#ddd8ce`,soft:`#edeae2`,paper:`#fbfaf7`,rule:`#c9c2b5`,tint:`#f0e2d8`},n=t=>`${e[t]}px`;export{t as n,n as t};

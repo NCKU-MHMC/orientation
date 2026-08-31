@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>散度的選擇 互動教學:mode-covering vs. mode-seeking</title>
+<script src="vendor/tf.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
+<style>
+  /* 這支 demo 專屬的樣式;通用外殼在 theme.css */
+  .ctrl.off { opacity: 0.38; pointer-events: none; }
+  #lam { width: 150px; }
+  #ratioCv { cursor: crosshair; }
+  .readout .r-f b { color: var(--data); }
+  .readout .r-r b { color: var(--accent-ink); }
+  .readout .r-j b { color: var(--third); }
+  .readout .r-c b { color: var(--ink); }
+  .swatch {
+    width: 34px; height: 8px; border-radius: 4px; display: inline-block;
+    background: linear-gradient(90deg, var(--model), var(--paper-3), var(--data));
+  }
+  /* 覆蓋程度條:左端 mode-covering,右端 mode-seeking,全套簡報同一組方向與顏色 */
+  .axis {
+    background: var(--paper-2); border: 1px solid var(--rule); border-radius: var(--radius);
+    padding: 12px 16px; margin: 16px 0 0; font-size: 12px; color: var(--muted);
+    font-family: var(--mono); display: flex; justify-content: space-between;
+    align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .axis .bar {
+    flex: 1; min-width: 180px; height: 6px; border-radius: 3px; position: relative;
+    background: linear-gradient(90deg, var(--data), var(--rule-2), var(--model));
+  }
+  .axis .knob {
+    position: absolute; top: -4px; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--paper-2); border: 2px solid var(--ink);
+    transform: translateX(-7px); transition: left 0.2s;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">生成模型入門 · 第一堂 · Lab Demo 04</div>
+  <h1>散度的選擇 — mode-covering <span class="vs">vs.</span> mode-seeking</h1>
+  <p class="sub">目標分布 p 是一個<b>解析的高斯混合</b>,所以 <span style="font-family:var(--mono)">log p(x)</span> 直接算得出來 ——
+    這代表 forward KL、reverse KL 與 JSD <b>三種散度都能直接最小化,不需要任何判別器</b>。
+    模型 q 是一個 K 元高斯混合。把 K 調到 1、目標選雙峰,然後在 forward 與 reverse 之間切換,
+    同一個 q 會被<b style="color:var(--accent-ink)">拉去兩個完全不同的地方</b>。這就是 mode-covering 與 mode-seeking 兩端的實驗版。</p>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div class="ctrl"><label for="target">目標分布 p</label>
+      <select id="target">
+        <option value="two" selected>雙峰(等權)</option>
+        <option value="twoUneq">雙峰(權重 7:3)</option>
+        <option value="six">高斯混合 ×6</option>
+        <option value="sixOff">高斯混合 ×6(中心偏移)</option>
+        <option value="moons">雙月(GMM 近似)</option>
+      </select>
+    </div>
+    <div class="ctrl"><label for="kSel">模型容量 K</label>
+      <select id="kSel">
+        <option value="1" selected>1(單一高斯)</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="6">6</option>
+      </select>
+    </div>
+    <div class="ctrl"><label for="obj">目標散度</label>
+      <select id="obj">
+        <option value="fwd" selected>Forward KL(MLE)</option>
+        <option value="rev">Reverse KL</option>
+        <option value="jsd">JSD</option>
+        <option value="mix">內插 (1−λ)F + λR</option>
+      </select>
+    </div>
+    <div class="ctrl off" id="lamCtrl"><label for="lam">λ</label>
+      <input type="range" id="lam" min="0" max="1" step="0.02" value="0.5">
+      <span class="val" id="lamVal">0.50</span>
+    </div>
+    <div class="ctrl"><label for="speed">訓練速度</label>
+      <input type="range" id="speed" min="1" max="12" step="1" value="4">
+      <span class="val" id="speedVal">4</span>
+    </div>
+    <div class="ctrl">
+      <button class="primary" id="playBtn">▶ 開始訓練</button>
+      <button id="resetBtn">↺ 重設 q</button>
+    </div>
+    <label class="toggle ctrl"><input type="checkbox" id="showEll" checked> q 的等高橢圓</label>
+    <label class="toggle ctrl"><input type="checkbox" id="showSamp" checked> q 的樣本</label>
+    <div class="readout">
+      <span>step <b id="stepVal">0</b></span>
+      <span class="r-f">Fwd KL <b id="fVal">–</b></span>
+      <span class="r-r">Rev KL <b id="rVal">–</b></span>
+      <span class="r-j">JSD <b id="jVal">–</b></span>
+      <span class="r-c">覆蓋 <b id="cVal">–</b></span>
+    </div>
+  </div>
+
+  <div class="loading" id="loading">正在初始化 TensorFlow.js…</div>
+
+  <div class="panels">
+    <div class="panel">
+      <h2>資料空間 x ∈ ℝ²</h2>
+      <p class="hint">藍綠色點=從目標 p 取的樣本(色相=它屬於哪一個成分)。橘紅點=從 q 取的樣本。橘紅橢圓=q 各成分的 1σ / 2σ,線越粗代表該成分權重越大。<b>橢圓塌到單一群上,就是 mode-seeking 的現場。</b></p>
+      <canvas id="dataCv"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:linear-gradient(90deg,#5edfff,#ff6bd6)"></span>目標樣本 p</span>
+        <span><span class="dot" style="background:var(--model)"></span>模型樣本 q</span>
+        <span><span class="dot" style="border:1.5px solid var(--model);background:none"></span>q 的成分橢圓</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>最佳判別器地景 D*(x)(可點擊查詢)</h2>
+      <p class="hint">這裡畫的是 <span style="font-family:var(--mono)">D*(x)=p/(p+q)=σ(log p − log q)</span> —— GAN 要訓一整個網路來估的東西,在這裡是<b>算得出來的</b>。藍=p 多於 q(<b>模型漏掉了</b>),橘=q 多於 p(<b>模型多放了</b>)。forward KL 罰藍區,reverse KL 罰橘區。</p>
+      <canvas id="ratioCv"></canvas>
+      <div class="legend">
+        <span><span class="swatch"></span>D*(x): 0(橘,q 亂放)→ 1(藍,q 漏掉)</span>
+        <span><span class="dot" style="background:var(--ink)"></span>查詢點 <span id="probeVal" style="font-family:var(--mono);color:var(--ink)"></span></span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>三種散度同時量(只最小化其中一種)</h2>
+      <p class="hint">不論正在最小化哪一個,三條曲線都同時被計算。<b>最佳化 reverse KL 時,盯著 forward KL 怎麼往上飛</b>——那就是被犧牲掉的覆蓋度。虛線是 JSD 的上界 log 2 ≈ 0.693,它永遠碰不到天花板以上。</p>
+      <canvas id="lossCv"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--data)"></span>Forward KL</span>
+        <span><span class="dot" style="background:var(--model)"></span>Reverse KL</span>
+        <span><span class="dot" style="background:var(--third)"></span>JSD</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="axis">
+    <span style="color:var(--ink)">mode-covering</span>
+    <div class="bar"><div class="knob" id="knob" style="left:0%"></div></div>
+    <span style="color:var(--ink)">mode-seeking</span>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3>① 經典對照(先做這個)</h3>
+      維持 <code>K=1</code> + <b>雙峰(等權)</b>。先看 <b>Forward KL</b>:單一高斯被迫張開、橫跨兩個峰,質量大量落在中間<b>根本沒有資料</b>的低密度區——這就是「該有的地方沒有」被罰無限大的後果。
+      切到 <b>Reverse KL</b>:橢圓迅速收縮、鎖進其中一個峰,另一個峰被完全放棄。地景面板上那一群會變得又大又亮(D*≈1),但 q 完全沒有動力去。
+      再切到 <b>權重 7:3</b> 版本:reverse KL 幾乎總是選權重大的那個峰。
+    </div>
+    <div class="note n2">
+      <h3>② mode-seeking 是容量不足的症狀,不是散度的詛咒</h3>
+      維持 reverse KL,把 <code>K</code> 從 1 拉到 <b>6</b>,目標選<b>高斯混合 ×6</b>。六個橢圓會乾淨地各就各位,forward 與 reverse 的結果幾乎一樣。
+      <b>結論:當模型容量足以表示目標時,三種散度殊途同歸;差異只在容量不足時才浮現。</b>
+      這正是 DDO 那篇論文的出發點——真實模型的容量對真實資料而言永遠不足,所以散度的選擇一定會顯影。
+      反過來試:目標選<b>雙月</b>(14 個成分)、K 留在 3,forward 會攤成一片糊,reverse 會挑幾段弧貼緊。
+    </div>
+    <div class="note n3">
+      <h3>③ λ 滑桿調的就是覆蓋程度</h3>
+      選<b>內插</b>,把 λ 從 0 慢慢推到 1,看橢圓連續地從「攤開」變成「收縮」。這條連續變化不是比喻:
+      temperature、top-p、CFG 的 w、RLHF 的 1/β、DDO 的 1/β,調的都是同一件事:分布的覆蓋程度。<br><br>
+      <b>最後一個提醒</b>:這個 demo 之所以能直接最小化 reverse KL,是因為我們把 <code>log p</code> 送給了模型。
+      真實世界裡它拿不到——所以 GAN 要訓判別器、RLHF 要訓 reward model。
+      <b>中間那張地景,就是 GAN 花了半個網路在估的東西。</b>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ============ 全域狀態 ============ */
+let VIEW = 3.0;
+const HM = 52, MS = 48, BS = 256;      // 熱圖解析度、每成分取樣數、forward 批次
+let K = 1, objMode = 'fwd', lam = 0.5;
+let P = null, opt = null;              // 模型參數
+let T = null;                          // 目標 GMM 張量 {mu,sig,logw,M}
+let tData = null;                      // 目標樣本 {pts,c,n}
+let dataT = null, gridT = null;
+let step = 0, playing = false, stepsPerFrame = 4, frame = 0;   // 訓練預設關閉,由「開始訓練」啟動
+let hist = [];                         // {f,r,j}
+let probe = null, heatCache = null;
+const heatCanvas = document.createElement('canvas');
+const LOG2PI = Math.log(2*Math.PI), LOG2 = Math.log(2);
+
+/* ============ 目標分布:解析高斯混合 ============ */
+function makeTarget(name){
+  const mu = [], sig = [], w = [];
+  if(name==='two'){
+    mu.push([-1.55,0],[1.55,0]); sig.push(0.38,0.38); w.push(1,1);
+  }else if(name==='twoUneq'){
+    mu.push([-1.55,0],[1.55,0]); sig.push(0.38,0.38); w.push(0.7,0.3);
+  }else if(name==='six'){
+    for(let k=0;k<6;k++){ const th=k/6*2*Math.PI;
+      mu.push([2.0*Math.cos(th),2.0*Math.sin(th)]); sig.push(0.26); w.push(1); }
+  }else if(name==='sixOff'){
+    const r=3.0;
+    for(let k=0;k<6;k++){ const th=k/6*2*Math.PI;
+      mu.push([r*Math.cos(th)-r, r*Math.sin(th)]); sig.push(0.30); w.push(1); }
+  }else{ // moons:沿兩條弧鋪小高斯
+    const n=7;
+    for(let i=0;i<n;i++){
+      const t=Math.PI*i/(n-1);
+      let x=Math.cos(t), y=Math.sin(t);
+      mu.push([(x-0.5)*1.7,(y-0.25)*1.7]); sig.push(0.20); w.push(1);
+      x=1-Math.cos(t); y=0.5-Math.sin(t);
+      mu.push([(x-0.5)*1.7,(y-0.25)*1.7]); sig.push(0.20); w.push(1);
+    }
+  }
+  const M = mu.length, sw = w.reduce((a,b)=>a+b,0);
+  const logw = w.map(v=>Math.log(v/sw));
+  disposeTarget();
+  T = { M,
+        mu:  tf.tensor2d(mu,[M,2]),
+        sig: tf.tensor1d(sig),
+        logw:tf.tensor1d(logw),
+        muArr: mu, wArr: w.map(v=>v/sw) };
+  // 取樣一份可視化資料
+  const n=1400, pts=new Float32Array(n*2), c=new Float32Array(n);
+  const cum=[]; let acc=0; for(const v of w){ acc+=v/sw; cum.push(acc); }
+  for(let i=0;i<n;i++){
+    const u=Math.random(); let k=0; while(k<M-1 && u>cum[k]) k++;
+    pts[2*i]  = mu[k][0]+gauss()*sig[k];
+    pts[2*i+1]= mu[k][1]+gauss()*sig[k];
+    c[i]=k/Math.max(1,M-1);
+  }
+  tData={pts,c,n};
+}
+function disposeTarget(){ if(T){ T.mu.dispose(); T.sig.dispose(); T.logw.dispose(); T=null; } }
+const gauss=()=>{ const u=Math.random()||1e-9, v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
+
+/* ============ 模型 q:K 元高斯混合(full covariance via Cholesky) ============ */
+function buildModel(){
+  disposeModel();
+  P = {
+    wLogit: tf.variable(tf.zeros([K])),
+    mu:     tf.variable(tf.randomNormal([K,2],0,0.55)),
+    sRaw:   tf.variable(tf.fill([K,2],0.13)),      // softplus(0.13)+0.04 ≈ 0.80
+    rOff:   tf.variable(tf.randomNormal([K,1],0,0.02))
+  };
+  opt = tf.train.adam(8e-3);
+  step = 0; hist = []; heatCache = null;
+  if(T) showEval(evalAll());       // 訓練關閉時也讓讀數跟著目前的 q 更新
+}
+function disposeModel(){ if(P){ for(const k in P) P[k].dispose(); P=null; } }
+const vars = ()=> Object.values(P);
+
+function chol(){                                   // → {s1,s2,r} 皆 [K]
+  const s = tf.softplus(P.sRaw).add(0.04);
+  return { s1: s.slice([0,0],[-1,1]).squeeze([1]),
+           s2: s.slice([0,1],[-1,1]).squeeze([1]),
+           r : P.rOff.squeeze([1]) };
+}
+function logQ(x){                                  // x:[N,2] → [N]
+  const d  = x.expandDims(1).sub(P.mu.expandDims(0));          // [N,K,2]
+  const d0 = d.slice([0,0,0],[-1,-1,1]).squeeze([2]);
+  const d1 = d.slice([0,0,1],[-1,-1,1]).squeeze([2]);
+  const {s1,s2,r} = chol();
+  const y1 = d0.div(s1);
+  const y2 = d1.sub(y1.mul(r)).div(s2);
+  const logdet = tf.log(s1).add(tf.log(s2));
+  const logN = y1.square().add(y2.square()).mul(-0.5).sub(logdet).sub(LOG2PI);
+  return tf.logSumExp(logN.add(tf.logSoftmax(P.wLogit)), 1);
+}
+function logP(x){                                  // x:[N,2] → [N]
+  const d  = x.expandDims(1).sub(T.mu.expandDims(0));          // [N,M,2]
+  const sq = d.square().sum(2);
+  const logN = sq.div(T.sig.square()).mul(-0.5).sub(tf.log(T.sig).mul(2)).sub(LOG2PI);
+  return tf.logSumExp(logN.add(T.logw), 1);
+}
+function sampleQ(){                                // → [K*MS,2](reparameterized)
+  const eps = tf.randomNormal([K,MS,2]);
+  const e1 = eps.slice([0,0,0],[-1,-1,1]).squeeze([2]);
+  const e2 = eps.slice([0,0,1],[-1,-1,1]).squeeze([2]);
+  const {s1,s2,r} = chol();
+  const m0 = P.mu.slice([0,0],[-1,1]), m1 = P.mu.slice([0,1],[-1,1]);
+  const x1 = m0.add(e1.mul(s1.expandDims(1)));
+  const x2 = m1.add(e1.mul(r.expandDims(1))).add(e2.mul(s2.expandDims(1)));
+  return tf.stack([x1,x2],2).reshape([K*MS,2]);
+}
+const lae = (a,b)=> tf.logSumExp(tf.stack([a,b],a.rank), a.rank);   // logaddexp
+
+/* ---- 三個散度(皆可微) ---- */
+function divFwd(xb){ return logP(xb).sub(logQ(xb)).mean(); }        // E_p[log p − log q]
+function divRev(){
+  const xs = sampleQ();
+  const per = logQ(xs).sub(logP(xs)).reshape([K,MS]).mean(1);       // [K]
+  return per.mul(tf.softmax(P.wLogit)).sum();
+}
+function divJsd(xb){
+  const lpP=logP(xb), lqP=logQ(xb);
+  const t1 = lpP.sub(lae(lpP,lqP)).mean();
+  const xs = sampleQ();
+  const lqQ=logQ(xs), lpQ=logP(xs);
+  const t2 = lqQ.sub(lae(lpQ,lqQ)).reshape([K,MS]).mean(1)
+               .mul(tf.softmax(P.wLogit)).sum();
+  return t1.add(t2).mul(0.5).add(LOG2);
+}
+
+/* ============ 訓練 ============ */
+function batchFromP(){
+  const b=new Float32Array(BS*2);
+  for(let i=0;i<BS;i++){ const j=(Math.random()*tData.n)|0;
+    b[2*i]=tData.pts[2*j]; b[2*i+1]=tData.pts[2*j+1]; }
+  return tf.tensor2d(b,[BS,2]);
+}
+function trainStep(){
+  const xb = batchFromP();
+  opt.minimize(()=>{
+    if(objMode==='fwd') return divFwd(xb);
+    if(objMode==='rev') return divRev();
+    if(objMode==='jsd') return divJsd(xb);
+    return divFwd(xb).mul(1-lam).add(divRev().mul(lam));
+  }, false, vars());
+  xb.dispose(); step++;
+}
+function evalAll(){
+  return tf.tidy(()=>{
+    const xb = batchFromP();
+    const f = divFwd(xb).dataSync()[0];
+    const r = divRev().dataSync()[0];
+    const j = divJsd(xb).dataSync()[0];
+    // 覆蓋率:在每個目標成分中心比較 q 與 p 的密度
+    const cs = tf.tensor2d(T.muArr,[T.M,2]);
+    const ratio = logQ(cs).sub(logP(cs)).exp().dataSync();
+    let cov=0; for(let i=0;i<T.M;i++) if(ratio[i]>0.2) cov++;
+    return {f,r,j,cov};
+  });
+}
+
+/* ============ 畫布 ============ */
+function setupCanvas(cv,square=true){
+  const dpr=window.devicePixelRatio||1, w=cv.clientWidth, h=square?w:Math.round(w*0.62);
+  cv.width=w*dpr; cv.height=h*dpr; cv.style.height=h+'px';
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); return ctx;
+}
+const dataCv=document.getElementById('dataCv');
+const ratioCv=document.getElementById('ratioCv');
+const lossCv=document.getElementById('lossCv');
+let dtx,htx,xtx;
+function resizeAll(){ dtx=setupCanvas(dataCv); htx=setupCanvas(ratioCv); xtx=setupCanvas(lossCv,false); draw(true); }
+window.addEventListener('resize',resizeAll);
+
+const toPx=(cv,x,y)=>[ (x/VIEW*0.5+0.5)*cv.clientWidth, (0.5-y/VIEW*0.5)*cv.clientWidth ];
+const toXY=(cv,px,py)=>[ (px/cv.clientWidth-0.5)*2*VIEW, (0.5-py/cv.clientWidth)*2*VIEW ];
+// 目標分布的樣本:在 data 與 third 之間依成分編號取色,同一族但可分辨
+const hue=c=>{const a=[47,93,124],b=[95,115,80];
+  return `rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*c)).join(',')})`;};
+
+function drawGrid(ctx,cv){
+  const w=cv.clientWidth; ctx.clearRect(0,0,w,w);
+  ctx.strokeStyle=DEMO.grid; ctx.lineWidth=1;
+  const vmax=Math.ceil(VIEW)-1;
+  for(let v=-vmax;v<=vmax;v++){
+    const [px]=toPx(cv,v,0), [,py]=toPx(cv,0,v);
+    ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,w);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(w,py);ctx.stroke();
+  }
+  ctx.strokeStyle=DEMO.rule2;
+  const [cx]=toPx(cv,0,0), [,cy]=toPx(cv,0,0);
+  ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,w);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(w,cy);ctx.stroke();
+}
+
+function buildGrid(){
+  gridT?.dispose();
+  const g=new Float32Array(HM*HM*2);
+  for(let i=0;i<HM;i++)for(let j=0;j<HM;j++){
+    g[2*(i*HM+j)]   = -VIEW + 2*VIEW*j/(HM-1);
+    g[2*(i*HM+j)+1] =  VIEW - 2*VIEW*i/(HM-1);
+  }
+  gridT = tf.tensor2d(g,[HM*HM,2]);
+}
+function computeHeat(){
+  const v = tf.tidy(()=> tf.sigmoid(logP(gridT).sub(logQ(gridT))).dataSync());
+  const img=new Uint8ClampedArray(HM*HM*4);
+  for(let i=0;i<HM*HM;i++){
+    const t=v[i];
+    const c0=[206,124,90], c1=[240,238,231], c2=[86,124,151];
+    const [a,b,k]= t<0.5 ? [c0,c1,t*2] : [c1,c2,(t-0.5)*2];
+    img[4*i]=a[0]+(b[0]-a[0])*k; img[4*i+1]=a[1]+(b[1]-a[1])*k; img[4*i+2]=a[2]+(b[2]-a[2])*k; img[4*i+3]=255;
+  }
+  heatCache=img;
+}
+function blitHeat(ctx,cv,alpha=1){
+  if(!heatCache) return;
+  heatCanvas.width=HM; heatCanvas.height=HM;
+  heatCanvas.getContext('2d').putImageData(new ImageData(heatCache,HM,HM),0,0);
+  ctx.save(); ctx.globalAlpha=alpha; ctx.imageSmoothingEnabled=true;
+  ctx.drawImage(heatCanvas,0,0,cv.clientWidth,cv.clientWidth); ctx.restore();
+}
+
+/* ============ 主繪圖 ============ */
+function draw(force=false){
+  if(!P||!T) return;
+  if(frame%4===0||force||!heatCache) computeHeat();
+
+  /* ---- 資料空間 ---- */
+  drawGrid(dtx,dataCv);
+  for(let i=0;i<tData.n;i+=2){
+    const [px,py]=toPx(dataCv,tData.pts[2*i],tData.pts[2*i+1]);
+    dtx.fillStyle=hue(tData.c[i]); dtx.globalAlpha=0.7;
+    dtx.beginPath();dtx.arc(px,py,2.0,0,7);dtx.fill();
+  }
+  dtx.globalAlpha=1;
+
+  const st = tf.tidy(()=>{
+    const s=tf.softplus(P.sRaw).add(0.04).dataSync();
+    return { s, r:P.rOff.dataSync(), mu:P.mu.dataSync(), w:tf.softmax(P.wLogit).dataSync() };
+  });
+
+  if(document.getElementById('showSamp').checked){
+    const xs = tf.tidy(()=> sampleQ().dataSync());
+    dtx.fillStyle=DEMO.model; dtx.globalAlpha=0.5;
+    for(let i=0;i<xs.length/2;i+=1){
+      const [px,py]=toPx(dataCv,xs[2*i],xs[2*i+1]);
+      dtx.beginPath();dtx.arc(px,py,1.5,0,7);dtx.fill();
+    }
+    dtx.globalAlpha=1;
+  }
+  if(document.getElementById('showEll').checked) drawEllipses(dtx,dataCv,st,1);
+
+  /* ---- 地景 ---- */
+  htx.clearRect(0,0,ratioCv.clientWidth,ratioCv.clientWidth);
+  blitHeat(htx,ratioCv,1);
+  drawEllipses(htx,ratioCv,st,0.75);
+  if(probe){
+    const pv = tf.tidy(()=>{
+      const t=tf.tensor2d(probe,[1,2]);
+      return [logP(t).dataSync()[0], logQ(t).dataSync()[0]];
+    });
+    const D=1/(1+Math.exp(-(pv[0]-pv[1])));
+    const [px,py]=toPx(ratioCv,probe[0],probe[1]);
+    htx.strokeStyle=DEMO.ink; htx.lineWidth=2;
+    htx.beginPath();htx.arc(px,py,7,0,7);htx.stroke();
+    htx.beginPath();htx.moveTo(px-11,py);htx.lineTo(px+11,py);
+    htx.moveTo(px,py-11);htx.lineTo(px,py+11);htx.stroke();
+    htx.font=`11px ${DEMO.font.mono}`; htx.fillStyle=DEMO.ink;
+    htx.fillText('D*='+D.toFixed(2), px+10, py-10);
+    document.getElementById('probeVal').textContent =
+      `D*=${D.toFixed(2)}  log p=${pv[0].toFixed(1)}  log q=${pv[1].toFixed(1)}`;
+  }
+
+  /* ---- 損失曲線 ---- */
+  const w=lossCv.clientWidth, hh=lossCv.clientHeight;
+  xtx.clearRect(0,0,w,hh);
+  const win=hist.slice(-240);
+  if(win.length>1){
+    let ymax=0; for(const p of win) ymax=Math.max(ymax,p.f,p.r);
+    ymax=Math.min(Math.max(ymax,0.9)*1.1, 8);
+    xtx.strokeStyle=DEMO.grid;
+    for(let k=1;k<4;k++){ const y=hh*k/4; xtx.beginPath();xtx.moveTo(0,y);xtx.lineTo(w,y);xtx.stroke(); }
+    const Y=v=>hh-(Math.min(Math.max(v,0),ymax)/ymax)*hh*0.94-4;
+    // log 2 上界
+    xtx.setLineDash([4,4]); xtx.strokeStyle=DEMO.rule2; xtx.lineWidth=1;
+    xtx.beginPath();xtx.moveTo(0,Y(LOG2));xtx.lineTo(w,Y(LOG2));xtx.stroke();
+    xtx.setLineDash([]);
+    const line=(key,col)=>{
+      xtx.strokeStyle=col; xtx.lineWidth=1.8; xtx.beginPath();
+      win.forEach((p,i)=>{ const x=i/(win.length-1)*w, y=Y(p[key]); i?xtx.lineTo(x,y):xtx.moveTo(x,y); });
+      xtx.stroke();
+    };
+    line('f',DEMO.data); line('r',DEMO.model); line('j',DEMO.third);
+    xtx.fillStyle=DEMO.muted; xtx.font=`10px ${DEMO.font.mono}`;
+    xtx.fillText(ymax.toFixed(2),4,11);
+    xtx.fillText('log 2',4,Y(LOG2)-3);
+  }
+}
+function drawEllipses(ctx,cv,st,alpha){
+  const wmax=Math.max(...st.w);
+  for(let k=0;k<K;k++){
+    const s1=st.s[2*k], s2=st.s[2*k+1], r=st.r[k], mx=st.mu[2*k], my=st.mu[2*k+1];
+    ctx.strokeStyle=DEMO.model;
+    ctx.lineWidth=0.8+2.2*(st.w[k]/wmax);
+    for(const sc of [1,2]){
+      ctx.globalAlpha=alpha*(sc===1?0.95:0.4);
+      ctx.beginPath();
+      for(let a=0;a<=48;a++){
+        const th=a/48*2*Math.PI, u=Math.cos(th), v=Math.sin(th);
+        const x=mx+sc*s1*u, y=my+sc*(r*u+s2*v);
+        const [px,py]=toPx(cv,x,y); a?ctx.lineTo(px,py):ctx.moveTo(px,py);
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha=alpha;
+    const [px,py]=toPx(cv,mx,my);
+    ctx.beginPath();ctx.arc(px,py,2.5,0,7);ctx.fillStyle=DEMO.model;ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+/* ============ 互動 ============ */
+function pickProbe(ev){
+  const rc=ratioCv.getBoundingClientRect();
+  probe = toXY(ratioCv, ev.clientX-rc.left, ev.clientY-rc.top);
+  if(!playing) draw();
+}
+let dragging=false;
+ratioCv.addEventListener('pointerdown',e=>{dragging=true;ratioCv.setPointerCapture(e.pointerId);pickProbe(e);});
+ratioCv.addEventListener('pointermove',e=>{ if(dragging) pickProbe(e); });
+ratioCv.addEventListener('pointerup',()=>dragging=false);
+
+function knobPos(){
+  const m={fwd:0,jsd:0.5,rev:1,mix:lam}[objMode];
+  document.getElementById('knob').style.left=(m*100)+'%';
+}
+document.getElementById('obj').addEventListener('change',e=>{
+  objMode=e.target.value;
+  document.getElementById('lamCtrl').classList.toggle('off', objMode!=='mix');
+  knobPos();
+});
+document.getElementById('lam').addEventListener('input',e=>{
+  lam=+e.target.value; document.getElementById('lamVal').textContent=lam.toFixed(2); knobPos();
+});
+document.getElementById('speed').addEventListener('input',e=>{
+  stepsPerFrame=+e.target.value; document.getElementById('speedVal').textContent=stepsPerFrame;
+});
+function reload(){
+  const name=document.getElementById('target').value;
+  VIEW = (name==='sixOff') ? 6.6 : 3.0;
+  makeTarget(name); buildGrid(); buildModel();
+  probe=null; document.getElementById('probeVal').textContent='';
+}
+document.getElementById('target').addEventListener('change',reload);
+document.getElementById('kSel').addEventListener('change',e=>{ K=+e.target.value; buildModel(); });
+document.getElementById('resetBtn').addEventListener('click',()=>{ buildModel(); });
+const playBtn=document.getElementById('playBtn');
+playBtn.addEventListener('click',()=>{
+  playing=!playing; playBtn.textContent = playing?'⏸ 暫停':'▶ 開始訓練';
+});
+for(const id of ['showEll','showSamp'])
+  document.getElementById(id).addEventListener('change',()=>draw(true));
+
+function showEval(L){
+  document.getElementById('stepVal').textContent=step;
+  document.getElementById('fVal').textContent=L.f.toFixed(2);
+  document.getElementById('rVal').textContent=L.r.toFixed(2);
+  document.getElementById('jVal').textContent=L.j.toFixed(3);
+  document.getElementById('cVal').textContent=L.cov+'/'+T.M;
+}
+
+/* ============ 主迴圈 ============ */
+function loop(){
+  if(P&&T){
+    if(playing){
+      for(let i=0;i<stepsPerFrame;i++) trainStep();
+      if(step%10<stepsPerFrame){
+        const L=evalAll(); hist.push(L); showEval(L);
+      }
+    }
+    if(frame%2===0 && (playing||frame%30===0)) draw();
+  }
+  frame++;
+  requestAnimationFrame(loop);
+}
+
+/* ============ 啟動 ============ */
+(async function init(){
+  try{ await tf.setBackend('webgl'); }catch(e){ await tf.setBackend('cpu'); }
+  await tf.ready();
+  reload();
+  knobPos();
+  document.getElementById('loading').style.display='none';
+  resizeAll();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

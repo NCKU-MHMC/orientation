@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exposure Bias 互動教學:teacher forcing 訓練的軌跡預測</title>
+<script src="vendor/tf.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e1420; --panel:#151d2e; --panel-edge:#243350;
+    --grid:#20304b; --ink:#e8edf6; --muted:#8fa0bc;
+    --amber:#ffb454; --cyan:#5edfff; --violet:#b48cff; --pink:#ff6b9d;
+    --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans TC',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);padding:20px 22px 48px;
+       background-image:radial-gradient(circle at 50% -10%,#2a1a28 0%,var(--bg) 55%);}
+  header{max-width:1200px;margin:0 auto 18px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--pink);text-transform:uppercase}
+  h1{font-size:clamp(20px,3vw,28px);font-weight:700;margin:6px 0 4px}
+  h1 .eb{color:var(--pink)}
+  .sub{color:var(--muted);font-size:13.5px;max-width:840px;line-height:1.7}
+  .sub .f{font-family:var(--mono);color:var(--cyan)}
+
+  .wrap{max-width:1200px;margin:0 auto}
+  .controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;
+    background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;
+    padding:12px 16px;margin:14px 0 16px}
+  .ctrl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+  .ctrl label{white-space:nowrap}
+  select,button{font-family:var(--sans);font-size:13px;border-radius:8px;border:1px solid var(--panel-edge);
+    background:#0f1626;color:var(--ink);padding:6px 10px;cursor:pointer}
+  button:hover{border-color:var(--pink)}
+  button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
+  button.primary{background:var(--pink);color:#1c0410;font-weight:700;border:none;padding:7px 16px}
+  input[type=range]{accent-color:var(--pink);width:120px}
+  .val{font-family:var(--mono);color:var(--ink);min-width:3.5ch;text-align:right}
+  .toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+  .toggle input{accent-color:var(--amber)}
+  .readout{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:auto;display:flex;gap:16px;flex-wrap:wrap}
+  .readout b{color:var(--ink);font-weight:500}
+  .readout .r-tf b{color:var(--amber)} .readout .r-ro b{color:var(--pink)}
+  .readout .r-pq b{color:var(--violet)} .readout .r-gm b{color:var(--cyan)}
+
+  .panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+  .panel{background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;padding:12px 14px 14px;min-width:0}
+  .panel h2{font-size:13.5px;font-weight:700;letter-spacing:.03em;margin-bottom:2px}
+  .panel .hint{font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.5}
+  canvas{width:100%;display:block;border-radius:8px;background:#0c1220;touch-action:none}
+  #errCv,#dataCv{cursor:crosshair}
+
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .swatch{width:34px;height:8px;border-radius:4px;display:inline-block;
+    background:linear-gradient(90deg,#7ff0ff,#3a7a94,#0e1626)}
+
+  .notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:16px}
+  .note{background:var(--panel);border:1px solid var(--panel-edge);border-left:3px solid var(--pink);
+    border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.8;color:var(--muted)}
+  .note h3{font-size:13.5px;color:var(--ink);margin-bottom:6px}
+  .note.n2{border-left-color:var(--amber)} .note.n3{border-left-color:var(--cyan)}
+  .note code{font-family:var(--mono);font-size:12px;color:var(--cyan);background:#0c1220;padding:1px 5px;border-radius:4px}
+  .note b{color:var(--ink);font-weight:500}
+  .loading{font-family:var(--mono);font-size:12px;color:var(--muted);padding:8px 0}
+  @media (max-width:720px){ .readout{margin-left:0} body{padding:14px 12px 40px} }
+
+/* 課堂 iframe 嵌入時的緊湊模式:視窗高度受限,或由 DemoFrame 掛上 body.embed */
+@media (max-height: 620px) {
+  .sub, .notes { display: none; }
+  h1 { font-size: 18px; margin: 6px 0; }
+}
+body.embed .sub, body.embed .notes { display: none; }
+body.embed h1 { font-size: 18px; margin: 6px 0; }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">生成模型入門 · 第二堂 · Lab Demo 05</div>
+  <h1><span class="eb">Exposure Bias</span> 互動教學 — teacher forcing 訓練的軌跡預測</h1>
+  <p class="sub">一個小 LSTM 正在瀏覽器裡即時訓練(TensorFlow.js):讀過最近 <span class="f">k</span> 步的軌跡,回歸下一步的位移。
+    真實系統是二階的——可觀測的只有位置,<b>速度是隱藏狀態</b>,因此 k=1 的輸入不足以決定下一步。
+    訓練資料只來自<b>真實軌跡的片段</b>,對應 forward KL 的
+    <span class="f">KL(p‖q) = Σₜ 𝔼<sub>x&lt;t~p</sub>[·]</span> —— 期望的前綴取自 <span class="f">p</span>。
+    同一組權重涵蓋 k=1…10(訓練時每一批隨機抽脈絡長度),拖滑桿不必重訓;
+    <span class="f">延續隱藏狀態</span>則換成串流讀法——狀態不歸零、每步只餵位置,k 因此失效;
+    <span class="f">N</span> 則決定訓練時要不要把模型自己走過的狀態也算進去。
+    k 夠大時單步損失一路降到雜訊下限,但把模型接上自己的輸出連續生成,誤差沿步數複合,
+    軌跡走進<b style="color:var(--amber)">訓練分布沒有覆蓋、單步誤差極大</b>的區域,再也回不來。</p>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div class="ctrl"><label for="sigma">訓練輸入噪聲 σ</label>
+      <input type="range" id="sigma" min="0" max="0.6" step="0.02" value="0">
+      <span class="val" id="sigmaVal">0.00</span>
+    </div>
+    <div class="ctrl" id="kCtrl"><label for="kSlide">模型可見步數 k</label>
+      <input type="range" id="kSlide" min="1" max="10" step="1" value="1">
+      <span class="val" id="kVal">1</span>
+    </div>
+    <label class="toggle ctrl" title="隱藏狀態不歸零、一路帶著走,每步只餵位置;k 滑桿因此失效">
+      <input type="checkbox" id="streamOn"> 延續隱藏狀態</label>
+    <div class="ctrl"><label for="steps">生成步數</label>
+      <input type="range" id="steps" min="40" max="400" step="20" value="300">
+      <span class="val" id="stepsVal">300</span>
+    </div>
+    <div class="ctrl"><label for="unroll">訓練展開步數 N</label>
+      <input type="range" id="unroll" min="1" max="8" step="1" value="1">
+      <span class="val" id="unrollVal">1</span>
+    </div>
+    <div class="ctrl"><label for="speed">訓練速度</label>
+      <input type="range" id="speed" min="1" max="12" step="1" value="8">
+      <span class="val" id="speedVal">8</span>
+    </div>
+    <div class="ctrl">
+      <button class="primary" id="playBtn">▶ 開始訓練</button>
+      <button id="resetBtn">↺ 重設模型</button>
+    </div>
+    <label class="toggle ctrl"><input type="checkbox" id="showData" checked> 訓練資料</label>
+    <label class="toggle ctrl"><input type="checkbox" id="showTF" checked> teacher forcing 預測</label>
+    <div class="readout">
+      <span>step <b id="stepVal">0</b></span>
+      <span class="r-tf">單步 MSE(目前 k)<b id="tfVal">–</b></span>
+      <span class="r-gm">生成 vs 真實 MSE <b id="gmVal">–</b></span>
+      <span class="r-ro">生成軌跡離流形 <b id="roVal">–</b></span>
+      <span class="r-pq">單步誤差 p 前綴 → q 前綴 <b id="pqVal">–</b></span>
+    </div>
+  </div>
+
+  <div class="loading" id="loading">正在初始化 TensorFlow.js…</div>
+
+  <div class="panels">
+    <div class="panel">
+      <h2>狀態空間:真實軌跡 vs 自己生成的軌跡(可點擊換起點)</h2>
+      <p class="hint">灰點=<b>訓練資料</b>(真實軌跡會經過的狀態)。<b style="color:var(--cyan)">青線</b>=真實軌跡;
+        <b style="color:var(--amber)">琥珀點</b>=teacher forcing:每一步都把歷史重設回真實軌跡、只預測一步,因此始終貼著真實軌跡。
+        另一條是 free-running:自同一個起點出發,之後只吃自己的輸出,<b>顏色由深紫到亮粉代表生成的先後</b>,
+        深色段還貼著資料,亮色段就是後來走出去的。注意真實軌跡是<b>繞著曲線擺動</b>的(慣性 + 徑向彈簧);
+        k=1 時模型只能輸出條件均值,生成軌跡會少掉這個擺動、平滑得不像資料。</p>
+      <canvas id="dataCv"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:#55617e"></span>訓練資料</span>
+        <span><span class="dot" style="background:var(--cyan)"></span>真實軌跡</span>
+        <span><span class="dot" style="background:var(--amber)"></span>teacher forcing 單步預測</span>
+        <span><span class="swatch" style="background:linear-gradient(90deg,hsl(268,70%,40%),hsl(304,81%,54%),hsl(340,92%,68%))"></span>free-running:早 → 晚</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>模型可信的範圍:單步誤差 ‖v̂(x) − v(x)‖</h2>
+      <p class="hint">整個平面上,模型預測的位移與真實位移的差距(對數色階)。<b>亮=誤差小</b>,只有訓練資料經過的那條細管亮著;
+        暗處模型從未被校正過。free-running 一旦被雜訊推出細管就走進暗區,而暗區的預測會把它推得更遠。點擊任一位置查詢誤差。</p>
+      <canvas id="errCv"></canvas>
+      <div class="legend">
+        <span><span class="swatch"></span>誤差 1e-3(亮)→ 1e0(暗)</span>
+        <span><span class="dot" style="background:var(--pink)"></span>查詢點 <span id="probeVal" style="font-family:var(--mono);color:var(--ink)"></span></span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>訓練損失 vs 生成軌跡品質(對數刻度)</h2>
+      <p class="hint">兩條虛線是各自的<b>參考值</b>:琥珀=訓練 MSE 的下限(k=1 時是「只看位置」的資訊極限,k≥2 是過程雜訊的變異數);
+        粉紅=真實軌跡自己離流形的平均距離,是<b>目標而非下限</b>——生成軌跡比它大代表漂走,比它小代表過度平滑,兩邊都是錯的。
+        <b style="color:var(--amber)">單步 MSE</b> 很快貼到自己的下限;<b style="color:var(--pink)">生成軌跡</b>卻不跟著對齊。
+        <b style="color:var(--cyan)">生成 vs 真實 MSE</b> 用的是同一份雜訊、同一個起點,完美的模型會得到 0;
+        但它<b>會飽和</b>——相位一旦漂掉,長程數值只反映曲線大小,不再分得出模型好壞,所以讀數同時給 @10 / @50 / 全程。</p>
+      <canvas id="lossCv"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--amber)"></span>單步 MSE(目前 k)</span>
+        <span><span class="dot" style="background:var(--pink)"></span>free-running 離流形</span>
+        <span><span class="dot" style="background:var(--cyan)"></span>生成 vs 真實 MSE(50 步)</span>
+        <span><span class="dot" style="background:#5a6c8f"></span>虛線=各自的參考值</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3>① 下標裡的問題</h3>
+      forward KL 的鏈鎖分解把序列問題拆成逐步的預測問題,但每一步的期望值都掛在
+      <code>x&lt;t ~ p</code> 上。這個 demo 把它照做一遍:訓練批次<b>只從真實軌跡的狀態分布取樣</b>,
+      模型在那裡學得又快又準;它從未在 <code>x&lt;t ~ q</code>——自己生成的前綴——上被校正過。
+      中間面板畫的就是這片沒被度量到的區域。
+    </div>
+    <div class="note n2">
+      <h3>② 模型可見步數 k:兩種不同的失敗</h3>
+      LSTM 每次就跑 k 個時刻,每個時刻餵那一幀的位置與走進它的位移;訓練時<b>每一批隨機抽一個 k</b>,
+      所以同一組權重涵蓋 k=1…10,拖滑桿是換讀取範圍,不是換模型。
+      要注意的是每次預測都<b>從零狀態重跑</b>這 k 個時刻,隱藏狀態不跨預測延續。
+      <code>延續隱藏狀態</code>打開就換成另一種讀法,見註記 ④。
+      位移 <code>d_t = v_{t+1}</code>,因此 <code>v_t = d_{t−1}</code>:速度可由<b>前一步位移</b>精確還原。
+      k=1 只有一個時刻、看不到任何位移,單步 MSE 有資訊上的下限(實測 1.8e-3,是過程雜訊 3.2e-5 的 <b>57 倍</b>);
+      k=2 剛好夠,訓練兩萬步後掉到 6~8e-5;k=3…10 約 4~6e-5,不再有明顯增益——歷史到此就沒有新資訊了。
+      兩種失敗因此被分開:<b>k=1 是欠擬合</b>(模型輸出條件均值,生成軌跡少掉真實資料的擺動,
+      連 p、q 前綴的誤差差距都看不出來);<b>k≥2 之後主角才換成 exposure bias</b>——單步已經很準,
+      生成軌跡照樣離開資料流形。至於 k 再往上調對生成品質的影響,重跑之間的變異比 k 造成的差距還大,
+      量不出穩定趨勢。
+    </div>
+    <div class="note n3">
+      <h3>③ 兩種補丁,同一種代價</h3>
+      <code>訓練輸入噪聲 σ</code>:把訓練窗格整段平移、逐幀抖動,連隱含的速度一起擾動,
+      模型在資料流形之外也被校正過(DART / 資料擴增)——中間面板的亮區會跟著變寬。撐開的方向是<b>猜</b>的。<br>
+      <code>訓練展開步數 N</code>:先讓模型從真實前綴自己走 0…N−1 步,再在它<b>自己走到的狀態</b>上
+      用真實答案監督(DAgger / scheduled sampling)。
+      代價是每步多做 rollout,而且<b>必須在模型自己走到的狀態上也拿得到正確答案</b>
+      ——語言模型上,那等於請人對著模型自己生成的前綴逐 token 標註。結構原因不動:訓練目標的期望下標仍在 <code>p</code>。<br>
+      兩個補丁的效果量都<b>量不準</b>:free-running 的讀數在重跑之間可以差好幾倍(同設定實測 0.23~0.57),
+      單次的前後對比說明不了什麼。這個跳動本身才是重點——閉環一旦不穩定,壞掉是隨機的。
+    </div>
+    <div class="note">
+      <h3>④ 延續隱藏狀態:單步變好,生成變壞</h3>
+      勾起來之後,<code>(h, c)</code> 不再歸零,一路帶著走;每一步<b>只餵一幀位置</b>,位移不再直接給,
+      速度得由 LSTM 自己從連續的位置累積出來。同一組權重(訓練時三成的批次就是這樣跑的),即時切換。
+      結果是 k 這個設定直接失去作用:視窗 k=1 的單步 MSE 卡在資訊下限 2.7e-3,串流模式讀到的資訊一樣少,
+      單步卻是 <b>1.5e-4</b>——差 18 倍,狀態把速度記住了。<br>
+      代價出現在生成端,而且方向剛好相反。生成軌跡偏離真實軌跡:第 10 步 0.20(比視窗 k=2 的 0.25 還<b>好</b>),
+      第 100 步 2.30(視窗 0.92),第 300 步 <b>8.86</b>(視窗 2.85)。
+      teacher forcing 的單步誤差沿真實前綴 2.6e-2、沿自產前綴 1.3e-1,差 <b>5 倍</b>。
+      兩件事疊在一起:狀態只在 10 幀的窗格裡被訓練過,卻要撐 300 步(<b>連沿著真實軌跡都會退化</b>);
+      而 free-running 時漂掉的不只是位置,還有那個誰也拉不回來的<b>內部記憶</b>。
+      這是這頁最乾淨的一句話:<b>單步更準的模型,生成得更差。</b>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ===CORE:BEGIN=== */
+const CORE = (function(){
+  /* 真實系統:二階(慣性)動力學。可觀測的只有位置,速度是隱藏狀態。
+       v_{t+1} = (1−C)·v_t + A(x_t) + ξ_t ,  x_{t+1} = x_t + v_{t+1}
+     A 由「沿曲線的切向驅動」與「朝曲線的徑向彈簧」組成,配上輕阻尼 → 軌跡繞著曲線擺動。
+     因為位移 d_t = x_{t+1}−x_t 就等於 v_{t+1},所以 v_t = d_{t−1} 可由前一步位移精確還原:
+     k=1 的輸入不足以決定下一步,k=2 剛好足夠,k≥3 不再帶來任何新資訊。 */
+  const R = 1.9, A = 0.28, LOBES = 3;
+  const OMEGA = 2*Math.PI/200;   // 沿曲線的角進展 → 200 步繞一圈
+  const C = 0.06;                // 速度鬆弛率(阻尼)
+  const KS = 0.06;               // 徑向彈簧勁度 → 振盪週期 2π/√KS ≈ 26 步
+  const XI = 0.004;              // 過程雜訊,加在速度上。k≥2 的 MSE 下限就是 2·XI²
+  const KMAX = 10;               // 模型的脈絡上限:序列永遠是這麼長,實際看幾步由有效旗標決定
+  const DSCALE = 10;             // 位移約 0.1、位置約 2,把位移放大到同一個量級再餵進網路
+  const SDIM = 4;                // 每個時刻的輸入:[x, y, 位移x, 位移y]
+
+  const rt  = th => R*(1 + A*Math.sin(LOBES*th));
+  const drt = th => R*A*LOBES*Math.cos(LOBES*th);
+  const gauss = (rand=Math.random) => {
+    const u = rand()||1e-9, v = rand();
+    return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+  };
+
+  // A(x):切向驅動 + 徑向彈簧
+  function accelAt(x, y, out, o=0){
+    const th = Math.atan2(y,x), r = Math.hypot(x,y);
+    const c = Math.cos(th), s = Math.sin(th);
+    const tx = OMEGA*(drt(th)*c - rt(th)*s), ty = OMEGA*(drt(th)*s + rt(th)*c);
+    out[o]   = C*tx + KS*(rt(th)-r)*c;
+    out[o+1] = C*ty + KS*(rt(th)-r)*s;
+    return out;
+  }
+  function accel(states, n){
+    const out = new Float32Array(n*2);
+    for(let i=0;i<n;i++) accelAt(states[2*i], states[2*i+1], out, 2*i);
+    return out;
+  }
+  // 終端速度 A(x)/C:速度鬆弛到底時的值。平面上任一點只給位置時,這是唯一講得通的
+  // 「真實下一步」約定,誤差場面板即以它為參考。
+  function termVel(states, n){
+    const a = accel(states, n);
+    for(let i=0;i<n*2;i++) a[i] /= C;
+    return a;
+  }
+
+  /* ---- 歷史視窗 ----
+     hist 的排列是 [P 個時刻][n 條軌跡 × 2]:第 0 格最舊,第 P−1 格是目前狀態。
+     P 是緩衝區長度(至少 2,真實動力學需要兩步才能還原速度),k 則是模型看得到的步數。 */
+  const currentOf = (hist, P, n) => hist.subarray((P-1)*n*2, P*n*2);
+  // 真實系統的條件期望 E[Δ | 歷史] = (1−C)·v_t + A(x_t),其中 v_t = x_t − x_{t−1}
+  function trueDeltaOfHist(hist, P, n){
+    const cur = (P-1)*n*2, prv = (P-2)*n*2;
+    const out = accel(currentOf(hist,P,n), n);
+    for(let i=0;i<n*2;i++) out[i] += (1-C)*(hist[cur+i] - hist[prv+i]);
+    return out;
+  }
+  /* 模型輸入:緩衝區永遠是 KMAX 格,最近 k 幀靠右對齊放好(最後一格是目前狀態),
+     更早的格子留白 —— LSTM 從第 KMAX−k 格開始跑,所以留白的部分根本不會被讀到,
+     「跑 k 步」與「跑固定長度」在數值上完全一致,一組權重才能涵蓋 k=1…KMAX。
+     每個時刻餵位置與「走進這一幀的位移」;最舊的可見幀沒有前一步可減,位移填 0
+     (不必另外標記:那一格正好是 LSTM 狀態還是零的時刻,模型分得出來)。
+     位移約 0.1、位置約 2,所以位移先乘 DSCALE 拉到同一個量級。
+     排列是 [KMAX 個時刻][n 條軌跡][SDIM],時刻在最外層,tf 端可以逐時刻直接切出來。
+     posOnly 把位移欄整排留白:串流模式下模型只讀到一串位置,速度得自己從連續位置累積出來。 */
+  function featurize(hist, P, k, n, posOnly){
+    const seq = new Float32Array(KMAX*n*SDIM);
+    for(let m=0;m<k && m<KMAX;m++){
+      const f = P-1-m, j = KMAX-1-m, hasPrev = !posOnly && m < k-1 && f > 0;
+      for(let i=0;i<n;i++){
+        const o = (j*n + i)*SDIM, cur = f*n*2 + 2*i;
+        seq[o] = hist[cur]; seq[o+1] = hist[cur+1];
+        if(hasPrev){
+          const prv = (f-1)*n*2 + 2*i;
+          seq[o+2] = (hist[cur]   - hist[prv])*DSCALE;
+          seq[o+3] = (hist[cur+1] - hist[prv+1])*DSCALE;
+        }
+      }
+    }
+    return seq;
+  }
+  // 窗格裡每一個時刻的正確答案(從第 1 幀起——第 0 幀沒有前一步,速度無從定義)。
+  // 串流訓練把狀態帶著走,所以一段窗格可以一次給出 P−1 個監督訊號。
+  function trueDeltaSeq(hist, P, n){
+    const out = new Float32Array((P-1)*n*2);
+    for(let j=1;j<P;j++) out.set(trueDeltaOfHist(hist.subarray(0,(j+1)*n*2), j+1, n), (j-1)*n*2);
+    return out;
+  }
+  // 誤差場的歷史約定:假設速度已鬆弛到終端速度,依此往回推 P−1 步
+  function backHistory(states, n, P){
+    const hist = new Float32Array(P*n*2);
+    hist.set(states, (P-1)*n*2);
+    const v = termVel(states, n);
+    for(let j=P-2;j>=0;j--)
+      for(let i=0;i<n*2;i++) hist[j*n*2+i] = states[i] - (P-1-j)*v[i];
+    return hist;
+  }
+
+  /* ---- 資料集:一段真實軌跡 ---- */
+  function makeDataset(n, rand=Math.random, burn=500){
+    const pts = new Float32Array(n*2), one = new Float32Array(2), a = new Float32Array(2);
+    let x = rt(0), y = 0;
+    let vx = OMEGA*drt(0), vy = OMEGA*rt(0);
+    let len = 0;
+    for(let t=-burn;t<n;t++){
+      accelAt(x, y, a, 0);
+      vx = (1-C)*vx + a[0] + XI*gauss(rand);
+      vy = (1-C)*vy + a[1] + XI*gauss(rand);
+      x += vx; y += vy;
+      if(t>=0){ pts[2*t]=x; pts[2*t+1]=y; len += Math.hypot(vx,vy); }
+    }
+    one[0]=len/n;
+    return { pts, n, stepLen: one[0] };
+  }
+  // 訓練批次:從真實軌跡上隨機取 P+1 幀的窗格。
+  // sigma 同時撐開兩個方向:整段窗格平移(位置)與逐幀抖動(等於擾動隱含的速度)。
+  function sampleWindows(data, m, P, sigma=0, rand=Math.random){
+    const hist = new Float32Array(P*m*2);
+    const jit = sigma*data.stepLen;
+    for(let i=0;i<m;i++){
+      const s = Math.floor(rand()*(data.n - P - 1));
+      const ox = sigma*gauss(rand), oy = sigma*gauss(rand);
+      for(let j=0;j<P;j++){
+        hist[j*m*2+2*i]   = data.pts[2*(s+j)]   + ox + jit*gauss(rand);
+        hist[j*m*2+2*i+1] = data.pts[2*(s+j)+1] + oy + jit*gauss(rand);
+      }
+    }
+    return hist;
+  }
+  // 只給位置時,下一步位移還剩多少變異(以 θ×徑向偏差分箱做無母數估計)。
+  // 這個數就是 k=1 的 MSE 下限;它遠大於 2·XI² 正是「系統非 Markov」的量化證據。
+  function residualGivenPosition(data, TB=60, RB=16){
+    const cnt = new Float64Array(TB*RB), s1 = new Float64Array(TB*RB*2), s2 = new Float64Array(TB*RB*2);
+    const devs = new Float64Array(data.n-1);
+    let lo = Infinity, hi = -Infinity;
+    for(let t=0;t<data.n-1;t++){
+      const x = data.pts[2*t], y = data.pts[2*t+1];
+      const d = Math.hypot(x,y) - rt(Math.atan2(y,x));
+      devs[t] = d; lo = Math.min(lo,d); hi = Math.max(hi,d);
+    }
+    for(let t=0;t<data.n-1;t++){
+      const x = data.pts[2*t], y = data.pts[2*t+1], th = Math.atan2(y,x);
+      const bi = ((Math.floor((th+Math.PI)/(2*Math.PI)*TB)%TB)+TB)%TB;
+      const bj = Math.min(RB-1, Math.max(0, Math.floor((devs[t]-lo)/(hi-lo+1e-9)*RB)));
+      const b = bi*RB + bj;
+      cnt[b]++;
+      for(let d=0;d<2;d++){
+        const v = data.pts[2*(t+1)+d] - data.pts[2*t+d];
+        s1[2*b+d] += v; s2[2*b+d] += v*v;
+      }
+    }
+    let num = 0, den = 0;
+    for(let b=0;b<TB*RB;b++){
+      if(cnt[b] < 20) continue;
+      let v = 0;
+      for(let d=0;d<2;d++) v += s2[2*b+d]/cnt[b] - (s1[2*b+d]/cnt[b])**2;
+      num += v*cnt[b]; den += cnt[b];
+    }
+    return num/Math.max(den,1);
+  }
+
+  /* ---- rollout ----
+     deltaFn(hist,P,n) 決定「誰在預測下一步」;前 P 格是兩條軌跡共用的真實前綴,
+     之後 free-running 只吃自己的輸出。回傳 (P+steps) 個時刻。 */
+  function rollout(deltaFn, prefix, n, P, steps, noise){
+    const traj = new Float32Array((P+steps)*n*2);
+    traj.set(prefix, 0);
+    const hist = Float32Array.from(prefix);
+    const nxt = new Float32Array(n*2);
+    for(let s=0;s<steps;s++){
+      const d = deltaFn(hist, P, n), cur = (P-1)*n*2;
+      for(let i=0;i<n*2;i++) nxt[i] = hist[cur+i] + d[i] + noise[s*n*2+i];
+      hist.copyWithin(0, n*2);
+      hist.set(nxt, (P-1)*n*2);
+      traj.set(nxt, (P+s)*n*2);
+    }
+    return traj;
+  }
+  const makeNoise = (n, steps, rand=Math.random) => {
+    const z = new Float32Array(steps*n*2);
+    for(let i=0;i<z.length;i++) z[i] = XI*gauss(rand);
+    return z;
+  };
+  // 使用者點選起點時,找出資料集裡最接近的那一幀(前綴必須是真實軌跡的一段,才對得上 p)
+  function nearestIndex(data, x, y, P){
+    let best = 0, bd = Infinity;
+    for(let t=0;t<data.n-P-1;t++){
+      const d = (data.pts[2*t]-x)**2 + (data.pts[2*t+1]-y)**2;
+      if(d < bd){ bd = d; best = t; }
+    }
+    return best;
+  }
+  // 起點:真實軌跡上的一段(單一起始點,前綴由真實動力學提供)
+  function makePrefix(data, n, P, at=0){
+    const pre = new Float32Array(P*n*2);
+    for(let j=0;j<P;j++) for(let i=0;i<n;i++){
+      pre[j*n*2+2*i]   = data.pts[2*(at+j)];
+      pre[j*n*2+2*i+1] = data.pts[2*(at+j)+1];
+    }
+    return pre;
+  }
+
+  // teacher forcing:每一步的歷史都重設回給定軌跡,只預測一步
+  function teacherErrors(deltaFn, traj, n, P, steps){
+    const out = new Float32Array(steps);
+    const hist = new Float32Array(P*n*2);
+    for(let s=0;s<steps;s++){
+      for(let i=0;i<P*n*2;i++) hist[i] = traj[s*n*2+i];
+      const d = deltaFn(hist, P, n), t = trueDeltaOfHist(hist, P, n);
+      let acc = 0;
+      for(let i=0;i<n;i++) acc += Math.hypot(d[2*i]-t[2*i], d[2*i+1]-t[2*i+1]);
+      out[s] = acc/n;
+    }
+    return out;
+  }
+  const distToCurve = (x,y) => Math.abs(Math.hypot(x,y) - rt(Math.atan2(y,x)));
+  // 生成的軌跡「還像不像真實資料」:整段軌跡離資料流形(那條曲線)的平均距離。
+  // 用它而不是「與真實軌跡的距離」:沿曲線的相位差不是品質缺陷,離開流形才是。
+  function manifoldDev(traj, n, frames){
+    let s = 0;
+    for(let f=0;f<frames;f++) for(let i=0;i<n;i++){
+      const o = f*n*2 + 2*i;
+      s += distToCurve(traj[o], traj[o+1]);
+    }
+    return s/(frames*n);
+  }
+  // 生成軌跡與真實軌跡的逐步平方距離平均。兩者共用起點與同一份過程雜訊,
+  // 所以完美的模型會得到 0 —— 這是比較不同脈絡長度最直接的量。
+  function rolloutMSE(trajA, trajB, n, from, to){
+    let s = 0;
+    for(let f=from;f<to;f++) for(let i=0;i<n;i++){
+      const o = f*n*2 + 2*i;
+      const dx = trajA[o]-trajB[o], dy = trajA[o+1]-trajB[o+1];
+      s += dx*dx + dy*dy;
+    }
+    return s/((to-from)*n);
+  }
+  function gapAt(trajA, trajB, n, f){
+    let s = 0;
+    for(let i=0;i<n;i++){
+      const o = f*n*2 + 2*i;
+      s += Math.hypot(trajA[o]-trajB[o], trajA[o+1]-trajB[o+1]);
+    }
+    return s/n;
+  }
+  return { R, A, LOBES, OMEGA, C, KS, XI, KMAX, DSCALE, SDIM, rt, drt, gauss, accel, termVel,
+           currentOf, trueDeltaOfHist, trueDeltaSeq, featurize, backHistory, makeDataset, sampleWindows,
+           residualGivenPosition, rollout, makeNoise, makePrefix, nearestIndex, teacherErrors,
+           distToCurve, manifoldDev, rolloutMSE, gapAt };
+})();
+/* ===CORE:END=== */
+
+/* ============ 全域狀態 ============ */
+const VIEW = 3.0, LH = 32, BS = 256, NR = 1, HM = 44;  // LH:LSTM 隱藏維度;NR:單一起始點;HM:誤差場解析度
+let params = null, optimizer = null, W = null;          // W:權重的 CPU 快照,推論都在 CPU 做
+let K = 1;                                              // 視窗模式下模型能看見的過去步數
+let streamMode = false;                                 // 串流模式:隱藏狀態一路帶著走,只餵位置
+let step = 0, playing = false, sigma = 0, rollSteps = 300, stepsPerFrame = 8, frame = 0, unrollN = 1;
+let lossHist = [];                                      // {tf, ro}
+const PRE = CORE.KMAX, MAXSTEPS = 400;  // 歷史緩衝長度固定為脈絡上限;雜訊一次配到最長
+let noise = null, prefix = null, truth = null, freeRun = null, tfPred = null;
+let dataset = null, startAt = 0, trainVis = null, errCache = null, probe = null;
+const FLOOR_K2 = 2*CORE.XI*CORE.XI;     // k≥2 的 MSE 下限:過程雜訊的變異數
+let floorK1 = 0;                        // k=1 的 MSE 下限:只給位置時仍無法預測的部分
+let floorRO = 0;                        // 真實軌跡自己離流形的平均距離,即生成軌跡的參考值
+const heatCanvas = document.createElement('canvas');
+// 串流模式下狀態帶得動速度,下限就是過程雜訊;只有「視窗 k=1」才卡在資訊下限
+const floorTF = () => (!streamMode && K===1) ? floorK1 : FLOOR_K2;
+const frames = () => PRE + rollSteps;
+
+/* ============ 模型:LSTM 讀過最近 k 幀,最後的隱藏狀態接一層線性輸出下一步位移 ============
+   一次前向就從第 KMAX−k 格跑到最後一格,共 k 步。輸入投影 x·Wx 與時間無關,
+   整段序列一次矩陣乘完再逐時刻切出來,迴圈裡只剩 h·Wh —— tf.js 的成本幾乎全在
+   op 派發次數上,少一個 op 就是少一次 GPU 往返。 */
+function buildModel(){
+  disposeModel();
+  const S = CORE.SDIM;
+  params = {
+    // 四個閘 [i, f, g, o] 一次算完;遺忘閘的 bias 起始設 1,長脈絡才不會一開始就把狀態忘光
+    Wx: tf.variable(tf.randomNormal([S,4*LH],0,Math.sqrt(1/S))),
+    bx: tf.variable(tf.concat([tf.zeros([LH]), tf.ones([LH]), tf.zeros([2*LH])])),
+    Wh: tf.variable(tf.randomNormal([LH,4*LH],0,Math.sqrt(1/LH))),
+    Wo: tf.variable(tf.randomNormal([LH,2],0,Math.sqrt(1.4/LH))),
+    bo: tf.variable(tf.zeros([2]))
+  };
+  optimizer = tf.train.adam(2e-3);
+  step = 0; lossHist = []; snapshot();
+}
+function disposeModel(){
+  if(!params) return;
+  for(const k in params) params[k].dispose();
+  params = null;
+}
+const varList = ()=> Object.values(params);
+// xAll:整段序列攤平成 [KMAX*n, SDIM];只跑最後 k 個時刻
+function modelDelta(xAll, n, k){
+  const xp = xAll.matMul(params.Wx).add(params.bx);   // [KMAX*n, 4LH],所有時刻的輸入投影
+  let h = tf.zeros([n, LH]), c = h;
+  for(let j=CORE.KMAX-k;j<CORE.KMAX;j++){
+    const z = h.matMul(params.Wh).add(xp.slice([j*n,0],[n,-1]));
+    const ig = tf.sigmoid(z.slice([0,0],    [-1,LH]));
+    const fg = tf.sigmoid(z.slice([0,LH],   [-1,LH]));
+    const gg = tf.tanh(   z.slice([0,2*LH], [-1,LH]));
+    const og = tf.sigmoid(z.slice([0,3*LH], [-1,LH]));
+    c = fg.mul(c).add(ig.mul(gg));
+    h = og.mul(tf.tanh(c));
+  }
+  return h.matMul(params.Wo).add(params.bo);
+}
+/* 串流訓練:狀態在整段窗格裡帶著走,每個時刻都給一次監督(第 0 個除外——那時
+   還只看過一個位置,速度無從定義)。回傳 [(L−1)*n, 2],時刻在外、軌跡在內,
+   與 CORE.trueDeltaSeq 的排列一致。 */
+function modelDeltaSeq(xAll, n, L){
+  const xp = xAll.matMul(params.Wx).add(params.bx);
+  let h = tf.zeros([n, LH]), c = h;
+  const hs = [];
+  for(let j=CORE.KMAX-L;j<CORE.KMAX;j++){
+    const z = h.matMul(params.Wh).add(xp.slice([j*n,0],[n,-1]));
+    const ig = tf.sigmoid(z.slice([0,0],    [-1,LH]));
+    const fg = tf.sigmoid(z.slice([0,LH],   [-1,LH]));
+    const gg = tf.tanh(   z.slice([0,2*LH], [-1,LH]));
+    const og = tf.sigmoid(z.slice([0,3*LH], [-1,LH]));
+    c = fg.mul(c).add(ig.mul(gg));
+    h = og.mul(tf.tanh(c));
+    if(j > CORE.KMAX-L) hs.push(h);
+  }
+  return tf.concat(hs, 0).matMul(params.Wo).add(params.bo);
+}
+
+/* 訓練。N=1 就是純 teacher forcing:每一筆的前綴都重設回真實軌跡。
+   N>1 則先讓模型從真實前綴自己走 0…N−1 步(用目前權重,不追梯度),再在<b>它自己走到的狀態</b>上
+   用真實動力學給的正確答案做監督 —— 這就是 DAgger / scheduled sampling 那一類補丁:
+   把 q 的前綴補進訓練目標的期望裡。代價是每一步要多做 rollout,而且必須在模型自己走到的
+   狀態上也拿得到正確答案(語言模型上那等於請人對模型自己生成的前綴逐 token 標註)。 */
+/* 每一步隨機挑一種:視窗(隨機 k、零狀態、只監督最後一刻)或串流(帶狀態、只餵位置、
+   每一刻都監督)。兩種都用同一組權重,所以「延續隱藏狀態」跟 k 滑桿一樣是即時切換,不必重訓。 */
+function trainStep(){
+  const hist = CORE.sampleWindows(dataset, BS, PRE, sigma);
+  // 串流的每一批一次給 PRE−1 個監督訊號,收斂比視窗快得多,配三成就夠追上
+  const stream = Math.random() < 0.3;
+  const kb = stream ? PRE : 1 + ((Math.random()*CORE.KMAX)|0);
+  if(unrollN > 1) rollTrainingStates(hist, unrollN, kb, stream);
+  const x = tf.tensor2d(CORE.featurize(hist, PRE, kb, BS, stream), [CORE.KMAX*BS, CORE.SDIM]);
+  // 正確答案:在這些狀態上真實系統會怎麼走
+  const tg = stream ? CORE.trueDeltaSeq(hist, PRE, BS) : CORE.trueDeltaOfHist(hist, PRE, BS);
+  for(let i=0;i<tg.length;i++) tg[i] += CORE.XI*CORE.gauss();
+  const y = tf.tensor2d(tg, [tg.length/2, 2]);
+  const cost = optimizer.minimize(()=> (stream ? modelDeltaSeq(x, BS, PRE) : modelDelta(x, BS, kb))
+    .sub(y).square().sum(-1).mean(), true, varList());
+  cost.dispose(); x.dispose(); y.dispose(); step++;
+}
+function rollTrainingStates(hist, N, k, stream){
+  const n = (Math.random()*N)|0;                 // 這一批往前走幾步
+  if(!n) return 0;
+  const cur = (PRE-1)*BS*2, nxt = new Float32Array(BS*2);
+  if(stream) streamPrime(hist, PRE, BS);
+  for(let s=0;s<n;s++){
+    const d = stream ? streamStep(hist.subarray(cur, cur+BS*2), BS)
+                     : forward(CORE.featurize(hist, PRE, k, BS), BS, k);
+    for(let i=0;i<BS*2;i++) nxt[i] = hist[cur+i] + d[i] + CORE.XI*CORE.gauss();
+    hist.copyWithin(0, BS*2);
+    hist.set(nxt, cur);
+  }
+  return n;
+}
+// 權重快照:rollout 是逐步的 batch=1,在 CPU 上跑比每一步等 GPU 同步快得多
+function snapshot(){
+  W = { Wx:params.Wx.dataSync(), bx:params.bx.dataSync(), Wh:params.Wh.dataSync(),
+        Wo:params.Wo.dataSync(), bo:params.bo.dataSync() };
+}
+// 大批次(誤差場、評估)一次算完,走 tf 只需要一次同步;小批次留在 CPU
+const forward = (seq, n, k) => n >= 512 ? forwardTF(seq, n, k) : forwardCPU(seq, n, k);
+const forwardTF = (seq, n, k) => tf.tidy(()=>
+  modelDelta(tf.tensor2d(seq, [CORE.KMAX*n, CORE.SDIM]), n, k).dataSync());
+const sigm = z => 1/(1+Math.exp(-z));
+const hBuf = new Float32Array(LH), cBuf = new Float32Array(LH), zBuf = new Float32Array(4*LH);
+function forwardCPU(seq, n, k){
+  const { Wx, bx, Wh, Wo, bo } = W, S = CORE.SDIM, Q = 4*LH, out = new Float32Array(n*2);
+  for(let i=0;i<n;i++){
+    hBuf.fill(0); cBuf.fill(0);
+    for(let j=CORE.KMAX-k;j<CORE.KMAX;j++){
+      const base = (j*n+i)*S;
+      for(let q=0;q<Q;q++) zBuf[q] = bx[q];
+      for(let d=0;d<S;d++){
+        const v = seq[base+d]; if(v===0) continue;
+        const r = d*Q;
+        for(let q=0;q<Q;q++) zBuf[q] += v*Wx[r+q];
+      }
+      if(j > CORE.KMAX-k) for(let d=0;d<LH;d++){    // 第一個時刻的狀態是零,不必乘
+        const v = hBuf[d], r = d*Q;
+        for(let q=0;q<Q;q++) zBuf[q] += v*Wh[r+q];
+      }
+      for(let q=0;q<LH;q++){
+        const cN = sigm(zBuf[LH+q])*cBuf[q] + sigm(zBuf[q])*Math.tanh(zBuf[2*LH+q]);
+        cBuf[q] = cN;
+        hBuf[q] = sigm(zBuf[3*LH+q])*Math.tanh(cN);
+      }
+    }
+    let o0 = bo[0], o1 = bo[1];
+    for(let q=0;q<LH;q++){ o0 += hBuf[q]*Wo[2*q]; o1 += hBuf[q]*Wo[2*q+1]; }
+    out[2*i] = o0; out[2*i+1] = o1;
+  }
+  return out;
+}
+// 視窗模式:模型只看得到最近 K 幀,不管緩衝區有多長,每次都從零狀態重讀
+const modelOfHist = (hist, P, n) => forward(CORE.featurize(hist, P, K, n), n, K);
+
+/* ---- 串流模式 ----
+   隱藏狀態不歸零,一路帶著走;每一步只餵一幀位置,位移欄留白,速度得由 LSTM
+   自己從連續的位置累積進 (h, c)。這正是 k 失去作用的原因 —— 也是誤差多一條複合
+   路徑的原因:free-running 時漂掉的不只是位置,還有那個誰也拉不回來的狀態。 */
+const S1 = { h:null, c:null };
+function streamStep(pos, n){        // pos:這一幀的 [n*2] 位置。就地更新狀態,回傳這一步的位移預測
+  const { Wx, bx, Wh, Wo, bo } = W, Q = 4*LH, out = new Float32Array(n*2);
+  for(let i=0;i<n;i++){
+    const ho = i*LH;
+    for(let q=0;q<Q;q++) zBuf[q] = bx[q];
+    for(let d=0;d<2;d++){                       // 只有位置兩欄,位移欄在串流模式恆為 0
+      const v = pos[2*i+d]; if(v===0) continue;
+      const r = d*Q;
+      for(let q=0;q<Q;q++) zBuf[q] += v*Wx[r+q];
+    }
+    for(let d=0;d<LH;d++){
+      const v = S1.h[ho+d]; if(v===0) continue;
+      const r = d*Q;
+      for(let q=0;q<Q;q++) zBuf[q] += v*Wh[r+q];
+    }
+    let o0 = bo[0], o1 = bo[1];
+    for(let q=0;q<LH;q++){
+      const cN = sigm(zBuf[LH+q])*S1.c[ho+q] + sigm(zBuf[q])*Math.tanh(zBuf[2*LH+q]);
+      const hN = sigm(zBuf[3*LH+q])*Math.tanh(cN);
+      S1.c[ho+q] = cN; S1.h[ho+q] = hN;
+      o0 += hN*Wo[2*q]; o1 += hN*Wo[2*q+1];
+    }
+    out[2*i] = o0; out[2*i+1] = o1;
+  }
+  return out;
+}
+// 用一段軌跡的前 P−1 幀把狀態暖機,之後第一次 streamStep 餵的就是第 P−1 幀
+function streamPrime(traj, P, n){
+  S1.h = new Float32Array(n*LH); S1.c = new Float32Array(n*LH);
+  for(let f=0;f<P-1;f++) streamStep(traj.subarray(f*n*2, (f+1)*n*2), n);
+}
+// 接上 CORE.rollout / teacherErrors 的介面:只讀最新的一幀,歷史留在狀態裡
+const streamOfHist = (hist, P, n) => streamStep(CORE.currentOf(hist, P, n), n);
+// 目前該用哪一個預測器。串流的要先 streamPrime 才有意義。
+const predictor = () => streamMode ? streamOfHist : modelOfHist;
+
+/* ============ 軌跡與誤差場 ============ */
+// 左圖的灰點:訓練批次實際看到的狀態(含 σ 擴增後的位置)
+function makeTrainVis(){
+  const m = 900, hist = CORE.sampleWindows(dataset, m, PRE, sigma);
+  return hist.slice((PRE-1)*m*2);   // 取每個窗格的最後一幀
+}
+// 雜訊一次配到 MAXSTEPS 並固定下來:拖「生成步數」時,已經走過的那一段完全不變,只是往後接。
+// 真實軌跡同理只算一次(它不隨模型改變),畫圖與統計都只取前 frames() 幀。
+function reseed(){
+  noise = CORE.makeNoise(NR, MAXSTEPS);
+  rebuildStart();
+}
+function rebuildStart(){
+  prefix = CORE.makePrefix(dataset, NR, PRE, startAt);
+  truth = CORE.rollout(CORE.trueDeltaOfHist, prefix, NR, PRE, MAXSTEPS, noise);
+  floorRO = CORE.manifoldDev(truth, NR, frames());
+}
+const meanOf = a => { let s=0; for(let i=0;i<a.length;i++) s+=a[i]; return s/a.length; };
+let errOnP = 0, errOnQ = 0;   // 同一個模型,同一種量測,只差前綴取自 p 還是 q
+/* 訓練批次的損失混了兩種模式與 k=1..KMAX,看不出差別;這裡另外在「目前的設定」上量一次。
+   對無雜訊的條件期望取 MSE 再加回 2·XI²,等於對帶雜訊觀測的 MSE(ξ 與其他項獨立)。
+   串流模式的單步量測用 PRE 幀的位置暖機——與視窗模式讀同樣長的歷史,差別只在
+   有沒有把位移直接餵進去,兩邊因此可以直接對比。 */
+function evalMSE(k, m=1024){
+  const hist = CORE.sampleWindows(dataset, m, PRE, 0);
+  if(streamMode) k = PRE;
+  const pred = forward(CORE.featurize(hist, PRE, k, m, streamMode), m, k);
+  const tgt = CORE.trueDeltaOfHist(hist, PRE, m);
+  let s = 0;
+  for(let i=0;i<m;i++){
+    const dx = pred[2*i]-tgt[2*i], dy = pred[2*i+1]-tgt[2*i+1];
+    s += dx*dx + dy*dy;
+  }
+  return s/m + FLOOR_K2;
+}
+/* 串流模式下每一次量測都得先把狀態暖機:free-running 從真實前綴暖起、之後狀態跟著自己的
+   輸出一路帶下去;teacher forcing 則沿著被量的那條軌跡重新暖機一次。 */
+function recompute(push){
+  const f = predictor();
+  if(streamMode) streamPrime(prefix, PRE, NR);
+  freeRun = CORE.rollout(f, prefix, NR, PRE, rollSteps, noise);
+  // exposure bias 的直接量測:訓練目標只在 p 的前綴上取期望,模型自己走的卻是 q 的前綴
+  if(streamMode) streamPrime(truth, PRE, NR);
+  errOnP = meanOf(CORE.teacherErrors(f, truth,   NR, PRE, rollSteps));
+  if(streamMode) streamPrime(freeRun, PRE, NR);
+  errOnQ = meanOf(CORE.teacherErrors(f, freeRun, NR, PRE, rollSteps));
+  // teacher forcing 的落點:歷史重設回真實軌跡,只走一步
+  tfPred = new Float32Array(rollSteps*NR*2);
+  const hist = new Float32Array(PRE*NR*2);
+  if(streamMode) streamPrime(truth, PRE, NR);
+  for(let s=0;s<rollSteps;s++){
+    for(let i=0;i<PRE*NR*2;i++) hist[i] = truth[s*NR*2+i];
+    const d = f(hist, PRE, NR), cur = (PRE-1)*NR*2;
+    for(let i=0;i<NR*2;i++) tfPred[s*NR*2+i] = hist[cur+i] + d[i];
+  }
+  computeErrField();
+  updateReadouts(push);
+}
+/* 讀數全部針對「目前畫面上的那一條」生成軌跡:NR=1,freeRun 就是左圖畫的那條,
+   truth 是青色那條,兩者共用起點與同一份過程雜訊。MSE 只沿著這條軌跡的步數平均,
+   沒有跨樣本平均。放在 recompute() 尾端,任何改變軌跡的操作(換 k、換起點、拉步數、
+   暫停中的重設)都會跟著更新,不必等訓練迴圈。 */
+function updateReadouts(push){
+  const ro = CORE.manifoldDev(freeRun, NR, frames());
+  // 分視野看:長程會飽和在「兩條軌跡完全不相關」的水準,相位一旦漂掉就只反映曲線大小
+  const h10 = CORE.rolloutMSE(freeRun, truth, NR, PRE, PRE+Math.min(10,rollSteps));
+  const h50 = CORE.rolloutMSE(freeRun, truth, NR, PRE, PRE+Math.min(50,rollSteps));
+  const gm  = CORE.rolloutMSE(freeRun, truth, NR, PRE, frames());
+  const L = evalMSE(K);
+  document.getElementById('stepVal').textContent = step;
+  document.getElementById('tfVal').textContent = L.toExponential(2);
+  document.getElementById('gmVal').textContent =
+    `@10 ${h10.toExponential(1)} · @50 ${h50.toExponential(1)} · 全程 ${gm.toExponential(1)}`;
+  document.getElementById('roVal').textContent = `${ro.toFixed(3)}(真實 ${floorRO.toFixed(3)})`;
+  document.getElementById('pqVal').textContent =
+    `${errOnP.toExponential(1)} → ${errOnQ.toExponential(1)}(${(errOnQ/Math.max(errOnP,1e-9)).toFixed(1)}×)`;
+  if(push) lossHist.push({ tf:Math.max(L,1e-8), ro:Math.max(ro,1e-6), gm:Math.max(h50,1e-8) });
+}
+function computeErrField(){
+  const n = HM*HM, gp = new Float32Array(n*2);
+  for(let i=0;i<HM;i++)for(let j=0;j<HM;j++){
+    gp[2*(i*HM+j)]   = -VIEW + 2*VIEW*j/(HM-1);
+    gp[2*(i*HM+j)+1] =  VIEW - 2*VIEW*i/(HM-1);
+  }
+  const kk = streamMode ? PRE : K;
+  const pv = forward(CORE.featurize(CORE.backHistory(gp, n, PRE), PRE, kk, n, streamMode), n, kk);
+  const tv = CORE.termVel(gp, n);
+  const img = new Uint8ClampedArray(n*4);
+  // 亮=單步誤差小(模型可信),暗=誤差大。訓練分布覆蓋到的地方會亮成一條細管。
+  const LO = Math.log(1e-3), HI = Math.log(1e0);
+  for(let i=0;i<n;i++){
+    const e = Math.hypot(pv[2*i]-tv[2*i], pv[2*i+1]-tv[2*i+1]);
+    const v = Math.min(1, Math.max(0, (Math.log(Math.max(e,1e-6))-LO)/(HI-LO)));
+    img[4*i]   = 127 + v*(14-127);
+    img[4*i+1] = 240 + v*(22-240);
+    img[4*i+2] = 255 + v*(38-255);
+    img[4*i+3] = 255;
+  }
+  errCache = img;
+}
+const errAt = (x,y) => {
+  const s = Float32Array.of(x,y), kk = streamMode ? PRE : K;
+  const p = forward(CORE.featurize(CORE.backHistory(s, 1, PRE), PRE, kk, 1, streamMode), 1, kk);
+  const t = CORE.termVel(s, 1);
+  return Math.hypot(p[0]-t[0], p[1]-t[1]);
+};
+
+/* ============ 畫布工具 ============ */
+function setupCanvas(cv, square=true){
+  const dpr = window.devicePixelRatio||1;
+  const w = cv.clientWidth, h = square? w : Math.round(w*0.62);
+  cv.width = w*dpr; cv.height = h*dpr;
+  cv.style.height = h+'px';
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  return ctx;
+}
+const dataCv = document.getElementById('dataCv');
+const errCv  = document.getElementById('errCv');
+const lossCv = document.getElementById('lossCv');
+let dtx, etx, xtx;
+function resizeAll(){ dtx=setupCanvas(dataCv); etx=setupCanvas(errCv); xtx=setupCanvas(lossCv,false); draw(); }
+window.addEventListener('resize', ()=>resizeAll());
+
+const toPx = (cv,x,y)=>[ (x/VIEW*0.5+0.5)*cv.clientWidth, (0.5-y/VIEW*0.5)*cv.clientWidth ];
+const toXY = (cv,px,py)=>[ (px/cv.clientWidth-0.5)*2*VIEW, (0.5-py/cv.clientWidth)*2*VIEW ];
+// 生成順序的色階:早=深紫,晚=亮粉
+const rampColor = t => `hsl(${268+72*t},${70+22*t}%,${40+28*t}%)`;
+
+function drawGrid(ctx,cv){
+  const w=cv.clientWidth;
+  ctx.clearRect(0,0,w,w);
+  ctx.strokeStyle='#1a2740'; ctx.lineWidth=1;
+  for(let v=-2;v<=2;v++){
+    const [px]=toPx(cv,v,0), [,py]=toPx(cv,0,v);
+    ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,w);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(w,py);ctx.stroke();
+  }
+  ctx.strokeStyle='#2b3d5e';
+  const [cx,cy]=toPx(cv,0,0);
+  ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,w);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(w,cy);ctx.stroke();
+}
+function drawCurve(ctx, cv, color, width, dash){
+  ctx.strokeStyle=color; ctx.lineWidth=width; ctx.setLineDash(dash||[]);
+  ctx.beginPath();
+  for(let k=0;k<=240;k++){
+    const th = k/240*2*Math.PI, r = CORE.rt(th);
+    const [px,py]=toPx(cv, r*Math.cos(th), r*Math.sin(th));
+    k?ctx.lineTo(px,py):ctx.moveTo(px,py);
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+}
+function drawTraj(ctx, cv, traj, i, color, width, alpha){
+  ctx.strokeStyle=color; ctx.lineWidth=width; ctx.globalAlpha=alpha;
+  ctx.lineJoin='round'; ctx.beginPath();
+  for(let f=0;f<frames();f++){
+    const o = f*NR*2 + 2*i;
+    const [px,py]=toPx(cv, traj[o], traj[o+1]);
+    f?ctx.lineTo(px,py):ctx.moveTo(px,py);
+  }
+  ctx.stroke(); ctx.globalAlpha=1;
+}
+// 逐段上色:顏色即生成順序,一眼看出哪一段是後來才走出去的
+function drawTrajRamp(ctx, cv, traj, i, width){
+  const F = frames();
+  ctx.lineWidth=width; ctx.lineCap='round'; ctx.lineJoin='round';
+  for(let f=1;f<F;f++){
+    const a = (f-1)*NR*2 + 2*i, b = f*NR*2 + 2*i;
+    ctx.strokeStyle = rampColor((f-1)/Math.max(1,F-2));
+    const [x0,y0]=toPx(cv, traj[a], traj[a+1]);
+    const [x1,y1]=toPx(cv, traj[b], traj[b+1]);
+    ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
+  }
+}
+
+/* ============ 主繪圖 ============ */
+function draw(){
+  if(!W||!freeRun) return;
+  const F = frames(), last = (F-1)*NR*2;
+
+  /* ---- 狀態空間 ---- */
+  drawGrid(dtx, dataCv);
+  drawCurve(dtx, dataCv, '#1f3a5c', 1.5, [5,5]);
+  if(document.getElementById('showData').checked && trainVis){
+    dtx.fillStyle='#55617e'; dtx.globalAlpha=0.5;
+    for(let i=0;i<trainVis.length/2;i++){
+      const [px,py]=toPx(dataCv, trainVis[2*i], trainVis[2*i+1]);
+      dtx.beginPath();dtx.arc(px,py,1.4,0,7);dtx.fill();
+    }
+    dtx.globalAlpha=1;
+  }
+  drawTraj(dtx, dataCv, truth, 0, '#5edfff', 3, 0.4);
+  if(document.getElementById('showTF').checked){
+    dtx.fillStyle='#ffb454'; dtx.globalAlpha=0.85;
+    for(let s=0;s<rollSteps;s+=2){
+      const o = s*NR*2;
+      const [px,py]=toPx(dataCv, tfPred[o], tfPred[o+1]);
+      dtx.beginPath();dtx.arc(px,py,1.3,0,7);dtx.fill();
+    }
+    dtx.globalAlpha=1;
+  }
+  drawTrajRamp(dtx, dataCv, freeRun, 0, 2);
+  const [ex,ey]=toPx(dataCv, freeRun[last], freeRun[last+1]);
+  dtx.fillStyle=rampColor(1); dtx.strokeStyle='#0c1220'; dtx.lineWidth=1.5;
+  dtx.beginPath();dtx.arc(ex,ey,4.5,0,7);dtx.fill();dtx.stroke();
+  const [sx,sy]=toPx(dataCv, prefix[0], prefix[1]);
+  dtx.strokeStyle='#e8edf6'; dtx.lineWidth=1.4;
+  dtx.beginPath();dtx.arc(sx,sy,5,0,7);dtx.stroke();
+  dtx.fillStyle='#8fa0bc'; dtx.font='11px IBM Plex Mono'; dtx.textAlign='center';
+  dtx.fillText('起點', sx, sy+18);
+
+  /* ---- 誤差場 ---- */
+  const w = errCv.clientWidth;
+  etx.clearRect(0,0,w,w);
+  if(errCache){
+    heatCanvas.width = HM; heatCanvas.height = HM;
+    heatCanvas.getContext('2d').putImageData(new ImageData(errCache,HM,HM),0,0);
+    etx.imageSmoothingEnabled = true;
+    etx.drawImage(heatCanvas, 0, 0, w, w);
+  }
+  drawCurve(etx, errCv, 'rgba(232,237,246,0.35)', 1.2, [4,4]);
+  drawTrajRamp(etx, errCv, freeRun, 0, 2);
+  if(probe){
+    const e = errAt(probe[0], probe[1]);
+    const [px,py]=toPx(errCv, probe[0], probe[1]);
+    etx.strokeStyle='#ff6b9d'; etx.lineWidth=2;
+    etx.beginPath();etx.arc(px,py,7,0,7);etx.stroke();
+    etx.beginPath();etx.moveTo(px-11,py);etx.lineTo(px+11,py);etx.moveTo(px,py-11);etx.lineTo(px,py+11);etx.stroke();
+    document.getElementById('probeVal').textContent = e.toExponential(1);
+  }
+
+  /* ---- 損失曲線(對數刻度) ---- */
+  const lw = lossCv.clientWidth, hh = lossCv.clientHeight;
+  xtx.clearRect(0,0,lw,hh);
+  const win = lossHist.slice(-240);
+  if(win.length>1){
+    let lo=Math.min(floorTF(), floorRO), hi=0;
+    for(const p of win){ lo=Math.min(lo,p.tf,p.ro,p.gm); hi=Math.max(hi,p.tf,p.ro,p.gm); }
+    lo = Math.max(lo, 1e-6); hi = Math.max(hi, lo*10);
+    const span = Math.log10(hi/lo);
+    const ypx = v => hh - (Math.log10(Math.max(v,lo)/lo)/span)*(hh-16) - 8;
+    xtx.strokeStyle='#1a2740'; xtx.lineWidth=1;
+    for(let d=Math.ceil(Math.log10(lo)); d<=Math.floor(Math.log10(hi)); d++){
+      const y = ypx(Math.pow(10,d));
+      xtx.beginPath();xtx.moveTo(0,y);xtx.lineTo(lw,y);xtx.stroke();
+      xtx.fillStyle='#5a6c8f'; xtx.font='9px IBM Plex Mono'; xtx.textAlign='left';
+      xtx.fillText('1e'+d, 3, y-2);
+    }
+    // 每條曲線各自的理論下限:琥珀=過程雜訊的變異數,粉紅=真實軌跡自己離流形的距離
+    const floorLine = (v,col)=>{
+      xtx.strokeStyle=col; xtx.lineWidth=1.2; xtx.globalAlpha=0.55; xtx.setLineDash([5,4]);
+      const y = ypx(v);
+      xtx.beginPath();xtx.moveTo(0,y);xtx.lineTo(lw,y);xtx.stroke();
+      xtx.setLineDash([]); xtx.globalAlpha=1;
+    };
+    floorLine(floorTF(),'#ffb454'); floorLine(floorRO,'#ff6b9d');
+    const line = (key,col)=>{
+      xtx.strokeStyle=col; xtx.lineWidth=1.8; xtx.beginPath();
+      win.forEach((p,i)=>{ const x=i/(win.length-1)*lw, y=ypx(p[key]); i?xtx.lineTo(x,y):xtx.moveTo(x,y); });
+      xtx.stroke();
+    };
+    line('tf','#ffb454'); line('ro','#ff6b9d'); line('gm','#5edfff');
+  }
+}
+
+/* ============ 互動 ============ */
+function pickProbe(ev){
+  const r = errCv.getBoundingClientRect();
+  const px = (ev.touches? ev.touches[0].clientX:ev.clientX)-r.left;
+  const py = (ev.touches? ev.touches[0].clientY:ev.clientY)-r.top;
+  probe = toXY(errCv,px,py);
+  if(!playing) draw();
+}
+let dragging=false;
+errCv.addEventListener('pointerdown',e=>{dragging=true;pickProbe(e);try{errCv.setPointerCapture(e.pointerId);}catch{}});
+errCv.addEventListener('pointermove',e=>{ if(dragging) pickProbe(e); });
+errCv.addEventListener('pointerup',()=>dragging=false);
+
+// 左圖點擊:換一個起點。取資料集裡最接近的那一幀,前綴才仍然是真實軌跡的一段。
+function pickStart(ev){
+  const r = dataCv.getBoundingClientRect();
+  const [wx,wy] = toXY(dataCv, (ev.touches? ev.touches[0].clientX:ev.clientX)-r.left,
+                              (ev.touches? ev.touches[0].clientY:ev.clientY)-r.top);
+  startAt = CORE.nearestIndex(dataset, wx, wy, PRE + MAXSTEPS);
+  rebuildStart(); recompute();
+  if(!playing) draw();
+}
+let draggingStart=false;
+dataCv.addEventListener('pointerdown',e=>{draggingStart=true;pickStart(e);try{dataCv.setPointerCapture(e.pointerId);}catch{}});
+dataCv.addEventListener('pointermove',e=>{ if(draggingStart) pickStart(e); });
+dataCv.addEventListener('pointerup',()=>draggingStart=false);
+
+document.getElementById('sigma').addEventListener('input',e=>{
+  sigma = +e.target.value;
+  document.getElementById('sigmaVal').textContent = sigma.toFixed(2);
+  trainVis = makeTrainVis();                      // 訓練分布變了,左圖的灰點跟著變
+  if(!playing) draw();
+});
+document.getElementById('kSlide').addEventListener('input',e=>{
+  K = +e.target.value;                            // 同一組權重涵蓋所有 k,不必重訓
+  document.getElementById('kVal').textContent = K;
+  recompute();
+  if(!playing) draw();
+});
+document.getElementById('steps').addEventListener('input',e=>{
+  rollSteps = +e.target.value;                    // 雜訊與真實軌跡不動,只是往後多接幾步
+  document.getElementById('stepsVal').textContent = rollSteps;
+  floorRO = CORE.manifoldDev(truth, NR, frames());
+  recompute();
+  if(!playing) draw();
+});
+document.getElementById('unroll').addEventListener('input',e=>{
+  unrollN = +e.target.value;                      // N=1 是純 teacher forcing;N>1 把 q 的前綴放進損失
+  document.getElementById('unrollVal').textContent = unrollN;
+});
+document.getElementById('speed').addEventListener('input',e=>{
+  stepsPerFrame = +e.target.value; document.getElementById('speedVal').textContent = stepsPerFrame;
+});
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  buildModel(); reseed(); recompute(); draw();
+});
+const playBtn = document.getElementById('playBtn');
+playBtn.addEventListener('click',()=>{
+  playing = !playing; playBtn.textContent = playing? '⏸ 暫停':'▶ 繼續訓練';
+});
+for(const id of ['showData','showTF']) document.getElementById(id).addEventListener('change',()=>draw());
+document.getElementById('streamOn').addEventListener('change',e=>{
+  streamMode = e.target.checked;                    // 兩種模式一直都在訓練,所以是即時切換
+  document.getElementById('kCtrl').style.opacity = streamMode ? .35 : 1;
+  document.getElementById('kSlide').disabled = streamMode;
+  lossHist = [];                                   // 兩種模式的下限不同,曲線不能接在一起
+  recompute();
+  if(!playing) draw();
+});
+
+/* ============ 主迴圈 ============ */
+function loop(){
+  if(params){
+    if(playing){
+      for(let i=0;i<stepsPerFrame;i++) trainStep();
+      snapshot();
+      if(frame%4===0){
+        recompute(true);
+      }
+    }
+    if(frame%2===0 && (playing||frame%30===0)) draw();
+  }
+  frame++;
+  requestAnimationFrame(loop);
+}
+
+/* ============ 啟動 ============ */
+(async function init(){
+  try{ await tf.setBackend('webgl'); }catch(e){ await tf.setBackend('cpu'); }
+  await tf.ready();
+  dataset = CORE.makeDataset(20000);          // 訓練資料:一段兩萬步的真實軌跡
+  floorK1 = CORE.residualGivenPosition(dataset);
+  buildModel();
+  trainVis = makeTrainVis();
+  reseed(); recompute();
+  document.getElementById('loading').style.display='none';
+  resizeAll();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

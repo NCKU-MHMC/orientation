@@ -1,0 +1,207 @@
+/* 課程 demo 共用外殼樣式。所有 demo 一律 <link> 此檔,禁止在各頁重複定義配色與字體。
+   配色與字級的單一來源;canvas 內的繪圖顏色見 theme.js(window.DEMO)。 */
+
+:root {
+  /* 紙面與墨色 */
+  --paper: #f4f2ed;
+  --paper-2: #fbfaf7;
+  --paper-3: #edeae2;
+  --ink: #191817;
+  --ink-2: #4a453d;
+  --muted: #7a736a;
+  --rule: #ddd8ce;
+  --rule-2: #c9c2b5;
+
+  /* 焦點色:整套 demo 只有這一個強調色 */
+  --accent: #c05a32;
+  --accent-ink: #9c4620;
+  --accent-tint: #f0e2d8;
+
+  /* 資料語意色。data=目標分布、model=模型分布、third=第三方/混合、warn=失效 */
+  --data: #2f5d7c;
+  --model: #c05a32;
+  --third: #5f7350;
+  --warn: #a03a2e;
+  --grid: #dfdacf;
+
+  --serif: 'Source Serif 4', 'Noto Serif TC', 'Songti TC', Georgia, serif;
+  --sans: 'Source Sans 3', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'DejaVu Sans Mono', monospace;
+
+  --radius: 8px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  padding: 22px 24px 44px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- 頁首 ---- */
+header, .wrap { max-width: 1200px; margin: 0 auto; }
+header { margin-bottom: 18px; }
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+h1 {
+  font-family: var(--serif);
+  font-size: clamp(21px, 3vw, 30px);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  margin: 8px 0 6px;
+  color: var(--ink);
+}
+h1 code, h1 .k, h1 .eb, h1 .nf { font-family: var(--mono); font-size: 0.86em; color: var(--accent-ink); }
+.sub {
+  color: var(--ink-2);
+  font-size: 14px;
+  max-width: 58rem;
+  line-height: 1.75;
+}
+.sub b { color: var(--ink); font-weight: 600; }
+.sub code { font-family: var(--mono); font-size: 12.5px; color: var(--accent-ink); }
+
+/* ---- 控制列 ---- */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+  align-items: center;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin: 14px 0 16px;
+}
+.ctrl { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink-2); }
+.ctrl label { white-space: nowrap; }
+
+select, button {
+  font-family: var(--sans);
+  font-size: 13.5px;
+  border-radius: var(--radius);
+  border: 1px solid var(--rule-2);
+  background: var(--paper-2);
+  color: var(--ink);
+  padding: 6px 11px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+button:hover, select:hover { border-color: var(--accent); }
+button:active { transform: translateY(1px); }
+button:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+button.primary {
+  background: var(--accent);
+  color: #fdfbf7;
+  font-weight: 600;
+  border-color: var(--accent);
+  padding: 7px 16px;
+}
+button.primary:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+input[type=range] { accent-color: var(--accent); width: 118px; }
+.toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+.toggle input { accent-color: var(--accent); }
+.val { font-family: var(--mono); color: var(--ink); min-width: 3ch; text-align: right; }
+
+.readout {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: auto;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.readout b { color: var(--ink); font-weight: 500; }
+
+/* ---- 面板 ---- */
+.panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.panel {
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 12px 14px 14px;
+  min-width: 0;
+}
+.panel h2 {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  margin-bottom: 3px;
+  color: var(--ink);
+}
+.panel h2 code { font-family: var(--mono); font-size: 0.9em; color: var(--accent-ink); }
+.panel .hint { font-size: 12px; color: var(--muted); margin-bottom: 8px; line-height: 1.6; }
+.panel .hint b { color: var(--ink-2); font-weight: 600; }
+
+canvas {
+  width: 100%;
+  display: block;
+  border-radius: 6px;
+  background: var(--paper-3);
+  touch-action: none;
+}
+
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); margin-top: 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+/* ---- 課堂註記 ---- */
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 16px; }
+.note {
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--ink-2);
+}
+.note h3 { font-family: var(--serif); font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+.note.n2 { border-left-color: var(--data); }
+.note.n3 { border-left-color: var(--third); }
+.note.n4 { border-left-color: var(--rule-2); }
+.note code { font-family: var(--mono); font-size: 12px; color: var(--accent-ink); background: var(--paper-3); padding: 1px 5px; border-radius: 4px; }
+.note b { color: var(--ink); font-weight: 600; }
+
+.loading { font-family: var(--mono); font-size: 12px; color: var(--muted); padding: 8px 0; }
+
+.out { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); line-height: 1.7; margin-top: 8px; }
+.out b { color: var(--ink); font-weight: 500; }
+
+@media (max-width: 760px) {
+  .readout { margin-left: 0; }
+  body { padding: 14px 12px 36px; }
+  .panels { grid-template-columns: 1fr; }
+}
+
+/* ---- 課堂 iframe 嵌入:DemoFrame 會掛上 body.embed;視窗過矮時同樣收起長說明 ---- */
+@media (max-height: 620px) {
+  .sub, .notes, .note { display: none; }
+  h1 { font-size: 19px; margin: 6px 0; }
+}
+body.embed .sub, body.embed .notes, body.embed .note { display: none; }
+/* 標題由投影片上的 DemoFrame 顯示,頁內的 eyebrow 與 h1 收起,高度全留給圖 */
+body.embed .eyebrow, body.embed h1 { display: none; }
+body.embed header { margin-bottom: 8px; }
+body.embed { padding: 10px 16px 10px; }
+body.embed .controls { margin-bottom: 10px; }
+body.embed .panels { gap: 10px; }
+body.embed .panel { padding: 8px 10px 10px; }
+body.embed .panel .hint { margin-bottom: 5px; }
+body.embed .legend, body.embed .marks { margin-top: 5px; }

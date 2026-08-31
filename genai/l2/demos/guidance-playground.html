@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guidance 統一式操場</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
+<style>
+  /* 這支 demo 專屬的樣式;通用外殼在 theme.css */
+  header, .wrap { max-width: 1100px; }
+  .formula { font-family: var(--mono); font-size: 15px; color: var(--accent-ink); margin: 8px 0; letter-spacing: .01em; }
+  .presets { display: flex; gap: 8px; flex-wrap: wrap; }
+  .presets button.active { background: var(--accent); color: #fdfbf7; font-weight: 600; border-color: var(--accent); }
+  #w { width: 180px; }
+  #wVal { min-width: 4ch; }
+  input[type=range]:disabled { opacity: .35; cursor: not-allowed; }
+  .lockNote {
+    display: none; background: var(--paper-2);
+    border: 1px solid var(--rule); border-left: 3px solid var(--warn);
+    color: var(--warn); border-radius: var(--radius);
+    padding: 10px 14px; font-size: 13.5px; margin-bottom: 10px; font-weight: 600;
+  }
+  #cv { height: 380px; }
+  .legend .dot { width: 9px; height: 9px; border-radius: 2px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">生成模型入門 · 第一堂 · Demo 01</div>
+  <h1>Guidance 統一式操場</h1>
+  <div class="formula">log p_guided = log p_base + w · (log p_A − log p_B)　(再 renormalize)</div>
+  <p class="sub">temperature、CFG、contrastive decoding 都只是同一個係數 <b>w</b> 取不同大小、
+    搭配不同的 (A,B) — temperature 這一格的 w 就是 <b>1/T</b>,往左拉 T 升高、分布攤平,往右拉 T 降低、分布尖化;
+    唯獨 prompt engineering 動的是 base 本身,不在係數這一欄。切換下方四個預設,拉動同一根滑桿。</p>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div class="presets">
+      <button data-preset="temperature">Temperature</button>
+      <button data-preset="cfg">CFG</button>
+      <button data-preset="contrastive">Contrastive Decoding</button>
+      <button data-preset="promptEng">Prompt Engineering</button>
+    </div>
+    <div class="ctrl"><label for="w">w</label>
+      <input type="range" id="w" min="-3" max="3" step="0.1" value="0">
+      <span class="val" id="wVal">0.0</span>
+    </div>
+    <label class="toggle ctrl"><input type="checkbox" id="logView"> 對數空間檢視</label>
+    <div class="readout">
+      <span>H(guided) <b id="hVal">–</b> bits</span>
+      <span>top-1 <b id="t1Val">–</b></span>
+      <span>被截斷質量 <b id="tmVal">–</b></span>
+      <span id="unitVal"></span>
+    </div>
+  </div>
+
+  <div class="lockNote" id="lockNote">此手法不在係數的位置上 — prompt engineering 只更換了 base 的 logits,
+    (A−B) 恆為 0(圖上 p<sub>A</sub> 與 p<sub>B</sub> 兩條線完全重合,沒有方向),
+    w 滑桿變灰、拉動它不會改變任何輸出。</div>
+
+  <div class="panel">
+    <h2 id="panelTitle">next-token 分布(20 個候選 token)</h2>
+    <p class="hint" id="hintText"></p>
+    <canvas id="cv"></canvas>
+    <div class="legend" id="legend"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* CORE:BEGIN */
+const CORE = (function(){
+  const TOKENS = ['的','了','是','在','有','我','你','他','這','那','很','也','就','都','不','去','來','說','會','要'];
+  function bumps(n, list){
+    const a = new Array(n).fill(0);
+    for(const [c,w,h] of list) for(let i=0;i<n;i++) a[i] += h*Math.exp(-((i-c)**2)/(2*w*w));
+    return a;
+  }
+  function softmax(logits){
+    const m = Math.max(...logits);
+    const ex = logits.map(x=>Math.exp(x-m));
+    const s = ex.reduce((a,b)=>a+b,0);
+    return ex.map(x=>x/s);
+  }
+  function guidedLogits(base,A,B,w){ return base.map((b,i)=> b + w*(A[i]-B[i])); }
+  function entropy(p){ return p.reduce((s,x)=> x>1e-12 ? s - x*Math.log2(x) : s, 0); }
+  function top1(p){ return Math.max(...p); }
+  function truncatedMass(baseP,guidedP){ return baseP.reduce((s,b,i)=> s + Math.max(b-guidedP[i],0), 0); }
+
+  const ZERO = new Array(20).fill(0);
+  const TEMP_BASE = bumps(20,[[3,1.3,4],[11,1.8,2.2],[16,1,1.4]]);
+  const CFG_BASE  = bumps(20,[[7,1,5],[8,1.3,3]]);
+  const CFG_B     = bumps(20,[[2,2,2],[9,2,1.8],[14,2,2],[18,1.5,1.5]]);
+  const CD_BASE   = bumps(20,[[12,0.9,5],[13,1.1,3]]);
+  const CD_B      = bumps(20,[[12,1,3],[5,2,2],[16,2,2]]);
+  const PE_BASE   = bumps(20,[[1,1,4],[6,1.2,3]]);
+
+  const presets = {
+    temperature: { label:'Temperature', base:ZERO, ref:TEMP_BASE, A:TEMP_BASE, B:ZERO, locked:false,
+      wMin:0, wMax:3, w0:1, wLabel:'w = 1/T', unit: w => w>0.001 ? `T = ${(1/w).toFixed(2)}` : 'T → ∞',
+      note:'base=均勻分布(全零 logits),A=一般 next-token logits、B=0,於是 w 就字面上等於 1/T:guided logits = log p / T。w=1 是原始分布(灰色參考長條);w 往右 → T 變小 → 分布變尖;w 往左 → T 變大 → 分布往均勻攤平,w=0 時完全均勻。' },
+    cfg: { label:'CFG', base:CFG_BASE, A:CFG_BASE, B:CFG_B, locked:false,
+      wMin:-3, wMax:3, w0:0,
+      note:'base=條件分布 log p(x|c)(已偏向主題 token)。A=條件、B=無條件 log p(x)(較平)。w 越大,越往「條件−無條件」方向推,條件被強化,對應 classifier-free guidance 的 scale。' },
+    contrastive: { label:'Contrastive Decoding', base:CD_BASE, A:CD_BASE, B:CD_B, locked:false,
+      wMin:-3, wMax:3, w0:0,
+      note:'base=強模型 log p_strong。A=強模型、B=弱模型 log p_weak。w 越大,越壓低「弱模型也會給高機率」的 token,只留下強模型獨有的信心 — 對應 contrastive decoding / DoLa 的對比強度 λ。' },
+    promptEng: { label:'Prompt Engineering', base:PE_BASE, A:ZERO, B:ZERO, locked:true,
+      wMin:-3, wMax:3, w0:0,
+      note:'按下後只換了 base 的 logits(相當於換了 prompt / 條件變數 c),A=B=0,(A−B) 恆為零向量 — w 這根桿子完全動不了輸出。這就是「prompt 不在係數的位置上」的字面意思。' }
+  };
+  return { TOKENS, softmax, guidedLogits, entropy, top1, truncatedMass, presets };
+})();
+/* CORE:END */
+
+/* ============ 畫布與互動 ============ */
+const cv = document.getElementById('cv');
+let ctx, W, H;
+function resize(){
+  const dpr = window.devicePixelRatio||1;
+  W = cv.clientWidth; H = cv.clientHeight;
+  cv.width = W*dpr; cv.height = H*dpr;
+  ctx = cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  render();
+}
+window.addEventListener('resize', resize);
+
+let presetKey = 'temperature', wVal = 0, logView = false;
+const wSlider = document.getElementById('w'), wValEl = document.getElementById('wVal');
+const lockNote = document.getElementById('lockNote'), hintText = document.getElementById('hintText');
+const legend = document.getElementById('legend');
+const wLabelEl = document.querySelector('label[for=w]'), unitEl = document.getElementById('unitVal');
+
+function current(){ return CORE.presets[presetKey]; }
+
+function drawBars(baseP, guidedP, pA, pB){
+  ctx.clearRect(0,0,W,H);
+  const n = CORE.TOKENS.length, slot = W/n, pad = 20;
+  const ymax = Math.max(...baseP, ...guidedP, ...pA, ...pB)*1.15;
+  const yTop = 10, yBase = H-pad;
+  for(let i=0;i<n;i++){
+    const bx = i*slot+6, bw = (slot-12)/2;
+    const bh = (baseP[i]/ymax)*(yBase-yTop), gh = (guidedP[i]/ymax)*(yBase-yTop);
+    ctx.fillStyle = DEMO.a(DEMO.data,0.55);
+    ctx.fillRect(bx, yBase-bh, bw, bh);
+    ctx.fillStyle = DEMO.model;
+    ctx.fillRect(bx+bw, yBase-gh, bw, gh);
+    ctx.fillStyle = DEMO.muted; ctx.font=`11px ${DEMO.font.sans}`; ctx.textAlign='center';
+    ctx.fillText(CORE.TOKENS[i], bx+bw, H-6);
+  }
+  // p_A 與 p_B 疊在同一組長條上:兩條線的落差就是 (log p_A − log p_B) 的方向,
+  // A 高於 B 的 token 被抬起、低於 B 的被壓下;兩線重合則毫無方向可言。
+  const xOf = i => i*slot + slot/2, yOf = v => yBase - (v/ymax)*(yBase-yTop);
+  const curve = (arr,color,dash)=>{
+    ctx.setLineDash(dash||[]); ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.beginPath();
+    arr.forEach((v,i)=> i? ctx.lineTo(xOf(i),yOf(v)) : ctx.moveTo(xOf(i),yOf(v)));
+    ctx.stroke(); ctx.setLineDash([]);
+  };
+  curve(pB, DEMO.ink2, [4,4]);
+  curve(pA, DEMO.third);
+}
+function drawLines(base,A,B){
+  ctx.clearRect(0,0,W,H);
+  const n = CORE.TOKENS.length;
+  const g = w => CORE.guidedLogits(base,A,B,w);
+  const p = current();
+  const lo = g(p.wMin), hi = g(p.wMax), cur = g(wVal);
+  const all = [...lo,...hi,...cur];
+  const ymin = Math.min(...all), ymax = Math.max(...all), pad=20;
+  const yOf = v => H-pad - (v-ymin)/(ymax-ymin+1e-9)*(H-2*pad);
+  const xOf = i => (i+0.5)*(W/n);
+  const line = (arr,color,dash)=>{
+    ctx.setLineDash(dash||[]); ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath();
+    arr.forEach((v,i)=> i? ctx.lineTo(xOf(i),yOf(v)) : ctx.moveTo(xOf(i),yOf(v)));
+    ctx.stroke();
+  };
+  line(lo,DEMO.third,[5,4]); line(hi,DEMO.data,[5,4]); line(cur,DEMO.model);
+  ctx.setLineDash([]);
+}
+function render(){
+  const p = current();
+  const guided = CORE.guidedLogits(p.base,p.A,p.B,wVal);
+  // 參考長條畫的是「未 guide 前」的分布:temperature 情境下 base 是均勻的,
+  // 真正該拿來對照的是 T=1 的原始分布(preset.ref)。
+  const baseP = CORE.softmax(p.ref || p.base), guidedP = CORE.softmax(guided);
+  if(logView){ drawLines(p.base,p.A,p.B); legend.innerHTML =
+    `<span><span class="dot" style="background:${DEMO.third}"></span>w=${p.wMin}(虛線)</span>`+
+    `<span><span class="dot" style="background:${DEMO.data}"></span>w=${p.wMax}(虛線)</span>`+
+    `<span><span class="dot" style="background:${DEMO.model}"></span>目前 w(實線,應嚴格落在兩虛線之間的線性內插位置)</span>`;
+  } else { drawBars(baseP,guidedP,CORE.softmax(p.A),CORE.softmax(p.B)); legend.innerHTML =
+    `<span><span class="dot" style="background:${DEMO.a(DEMO.data,0.55)}"></span>參考分布(未 guide)</span>`+
+    `<span><span class="dot" style="background:${DEMO.model}"></span>guided 機率(renormalize 後)</span>`+
+    `<span><span class="dot" style="background:${DEMO.third}"></span>p<sub>A</sub>(拉向這裡)</span>`+
+    `<span><span class="dot" style="background:${DEMO.ink2}"></span>p<sub>B</sub>(推離這裡,虛線)</span>`;
+  }
+  document.getElementById('hVal').textContent = CORE.entropy(guidedP).toFixed(3);
+  document.getElementById('t1Val').textContent = (CORE.top1(guidedP)*100).toFixed(1)+'%';
+  document.getElementById('tmVal').textContent = (CORE.truncatedMass(baseP,guidedP)*100).toFixed(1)+'%';
+  unitEl.textContent = p.unit ? p.unit(wVal) : '';
+  unitEl.style.display = p.unit ? '' : 'none';
+  hintText.textContent = p.note;
+}
+
+function setPreset(key){
+  presetKey = key;
+  const p = current();
+  document.querySelectorAll('.presets button').forEach(b=> b.classList.toggle('active', b.dataset.preset===key));
+  wSlider.disabled = p.locked;
+  wSlider.min = p.wMin; wSlider.max = p.wMax;
+  wVal = p.w0; wSlider.value = wVal; wValEl.textContent = wVal.toFixed(1);
+  wLabelEl.textContent = p.wLabel || 'w';
+  lockNote.style.display = p.locked ? 'block' : 'none';
+  render();
+}
+document.querySelectorAll('.presets button').forEach(b=>
+  b.addEventListener('click', ()=> setPreset(b.dataset.preset)));
+wSlider.addEventListener('input', e=>{ wVal = +e.target.value; wValEl.textContent = wVal.toFixed(1); render(); });
+document.getElementById('logView').addEventListener('change', e=>{ logView = e.target.checked; render(); });
+
+resize();
+setPreset('temperature');
+</script>
+</body>
+</html>

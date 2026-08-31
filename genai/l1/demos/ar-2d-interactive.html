@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AR 逐維生成:chain rule 分解</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
+<style>
+  /* 這支 demo 專屬的樣式；通用外殼在 theme.css */
+  .readout{line-height:1.6}
+  .readout .t1, .readout .t2{color:var(--data)}
+  .readout .tt{color:var(--ink);font-weight:600}
+  button.on{background:var(--ink);color:var(--paper-2);border-color:var(--ink)}
+  .panels{grid-template-columns:1.12fr .94fr .94fr;align-items:start}
+  .panel .hint{min-height:2.6em}
+  #cvS{cursor:crosshair}
+  .note{margin-top:14px}
+  @media (max-width:960px){ .panels{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">生成模型入門 · 第二堂 · Demo 11</div>
+  <h1>AR 逐維生成 — <code>log p(x) = log p(x₁) + log p(x₂|x₁)</code></h1>
+  <p class="sub">Autoregressive 模型把聯合密度用 chain rule 拆成逐維條件機率的乘積。此處以三群
+    Gaussian mixture 的 2D 資料配一個 binned 模型(40 bins,不需訓練):<b>logprob 精確且便宜</b>
+    ——兩項相加即得;<b>sample 被迫逐維序列</b>——必須先抽第一維,才知道第二維的條件分布長什麼樣。</p>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div class="ctrl"><button id="step1">生成一點(分步)</button><button id="auto">連續生成</button></div>
+    <div class="ctrl"><span>維度順序</span><button id="order">先 x₁ 再 x₂</button></div>
+    <div class="ctrl"><button id="clear">↺ 清除生成點</button></div>
+    <div class="readout" id="ro">已生成 <b id="nGen">0</b> 點 · 點左側面板可查詢 logprob</div>
+  </div>
+
+  <div class="panels">
+    <div class="panel">
+      <h2>資料空間 x ∈ ℝ²</h2>
+      <p class="hint">藍點=資料(三群 Gaussian mixture)。<span style="color:var(--accent-ink)">橘紅點</span>=已生成樣本。
+        點任一位置即查詢該處的兩項 logprob 與總和。</p>
+      <canvas id="cvS"></canvas>
+    </div>
+    <div class="panel">
+      <h2>步驟 1:邊際 <code id="margLab">p(x₁)</code></h2>
+      <p class="hint">第一維沒有任何條件可用,直接從邊際直方抽樣。<span style="color:var(--accent-ink)">橘紅的 bin</span>
+        =本次抽中的值。</p>
+      <canvas id="cvM"></canvas>
+    </div>
+    <div class="panel">
+      <h2>步驟 2:條件 <code id="condLab">p(x₂ | x₁)</code></h2>
+      <p class="hint" id="condHint">此曲線依步驟 1 的結果即時改變——這正是 sample 無法平行化的原因。</p>
+      <canvas id="cvC"></canvas>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>90 秒讀法</b>:① 按兩次「生成一點(分步)」:第一維落點不同,右側條件曲線就長得不同,
+    兩步之間的延遲即序列生成的成本。② 在資料密處與空曠處各點一次查詢:兩項相加,密度區讀數高、空白區讀數低,
+    而且 logprob 不需任何迭代,查表相加即得。③ 切換「維度順序」:同一查詢點的兩項各自改變,
+    但<b>總和不變</b>——chain rule 分解不唯一,密度唯一。
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ===CORE:BEGIN=== */
+const CORE = (() => {
+  const B = 40, LO = -3, HI = 3, BW = (HI - LO) / B;
+  const CENTERS = [[-1.6, -1.2], [1.5, -1.0], [0.1, 1.4]], SD = 0.42;
+  const mulberry32 = seed => () => {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+  const gauss = rng => Math.sqrt(-2 * Math.log(rng() || 1e-12)) * Math.cos(2 * Math.PI * rng());
+  const makeData = (n, rng) => {
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const c = CENTERS[Math.min(2, Math.floor(rng() * 3))];
+      out.push([c[0] + SD * gauss(rng), c[1] + SD * gauss(rng)]);
+    }
+    return out;
+  };
+  const binOf = v => Math.min(B - 1, Math.max(0, Math.floor((v - LO) / BW)));
+  /* fit:2D joint 直方(1-2-1 分離核平滑一次 + 底值),邊際與條件皆由 joint 導出,
+     因此兩種維度順序的 logprob 總和天生一致。 */
+  const fit = data => {
+    const raw = Array.from({ length: B }, () => new Float64Array(B));
+    for (const [x, y] of data) raw[binOf(x)][binOf(y)] += 1;
+    const J = Array.from({ length: B }, () => new Float64Array(B));
+    let tot = 0;
+    for (let i = 0; i < B; i++) for (let j = 0; j < B; j++) {
+      let s = 0;
+      for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
+        const ii = i + di, jj = j + dj;
+        if (ii >= 0 && ii < B && jj >= 0 && jj < B)
+          s += raw[ii][jj] * (2 - Math.abs(di)) * (2 - Math.abs(dj)) / 16;
+      }
+      J[i][j] = s + 0.02;               // 底值:空 bin 的 logprob 低而有限,而非 -Infinity
+      tot += J[i][j];
+    }
+    for (let i = 0; i < B; i++) for (let j = 0; j < B; j++) J[i][j] /= tot;
+    const p1 = new Float64Array(B), p2 = new Float64Array(B);
+    for (let i = 0; i < B; i++) for (let j = 0; j < B; j++) { p1[i] += J[i][j]; p2[j] += J[i][j]; }
+    const c21 = Array.from({ length: B }, (_, i) => Float64Array.from(J[i], v => v / p1[i]));
+    const c12 = Array.from({ length: B }, (_, j) =>
+      Float64Array.from({ length: B }, (_, i) => J[i][j] / p2[j]));
+    return { joint: J, p1, p2, c21, c12 };
+  };
+  /* logprob:回傳 {t1, t2, total};order '12' = 先 x1 再 x2,'21' = 先 x2 再 x1。
+     讀數為密度(機率質量除以 bin 寬)。 */
+  const logprob = (model, x, order) => {
+    const i = binOf(x[0]), j = binOf(x[1]);
+    let t1, t2;
+    if (order === '21') { t1 = Math.log(model.p2[j] / BW); t2 = Math.log(model.c12[j][i] / BW); }
+    else { t1 = Math.log(model.p1[i] / BW); t2 = Math.log(model.c21[i][j] / BW); }
+    return { t1, t2, total: t1 + t2 };
+  };
+  /* sampleStep:一次推進一步。state = {step, order};step 0 抽第一維(邊際),
+     step 1 抽第二維(條件),完成後 state.x 為 [x1, x2]。 */
+  const sampleStep = (model, state, rng) => {
+    const draw = probs => {
+      let u = rng(), acc = 0;
+      for (let k = 0; k < B; k++) { acc += probs[k]; if (u < acc) return k; }
+      return B - 1;
+    };
+    const s = { ...state };
+    if (s.step === 0) {
+      s.firstBin = draw(s.order === '21' ? model.p2 : model.p1);
+      s.firstVal = LO + (s.firstBin + rng()) * BW;
+      s.step = 1;
+    } else if (s.step === 1) {
+      const cond = s.order === '21' ? model.c12[s.firstBin] : model.c21[s.firstBin];
+      s.secondBin = draw(cond);
+      s.secondVal = LO + (s.secondBin + rng()) * BW;
+      s.x = s.order === '21' ? [s.secondVal, s.firstVal] : [s.firstVal, s.secondVal];
+      s.step = 2;
+    }
+    return s;
+  };
+  return { B, LO, HI, BW, CENTERS, SD, mulberry32, makeData, binOf, fit, logprob, sampleStep };
+})();
+/* ===CORE:END=== */
+
+/* ---------- 狀態 ---------- */
+const DATA = CORE.makeData(1200, CORE.mulberry32(7));
+const MODEL = CORE.fit(DATA);
+const { B, LO, HI, BW } = CORE;
+let order = '12';            // '12':先 x1 再 x2;'21':先 x2 再 x1
+let gen = [];                // 已生成點 [x1, x2]
+let anim = null;             // 進行中的 sampleStep state
+let query = null;            // 查詢點 [x1, x2]
+let busy = false, autoTimer = null;
+const $ = id => document.getElementById(id);
+
+/* ---------- 畫布 ---------- */
+const cvS = $('cvS'), cvM = $('cvM'), cvC = $('cvC');
+const CTX = new Map();
+function setup(cv, ratio) {
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = Math.round(w * ratio);
+  cv.width = w * dpr; cv.height = h * dpr; cv.style.height = h + 'px';
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); CTX.set(cv, c);
+}
+const sPx = (x, y) => [(x - LO) / (HI - LO) * cvS.clientWidth, (HI - y) / (HI - LO) * cvS.clientWidth];
+const sXY = (px, py) => [LO + px / cvS.clientWidth * (HI - LO), HI - py / cvS.clientWidth * (HI - LO)];
+
+function drawScatter() {
+  const c = CTX.get(cvS), w = cvS.clientWidth;
+  c.clearRect(0, 0, w, w);
+  c.strokeStyle = DEMO.grid; c.lineWidth = 1;
+  for (let v = -2; v <= 2; v++) {
+    const [px] = sPx(v, 0), [, py] = sPx(0, v);
+    c.beginPath(); c.moveTo(px, 0); c.lineTo(px, w); c.stroke();
+    c.beginPath(); c.moveTo(0, py); c.lineTo(w, py); c.stroke();
+  }
+  c.fillStyle = DEMO.data;
+  for (const [x, y] of DATA) { const [px, py] = sPx(x, y); c.beginPath(); c.arc(px, py, 1.6, 0, 7); c.fill(); }
+  c.fillStyle = DEMO.model; c.globalAlpha = 0.9;
+  for (const [x, y] of gen) { const [px, py] = sPx(x, y); c.beginPath(); c.arc(px, py, 3.2, 0, 7); c.fill(); }
+  c.globalAlpha = 1;
+  if (anim && anim.step === 1) {          // 第一維已定:畫一條線,凸顯第二維尚未決定
+    c.strokeStyle = DEMO.model; c.lineWidth = 2; c.setLineDash([6, 5]);
+    c.beginPath();
+    if (anim.order === '21') { const [, py] = sPx(0, anim.firstVal); c.moveTo(0, py); c.lineTo(w, py); }
+    else { const [px] = sPx(anim.firstVal, 0); c.moveTo(px, 0); c.lineTo(px, w); }
+    c.stroke(); c.setLineDash([]);
+  }
+  if (query) {
+    const [px, py] = sPx(query[0], query[1]);
+    c.strokeStyle = DEMO.ink; c.lineWidth = 2;
+    c.beginPath(); c.arc(px, py, 8, 0, 7); c.stroke();
+    c.beginPath(); c.moveTo(px - 13, py); c.lineTo(px + 13, py);
+    c.moveTo(px, py - 13); c.lineTo(px, py + 13); c.stroke();
+  }
+}
+
+function drawBars(cv, probs, hiBin, qBin, axisLab) {
+  const c = CTX.get(cv), w = cv.clientWidth, h = parseFloat(cv.style.height);
+  c.clearRect(0, 0, w, h);
+  const pad = 6, bw = (w - 2 * pad) / B, maxP = Math.max(...probs);
+  for (let k = 0; k < B; k++) {
+    const bh = probs[k] / maxP * (h - 26);
+    c.fillStyle = k === hiBin ? DEMO.model : DEMO.data;
+    c.fillRect(pad + k * bw, h - 18 - bh, Math.max(1, bw - 1), bh);
+    if (k === qBin) {
+      c.strokeStyle = DEMO.ink; c.lineWidth = 1.5;
+      c.strokeRect(pad + k * bw - 0.5, h - 18 - Math.max(bh, 2) - 0.5, Math.max(1, bw - 1) + 1, Math.max(bh, 2) + 1);
+    }
+  }
+  c.fillStyle = DEMO.muted; c.font = `11px ${DEMO.font.mono}`; c.textAlign = 'center';
+  for (const v of [-2, 0, 2]) c.fillText(v, pad + (v - LO) / (HI - LO) * (w - 2 * pad), h - 4);
+  c.textAlign = 'left'; c.fillText(axisLab, pad, 12);
+}
+
+function drawAll() {
+  drawScatter();
+  const first = order === '21' ? '2' : '1', second = order === '21' ? '1' : '2';
+  $('margLab').textContent = `p(x${first === '1' ? '₁' : '₂'})`;
+  $('condLab').textContent = `p(x${second === '1' ? '₁' : '₂'} | x${first === '1' ? '₁' : '₂'})`;
+  $('order').textContent = order === '21' ? '先 x₂ 再 x₁' : '先 x₁ 再 x₂';
+  const marg = order === '21' ? MODEL.p2 : MODEL.p1;
+  const qFirst = query ? CORE.binOf(order === '21' ? query[1] : query[0]) : -1;
+  const qSecond = query ? CORE.binOf(order === '21' ? query[0] : query[1]) : -1;
+  const aFirst = anim && anim.order === order && anim.step >= 1 ? anim.firstBin : -1;
+  const aSecond = anim && anim.order === order && anim.step === 2 ? anim.secondBin : -1;
+  drawBars(cvM, marg, aFirst, qFirst, `x${first}`);
+  const ctxBin = aFirst >= 0 ? aFirst : qFirst;
+  const c = CTX.get(cvC), w = cvC.clientWidth, h = parseFloat(cvC.style.height);
+  if (ctxBin < 0) {
+    c.clearRect(0, 0, w, h);
+    c.fillStyle = DEMO.muted; c.font = `13px ${DEMO.font.sans}`; c.textAlign = 'center';
+    c.fillText('先抽出(或查詢)第一維,條件分布才存在', w / 2, h / 2);
+  } else {
+    const cond = order === '21' ? MODEL.c12[ctxBin] : MODEL.c21[ctxBin];
+    drawBars(cvC, cond, aSecond, aFirst >= 0 ? -1 : qSecond, `x${second} | x${first} ∈ bin ${ctxBin}`);
+  }
+}
+
+/* ---------- 讀數 ---------- */
+const fmt = v => v.toFixed(2);
+function updateReadout() {
+  let html = `已生成 <b id="nGen">${gen.length}</b> 點`;
+  if (query) {
+    const lp = CORE.logprob(MODEL, query, order);
+    const f = order === '21' ? 'x₂' : 'x₁', s = order === '21' ? 'x₁' : 'x₂';
+    html += ` · 查詢 (${fmt(query[0])}, ${fmt(query[1])}):`
+      + `<span class="t1">log p(${f}) = ${fmt(lp.t1)}</span> + `
+      + `<span class="t2">log p(${s}|${f}) = ${fmt(lp.t2)}</span> = `
+      + `<span class="tt">log p(x) = ${fmt(lp.total)}</span>`;
+  } else html += ' · 點左側面板可查詢 logprob';
+  $('ro').innerHTML = html;
+}
+
+/* ---------- 互動 ---------- */
+function genOne() {
+  if (busy) return;
+  busy = true;
+  anim = CORE.sampleStep(MODEL, { step: 0, order }, Math.random);
+  drawAll();
+  setTimeout(() => {                       // 400ms:序列性——第二維必須等第一維
+    busy = false;
+    if (!anim || anim.step !== 1) return;  // 途中被「清除」或「維度順序」中止
+    anim = CORE.sampleStep(MODEL, anim, Math.random);
+    gen.push(anim.x);
+    drawAll(); updateReadout();
+  }, 400);
+}
+$('step1').addEventListener('click', genOne);
+$('auto').addEventListener('click', () => {
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; $('auto').classList.remove('on'); }
+  else { $('auto').classList.add('on'); genOne(); autoTimer = setInterval(genOne, 900); }
+});
+$('order').addEventListener('click', () => {
+  order = order === '12' ? '21' : '12';
+  anim = null;                             // 舊的抽樣過程屬於另一種順序
+  drawAll(); updateReadout();              // 查詢點讀數重算:兩項改變、總和不變
+});
+$('clear').addEventListener('click', () => { gen = []; anim = null; drawAll(); updateReadout(); });
+cvS.addEventListener('pointerdown', ev => {
+  const r = cvS.getBoundingClientRect();
+  query = sXY(ev.clientX - r.left, ev.clientY - r.top);
+  if (anim && anim.step === 2) anim = null;  // 已完成的抽樣讓位給查詢,否則條件面板永遠停在上一個生成點
+
+  drawAll(); updateReadout();
+});
+function layout() { setup(cvS, 1); setup(cvM, 0.78); setup(cvC, 0.78); drawAll(); }
+window.addEventListener('resize', layout);
+layout(); updateReadout();
+</script>
+</body>
+</html>

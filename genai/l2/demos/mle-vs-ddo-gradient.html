@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MLE vs. DDO 梯度場</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
+<style>
+  /* 這支 demo 專屬的樣式;通用外殼在 theme.css */
+  .wrap { max-width: 1280px; }
+  .sub .k { font-family: var(--mono); color: var(--accent-ink); }
+  #lr { width: 120px; }
+  .stepbox { margin-left: auto; font-family: var(--mono); font-size: 14px; color: var(--muted); }
+  .stepbox b { color: var(--ink); font-weight: 500; }
+  .toggle input { width: 16px; height: 16px; }
+
+  .panels { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; }
+  .panel h2 { font-size: 16px; }
+  .panel .hint { font-size: 13px; margin-bottom: 10px; min-height: 3.2em; }
+  .panel .hint code { font-family: var(--mono); color: var(--accent-ink); }
+  .kl { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 10px; font-family: var(--mono); font-size: 14px; color: var(--muted); }
+  .kl b { color: var(--ink); font-weight: 500; font-size: 16px; }
+  .legend { font-size: 12.5px; gap: 16px; }
+  .bar { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+  .bar.v { width: 3px; height: 12px; }  /* 力的圖例:直立短棒,對應畫面上的箭頭桿 */
+
+  @media (max-width: 720px) { .stepbox { margin-left: 0; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">生成模型入門 · 第一堂 ④ · Demo 02</div>
+  <h1>MLE <span class="vs">vs.</span> DDO 梯度場</h1>
+  <p class="sub">同一份雙峰 <span class="k">p_data</span>、同一個初始 <span class="k">q<sub>θ</sub>=softmax(θ)</span>、同一組超參數,只有梯度式不同。
+    箭頭是大綱積分式中 <span class="k">∇<sub>θ</sub> log p<sub>θ</sub>(x)</span> 的權重:<b style="color:var(--data)">藍色向上=推高</b>、<b style="color:var(--warn)">紅色向下=壓低</b>。
+    左畫面全程不會出現任何紅色箭頭——<b>MLE 的力場恆等於 p_data 本身,與當前的 q 無關,因此沒有任何一項知道「多餘質量」的存在</b>。</p>
+
+  <div class="controls">
+    <button class="primary" id="playBtn">▶ 播放</button>
+    <button id="resetBtn">↺ 重設</button>
+    <div class="ctrl"><label for="lr">學習率 η</label>
+      <input type="range" id="lr" min="0.2" max="4" step="0.2" value="1">
+      <span class="val" id="lrVal">1.0</span></div>
+    <label class="toggle ctrl"><input type="checkbox" id="logy">對數縱軸</label>
+    <label class="toggle ctrl"><input type="checkbox" id="selfplay">
+      self-play:每 50 步更新 p<sub>ref</sub>(進階)</label>
+    <div class="stepbox">step <b id="stepVal">0</b> &nbsp;·&nbsp; β = <b>2</b></div>
+  </div>
+
+  <div class="panels">
+    <div class="panel mle">
+      <h2>左:MLE(forward KL)</h2>
+      <p class="hint">∇<sub>θ</sub>L = −∫ <code>p_data(x)</code> ∇<sub>θ</sub>log p<sub>θ</sub>(x) dx&nbsp;→&nbsp;權重 = <code>p_data(x) ≥ 0</code>。
+        峰間殘餘質量只能靠 softmax 正規化被動稀釋,退得很慢。</p>
+      <canvas id="cvMle" height="330"></canvas>
+      <div class="kl">
+        <span>forward KL <b id="fMle">–</b></span>
+        <span>reverse KL <b id="rMle">–</b></span>
+        <span>峰間質量 <b id="vMle">–</b></span>
+      </div>
+    </div>
+    <div class="panel ddo">
+      <h2>右:DDO(隱式判別器)</h2>
+      <p class="hint">∇<sub>θ</sub>L = ∫ (1−d<sub>θ</sub>)(p<sub>θ</sub>−p<sub>data</sub>) ∇<sub>θ</sub>log p<sub>θ</sub> dx,<code>d_θ = σ(β·log p_θ/p_ref)</code>
+        → 權重 = <code>β(1−d)(p_data−q)</code>,在 <code>q &gt; p_data</code> 處為負,即壓低。</p>
+      <canvas id="cvDdo" height="330"></canvas>
+      <div class="kl">
+        <span>forward KL <b id="fDdo">–</b></span>
+        <span>reverse KL <b id="rDdo">–</b></span>
+        <span>峰間質量 <b id="vDdo">–</b></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend" style="margin-top:12px">
+    <span><span class="bar" style="background:var(--data)"></span>p<sub>data</sub>(雙峰目標)</span>
+    <span><span class="bar" style="background:var(--model);height:9px;opacity:.45"></span>q<sub>θ</sub>(可訓練分布)</span>
+    <span><span class="bar v" style="background:var(--data)"></span>推高力(藍 ↑)</span>
+    <span><span class="bar v" style="background:var(--warn)"></span>壓低力(紅 ↓)</span>
+    <span><span class="bar" style="background:var(--model);height:2px"></span>另一邊的 q<sub>θ</sub>(虛線對照)</span>
+    <span><span class="bar" style="background:var(--third);height:2px"></span>p<sub>ref</sub>(判別器的參考分布)</span>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3>① 左畫面為什麼永遠是藍色</h3>
+      MLE 的梯度是 <code>−E_p_data[∇log q]</code>,對 <code>∇log q(x)</code> 的權重就是 <code>p_data(x)</code>,恆為非負。
+      這個力場<b>完全不看 q 長什麼樣</b>——訓練到第 500 步,左邊的箭頭場和第 0 步一模一樣。
+      峰間的多餘質量之所以仍會慢慢消退,靠的是 softmax 的正規化(推高別處等於相對壓低這裡),不是一股獨立的力。
+    </div>
+    <div class="note n2">
+      <h3>② 右畫面多出來的那股力</h3>
+      DDO 的權重 <code>β(1−d)(p_data−q)</code> 在 <code>q &gt; p_data</code> 處直接變號。
+      判別器 <code>d = σ(β log q/p_ref)</code> 還提供了自動的步長調節:峰間 q 掉到 p<sub>ref</sub> 以下時 <code>(1−d)→1</code>,壓低力全開;
+      峰頂 q 升到 p<sub>ref</sub> 以上時 <code>(1−d)→0</code>,推高力自動收斂,不會衝過頭。取 β=2 使兩邊在第 0 步的更新量完全相同,之後的差異全部來自判別器。
+    </div>
+    <div class="note n3">
+      <h3>③ 停格提問</h3>
+      播放到約 150 步暫停,勾選「對數縱軸」:左右兩邊的峰都長出來了,但左邊峰間還留著一層底座,右邊已經貼到 p<sub>data</sub> 的底噪。
+      線性縱軸上這兩層都被壓成一條線,差距要取 log 才讀得出來。
+      問:「左畫面裡,<b>有任何機制知道中間那塊質量是多餘的嗎?</b>」
+      答案在箭頭上——沒有。forward KL 只在有資料的地方施力,<code>p_data ≈ 0</code> 的地方它的力也 ≈ 0。
+      DDO 的定位就是同時具備 forward KL 的推高力與 reverse KL 的壓低力。
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* CORE-START —— 數值核心:公開給 mle-vs-ddo-gradient.check.mjs 以 eval 抽出後驗證 */
+const CORE = {
+  N: 64, BETA: 2,
+  x(i){ return (i + 0.5) / CORE.N; },
+  norm(a){ const s = a.reduce((u,v)=>u+v,0); return a.map(v=>v/s); },
+  gauss(x,m,s){ return Math.exp(-0.5*((x-m)/s)**2); },
+  // 雙峰目標;2% 均勻底噪讓 log p_data 處處有限
+  pdata(){ const a=[]; for(let i=0;i<CORE.N;i++){ const x=CORE.x(i);
+      a.push(CORE.gauss(x,0.25,0.05)+CORE.gauss(x,0.75,0.05)); }
+    const b=CORE.norm(a); return CORE.norm(b.map(v=>0.98*v+0.02/CORE.N)); },
+  // 初始 q 刻意把質量堆在雙峰之間 → 第一幀就看得到紅色壓低箭頭
+  qinit(){ const a=[]; for(let i=0;i<CORE.N;i++) a.push(CORE.gauss(CORE.x(i),0.5,0.20)+0.05);
+    return CORE.norm(a); },
+  // 全程 log-space,避免下溢
+  logsoftmax(t){ const m=Math.max(...t); let s=0; for(const v of t) s+=Math.exp(v-m);
+    const lz=m+Math.log(s); return t.map(v=>v-lz); },
+  sigmoid(z){ return z>=0 ? 1/(1+Math.exp(-z)) : Math.exp(z)/(1+Math.exp(z)); },
+  /* 箭頭 / 梯度權重:∇θL = -∫ c(x) ∇θ log p_θ(x) dx 中的 c(x)。
+     MLE : c = p_data              → 恆 ≥ 0,只有推高
+     DDO : c = β(1-d)(p_data - q)  → q > p_data 處變號,即壓低
+     d = σ(β·(log q - log p_ref));β 來自 σ(β·) 的鏈式法則,同時避免 logprob 量級大時飽和 */
+  force(mode, p, q, logq, logpref, beta){
+    if(mode === 'mle') return p.slice();
+    return p.map((pi,i)=> beta * (1 - CORE.sigmoid(beta*(logq[i]-logpref[i]))) * (pi - q[i]));
+  },
+  // softmax 鏈式法則:∂log q_i/∂θ_j = δij - q_j  ⇒  Δθ_j = η(c_j - q_j·Σc)
+  update(theta, c, q, lr){ const S = c.reduce((u,v)=>u+v,0);
+    for(let j=0;j<theta.length;j++) theta[j] += lr*(c[j] - q[j]*S); },
+  kl(a,b){ let s=0; for(let i=0;i<a.length;i++) if(a[i]>1e-300) s+=a[i]*Math.log(a[i]/b[i]); return s; },
+  valley(q){ let s=0; for(let i=0;i<CORE.N;i++){ const x=CORE.x(i); if(x>0.4&&x<0.6) s+=q[i]; } return s; },
+  // 一條完整訓練軌跡(頁面與自我檢查共用同一套數值)
+  run(mode, steps, lr, beta, selfplayEvery){
+    const p=CORE.pdata(), theta=CORE.qinit().map(Math.log);
+    let logpref=CORE.logsoftmax(theta.slice()), q, logq, c, hist=[];
+    for(let s=0; s<=steps; s++){
+      logq=CORE.logsoftmax(theta); q=logq.map(Math.exp);
+      c=CORE.force(mode,p,q,logq,logpref,beta);
+      hist.push({step:s, fwd:CORE.kl(p,q), rev:CORE.kl(q,p), valley:CORE.valley(q), c, q});
+      if(s===steps) break;
+      CORE.update(theta,c,q,lr);
+      if(selfplayEvery && (s+1)%selfplayEvery===0) logpref=CORE.logsoftmax(theta.slice());
+    }
+    return hist;
+  }
+};
+/* CORE-END */
+
+/* ============ 頁面狀態 ============ */
+const P = CORE.pdata(), YMAX = Math.max(...P)*1.55, CREF = Math.max(...P);
+const LOGLO = 1e-4;   // 對數縱軸的下界;p_data 的均勻底噪約 3e-4,再低一個檔次留出讀數空間
+const el = id => document.getElementById(id);
+const panes = [
+  {mode:'mle', cv:el('cvMle'), f:el('fMle'), r:el('rMle'), v:el('vMle')},
+  {mode:'ddo', cv:el('cvDdo'), f:el('fDdo'), r:el('rDdo'), v:el('vDdo')}
+];
+let step = 0, playing = false, lr = 1, selfplay = false, logy = false;
+
+function reset(){
+  step = 0;
+  for(const pane of panes){
+    pane.theta = CORE.qinit().map(Math.log);
+    pane.logpref = CORE.logsoftmax(pane.theta.slice());
+    pane.pref = pane.logpref.map(Math.exp);
+  }
+  refresh();
+}
+function advance(){
+  for(const pane of panes){
+    const logq = CORE.logsoftmax(pane.theta), q = logq.map(Math.exp);
+    CORE.update(pane.theta, CORE.force(pane.mode,P,q,logq,pane.logpref,CORE.BETA), q, lr);
+  }
+  step++;
+  if(selfplay && step%50===0) for(const pane of panes){
+    pane.logpref = CORE.logsoftmax(pane.theta.slice()); pane.pref = pane.logpref.map(Math.exp);
+  }
+}
+
+/* ============ 繪圖 ============ */
+function refresh(){
+  el('stepVal').textContent = step;
+  const qs = panes.map(pane => CORE.logsoftmax(pane.theta));
+  panes.forEach((pane, i) => {
+    const logq = qs[i], q = logq.map(Math.exp);
+    const c = CORE.force(pane.mode, P, q, logq, pane.logpref, CORE.BETA);
+    pane.f.textContent = CORE.kl(P,q).toFixed(4);
+    pane.r.textContent = CORE.kl(q,P).toFixed(4);
+    pane.v.textContent = (CORE.valley(q)*100).toFixed(1)+'%';
+    draw(pane, q, c, qs[1-i].map(Math.exp));   // 對方的 q:同一幀的收斂進度,畫成虛線對照
+  });
+}
+function draw(pane, q, c, qOther){
+  const cv = pane.cv, dpr = window.devicePixelRatio||1;
+  const W = cv.clientWidth, H = 330;                 // H 固定,不能回讀 cv.height(已乘過 dpr)
+  if(cv.width !== W*dpr){ cv.width = W*dpr; cv.height = H*dpr; }
+  const g = cv.getContext('2d');
+  g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+  const L=42, R=W-12, T=16, B=H-26, PW=R-L;
+  const X = i => L + PW*(i+0.5)/CORE.N;
+  // 兩邊的峰間殘餘質量只差 1.6 倍,線性軸上是幾個像素;取 log 後才是可讀的縱向間距
+  const Y = logy
+    ? v => B - (B-T)*Math.max(0, Math.log(Math.max(v,LOGLO)/LOGLO)/Math.log(YMAX/LOGLO))
+    : v => B - (B-T)*Math.min(v,YMAX)/YMAX;
+
+  g.strokeStyle=DEMO.grid; g.lineWidth=1; g.font=`12px ${DEMO.font.mono}`; g.fillStyle=DEMO.muted;
+  for(let k=0;k<=4;k++){ const y=T+(B-T)*k/4;
+    g.beginPath(); g.moveTo(L,y); g.lineTo(R,y); g.stroke(); }
+  g.beginPath(); g.moveTo(L,B); g.lineTo(R,B); g.stroke();
+  g.fillText(logy?'1e-4':'0', logy?8:12, B+4); g.fillText(YMAX.toFixed(3), 2, T+4);
+  g.textAlign='center'; g.fillText('x(64 bins)', (L+R)/2, H-6); g.textAlign='left';
+
+  // q 面積(model:clay)
+  g.beginPath(); g.moveTo(X(0),B);
+  for(let i=0;i<CORE.N;i++) g.lineTo(X(i),Y(q[i]));
+  g.lineTo(X(CORE.N-1),B); g.closePath();
+  g.fillStyle=DEMO.a(DEMO.model,0.22); g.fill();
+  g.strokeStyle=DEMO.model; g.lineWidth=1.6; g.stroke();
+
+  // 另一邊的 q(同為 model 色,虛線且不填色,只用來讀收斂進度差)
+  g.setLineDash([7,4]); g.strokeStyle=DEMO.a(DEMO.model,0.85); g.lineWidth=1.4; g.beginPath();
+  for(let i=0;i<CORE.N;i++) i?g.lineTo(X(i),Y(qOther[i])):g.moveTo(X(i),Y(qOther[i]));
+  g.stroke(); g.setLineDash([]);
+
+  // p_ref(虛線 third:olive)
+  g.setLineDash([3,4]); g.strokeStyle=DEMO.a(DEMO.third,0.8); g.lineWidth=1.4; g.beginPath();
+  for(let i=0;i<CORE.N;i++) i?g.lineTo(X(i),Y(pane.pref[i])):g.moveTo(X(i),Y(pane.pref[i]));
+  g.stroke(); g.setLineDash([]);
+
+  // p_data(data:petrol 實線)
+  g.strokeStyle=DEMO.data; g.lineWidth=2.2; g.beginPath();
+  for(let i=0;i<CORE.N;i++) i?g.lineTo(X(i),Y(P[i])):g.moveTo(X(i),Y(P[i]));
+  g.stroke();
+
+  // 梯度箭頭:兩畫面共用同一比例尺,長度才可互相比較
+  g.lineWidth=1.8;
+  for(let i=0;i<CORE.N;i++){
+    const len = Math.max(-60, Math.min(60, c[i]/CREF*46));
+    if(Math.abs(len) < 0.7) continue;
+    const x = X(i), y0 = Y(q[i]), y1 = y0 - len, s = Math.sign(len);
+    g.strokeStyle = g.fillStyle = len>0 ? DEMO.data : DEMO.warn;
+    g.beginPath(); g.moveTo(x,y0); g.lineTo(x,y1); g.stroke();
+    g.beginPath(); g.moveTo(x,y1); g.lineTo(x-3.2,y1+s*4.5); g.lineTo(x+3.2,y1+s*4.5); g.closePath(); g.fill();
+  }
+}
+
+/* ============ 事件 ============ */
+el('playBtn').onclick = () => { playing = !playing; el('playBtn').textContent = playing?'❚❚ 暫停':'▶ 播放'; };
+el('resetBtn').onclick = () => { playing = false; el('playBtn').textContent = '▶ 播放'; reset(); };
+el('lr').oninput = e => { lr = +e.target.value; el('lrVal').textContent = lr.toFixed(1); };
+el('logy').onchange = e => { logy = e.target.checked; refresh(); };
+el('selfplay').onchange = e => { selfplay = e.target.checked; };
+window.addEventListener('resize', refresh);
+(function loop(){ if(playing){ advance(); advance(); refresh(); } requestAnimationFrame(loop); })();
+reset();
+</script>
+</body>
+</html>
